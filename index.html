@@ -1,91 +1,224 @@
 <!DOCTYPE html>
-<html lang="it">
-
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TIME TAP</title>
-    <link rel="preconnect" href="https://googleapis.com">
-    <link rel="preconnect" href="https://gstatic.com" crossorigin>
-    <link href="https://googleapis.com/css2?family=Fredoka:wght@700&family=Lilita+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-
-    <!-- BLOCCHI DECORATIVI SULLO SFONDO STILE BLOCK BLAST -->
-    <div class="bg-blocks" aria-hidden="true">
-        <span class="b-tile t1"></span>
-        <span class="b-tile t2"></span>
-        <span class="b-tile t3"></span>
-        <span class="b-tile t4"></span>
-        <span class="b-tile t5"></span>
-        <span class="b-tile t6"></span>
+    <!-- SFONDO TESSERE -->
+    <div class="bg-blocks">
+        <div class="b-tile t1"></div>
+        <div class="b-tile t2"></div>
+        <div class="b-tile t3"></div>
+        <div class="b-tile t4"></div>
+        <div class="b-tile t5"></div>
+        <div class="b-tile t6"></div>
     </div>
 
-    <!-- COUNTDOWN -->
-    <div id="countdown"></div>
-
-    <!-- MESSAGGI SPECIALI -->
-    <div id="specialMessage"></div>
+    <!-- ONBOARDING CREAZIONE PROFILO -->
+    <div id="onboardingScreen" class="fullscreen-screen" style="display: none;">
+        <div class="onboarding-card">
+            <h1 class="onboarding-title">CREATE PROFILE</h1>
+            <p class="onboarding-sub">Choose your username. You can change it anytime from your Player Profile!</p>
+            <input type="text" id="usernameInput" class="profile-input" maxlength="14" placeholder="YOUR USERNAME">
+            <button id="saveProfileBtn" class="action-green-btn full-width-btn">START PLAYING</button>
+        </div>
+    </div>
 
     <!-- MENU HOME -->
     <div id="menu">
+        <div class="top-left-cluster">
+            <button id="profileCornerBtn" class="profile-corner-btn">
+                <div class="profile-text-group">
+                    <span id="homeProfileName" class="home-profile-name">PLAYER</span>
+                    <span id="homeProfileTitle" class="home-profile-title">LEVEL 1</span>
+                </div>
+            </button>
+        </div>
 
-        <div class="home-stats">
+        <div class="right-top-stack">
+            <button id="settingsBtn" class="top-icon-btn" aria-label="Settings">
+                <span class="gear-css-icon"></span>
+            </button>
+        </div>
+
+        <div class="logo-wrapper">
+            <div class="logo-row row-top">
+                <div class="block-letter c-red">T</div>
+                <div class="block-letter c-orange">I</div>
+                <div class="block-letter c-yellow">M</div>
+                <div class="block-letter c-green">E</div>
+            </div>
+            <div class="logo-row row-bottom">
+                <div class="block-letter c-cyan">T</div>
+                <div class="block-letter c-purple">A</div>
+                <div class="block-letter c-pink">P</div>
+            </div>
+        </div>
+
+        <div class="home-stats-centered">
             <div class="stat-pill gold-pill">
-                <span class="pill-icon">👑</span>
+                <span class="trophy-css-icon"></span>
                 <span id="record">0</span>
             </div>
             <div class="stat-pill fire-pill">
-                <span class="pill-icon">🔥</span>
+                <span class="bolt-css-icon"></span>
                 <span id="bestComboHome">0</span>
             </div>
         </div>
 
-        <!-- LOGO STILE BLOCK BLAST CON TESSERE 3D -->
-        <div class="logo-wrapper">
-            <div class="logo-row row-top">
-                <span class="block-letter c-red">T</span>
-                <span class="block-letter c-orange">I</span>
-                <span class="block-letter c-yellow">M</span>
-                <span class="block-letter c-green">E</span>
+        <!-- BARRA LIVELLI CENTRALE (NON CLICCABILE) -->
+        <div id="homeXpWidget" class="home-xp-widget">
+            <div class="home-xp-top">
+                <span id="homeXpRank" class="home-xp-rank">LEVEL 1</span>
+                <span id="homeXpNums" class="home-xp-nums">0 / 100 XP</span>
+                <span id="homeXpNextLevel" class="home-xp-next">LEVEL 2</span>
             </div>
-            <div class="logo-row row-bottom">
-                <span class="block-letter c-cyan">T</span>
-                <span class="block-letter c-purple">A</span>
-                <span class="block-letter c-pink">P</span>
+            <div class="home-xp-track">
+                <div id="homeXpFill" class="home-xp-fill"></div>
             </div>
         </div>
 
-        <button id="playBtn">
-            PLAY
-        </button>
-
+        <div class="home-play-area">
+            <button id="playBtn">PLAY</button>
+            <button id="discardSavedBtn" class="discard-saved-btn" style="display: none;">NEW RUN</button>
+        </div>
     </div>
 
-    <!-- GIOCO -->
-    <div id="game">
+    <!-- COUNTDOWN -->
+    <div id="countdown">3</div>
 
+    <!-- SCHERMATA DI GIOCO -->
+    <div id="game">
         <div class="hud-top">
             <div id="score">SCORE: 0</div>
             <div id="combo">COMBO 0</div>
         </div>
 
-        <div id="timerCircle">
-            2.5
-        </div>
+        <button id="pauseBtn" class="pause-btn">II</button>
 
+        <div class="timer-wrapper">
+            <svg class="timer-ring-svg" viewBox="0 0 150 150">
+                <circle class="timer-ring-bg" cx="75" cy="75" r="68"></circle>
+                <circle id="timerRingProgress" class="timer-ring-progress" cx="75" cy="75" r="68"></circle>
+            </svg>
+            <div id="timerCircle">2.5</div>
+        </div>
+    </div>
+
+    <!-- PAUSA -->
+    <div id="pauseOverlay" class="pause-overlay">
+        <div class="modal-card pause-panel">
+            <h2>PAUSED</h2>
+            <p class="pause-info">Progress saved automatically.<br>Tap HOME to continue later.</p>
+            <div class="resume-actions">
+                <button id="resumeBtn">RESUME</button>
+                <button id="quitToHomeBtn">HOME</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONFERMA NUOVA PARTITA -->
+    <div id="confirmNewRunModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>NEW RUN?</h3>
+            </div>
+            <p class="pause-info">Are you sure? Your current paused run will be finished first and its score, combo and XP will be saved!</p>
+            <div class="resume-actions">
+                <button id="confirmNewRunYesBtn" class="action-green-btn">YES</button>
+                <button id="confirmNewRunNoBtn" class="action-red-btn">NO</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- IMPOSTAZIONI -->
+    <div id="settingsModal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>SETTINGS</h3>
+                <button id="closeSettingsBtn" class="close-modal-btn">X</button>
+            </div>
+            <div class="setting-row">
+                <span>Sound Effects</span>
+                <button id="audioToggleBtn" class="toggle-pill-btn">ON</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROFILO GIOCATORE (SENZA STEMMI) -->
+    <div id="profileModal" class="fullscreen-modal">
+        <div class="fullscreen-header">
+            <div class="header-title-group">
+                <h2>PLAYER PROFILE</h2>
+            </div>
+            <button id="closeProfileBtn" class="close-fullscreen-btn">X</button>
+        </div>
+        <div class="profile-detail-body">
+            <div class="profile-hero-card">
+                <div class="username-display-row">
+                    <span id="profileModalUsername" class="profile-hero-name">PLAYER</span>
+                    <button id="editUsernameBtn" class="edit-name-btn">EDIT</button>
+                </div>
+
+                <div id="editUsernameBox" class="edit-username-box" style="display: none;">
+                    <input type="text" id="newUsernameInput" class="profile-input small-profile-input" maxlength="14">
+                    <div class="edit-username-actions">
+                        <button id="confirmUsernameChangeBtn" class="action-green-btn mini-action-btn">SAVE</button>
+                        <button id="cancelUsernameChangeBtn" class="action-red-btn mini-action-btn">CANCEL</button>
+                    </div>
+                </div>
+
+                <div id="equippedTitleLabel" class="profile-hero-badge-tag">LEVEL 1</div>
+                <div id="profileModalStats" class="profile-hero-stats">GAMES: 0 | XP: 0</div>
+            </div>
+
+            <div class="profile-summary-grid">
+                <div class="profile-stat-box gold-box">
+                    <span class="p-stat-label">BEST SCORE</span>
+                    <span id="profileBestScore" class="p-stat-val">0</span>
+                </div>
+                <div class="profile-stat-box fire-box">
+                    <span class="p-stat-label">MAX COMBO</span>
+                    <span id="profileBestCombo" class="p-stat-val">0</span>
+                </div>
+                <div class="profile-stat-box blue-box">
+                    <span class="p-stat-label">CURRENT LEVEL</span>
+                    <span id="profileCurrentRank" class="p-stat-val">LEVEL 1</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CELEBRAZIONE NUOVO LIVELLO -->
+    <div id="rankUpCelebration" class="fullscreen-modal celebration-overlay">
+        <div id="fireworksContainer" class="fireworks-container"></div>
+        <div class="celebration-card">
+            <div class="celebration-tag">LEVEL UP!</div>
+            <div id="celebrationRankName" class="celebration-rank-name">LEVEL 2</div>
+            <div id="celebrationTitleUnlocked" class="celebration-title-unlocked">LEVEL 2 / 100</div>
+            <button id="claimRankBtn" class="action-green-btn full-width-btn">AWESOME!</button>
+        </div>
     </div>
 
     <!-- GAME OVER -->
     <div id="gameOverScreen">
-
         <div class="gameover-panel">
             <h2>GAME OVER</h2>
+            <div id="newRecordMessage">NEW BEST!</div>
+            <div id="xpEarnedBadge" class="xp-earned-badge">+0 XP</div>
 
-            <div id="newRecordMessage">
-                👑 NEW BEST! 👑
+            <div class="go-xp-progress-box">
+                <div class="go-xp-labels">
+                    <span id="goRankFrom">LEVEL 1</span>
+                    <span id="goXpProgressText">0 / 100 XP</span>
+                    <span id="goRankTo">LEVEL 2</span>
+                </div>
+                <div class="go-xp-bar-track">
+                    <div id="goXpBarFill" class="go-xp-bar-fill"></div>
+                </div>
             </div>
 
             <div class="score-showcase">
@@ -95,11 +228,12 @@
 
             <div class="mini-stats-row">
                 <div class="mini-card gold-card">
-                    <span class="mini-label">👑 BEST</span>
+                    <span class="mini-label">BEST</span>
                     <span id="finalRecord" class="mini-value">0</span>
                 </div>
+                </div>
                 <div class="mini-card fire-card">
-                    <span class="mini-label">🔥 COMBO</span>
+                    <span class="mini-label">MAX COMBO</span>
                     <span id="finalCombo" class="mini-value">0</span>
                 </div>
             </div>
@@ -109,25 +243,8 @@
                 <button id="homeBtn">HOME</button>
             </div>
         </div>
-
     </div>
 
-    <!-- SUONI -->
-    <audio id="greenSound" src="sounds/green.mp3"></audio>
-    <audio id="redSound" src="sounds/red.mp3"></audio>
-    <audio id="goldSound" src="sounds/incredible.mp3"></audio>
-    <audio id="epicSound" src="sounds/epicsave.mp3"></audio>
-    <audio id="threeSound" src="sounds/three.mp3"></audio>
-    <audio id="twoSound" src="sounds/two.mp3"></audio>
-    <audio id="oneSound" src="sounds/one.mp3"></audio>
-    <audio id="goSound" src="sounds/go.mp3"></audio>
-
-    <!-- MUSICA -->
-    <audio id="bgMusic" src="sounds/music.mp3" loop></audio>
-
-    <!-- SCRIPT -->
     <script src="script.js"></script>
-
 </body>
-
 </html>
