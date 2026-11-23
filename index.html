@@ -15,8 +15,9 @@
     <div id="onboardingScreen" class="fullscreen-screen" style="display: none;">
         <div class="onboarding-card">
             <h1 class="onboarding-title">CREATE PROFILE</h1>
-            <p class="onboarding-sub">Choose your username. You can change it anytime from your Player Profile!</p>
+            <p class="onboarding-sub">Choose your unique username. You can change it anytime from your Player Profile!</p>
             <input type="text" id="usernameInput" class="profile-input" maxlength="14" placeholder="YOUR USERNAME">
+            <div id="onboardingErrorMsg" class="username-error-msg"></div>
             <button id="saveProfileBtn" class="action-green-btn full-width-btn">START PLAYING</button>
         </div>
     </div>
@@ -33,6 +34,7 @@
 
         <div class="right-top-stack">
             <button id="settingsBtn" class="top-icon-btn" aria-label="Settings"><span class="gear-css-icon"></span></button>
+            <button id="leaderboardBtn" class="top-icon-btn leaderboard-trigger" aria-label="Leaderboard"><span class="trophy-css-icon"></span></button>
         </div>
 
         <div class="logo-wrapper">
@@ -92,7 +94,6 @@
             </div>
         </div>
     </div>
-
     <div id="confirmNewRunModal" class="modal-overlay">
         <div class="modal-card">
             <div class="modal-header"><h3>NEW RUN?</h3></div>
@@ -117,6 +118,20 @@
         </div>
     </div>
 
+    <div id="leaderboardModal" class="fullscreen-modal">
+        <div class="fullscreen-header">
+            <div class="header-title-group">
+                <span class="trophy-css-icon"></span>
+                <h2>GLOBAL TOP 50</h2>
+            </div>
+            <button id="closeLeaderboardBtn" class="close-fullscreen-btn">X</button>
+        </div>
+        <div id="yourRankBanner" class="your-rank-banner">YOUR RANK: UNRANKED</div>
+        <div id="leaderboardListContainer" class="leaderboard-list-body">
+            <div class="lb-loading">LOADING TOP 50...</div>
+        </div>
+    </div>
+
     <div id="profileModal" class="fullscreen-modal">
         <div class="fullscreen-header">
             <div class="header-title-group"><h2>PLAYER PROFILE</h2></div>
@@ -130,6 +145,7 @@
                 </div>
                 <div id="editUsernameBox" class="edit-username-box" style="display: none;">
                     <input type="text" id="newUsernameInput" class="profile-input small-profile-input" maxlength="14">
+                    <div id="editUsernameErrorMsg" class="username-error-msg"></div>
                     <div class="edit-username-actions">
                         <button id="confirmUsernameChangeBtn" class="action-green-btn mini-action-btn">SAVE</button>
                         <button id="cancelUsernameChangeBtn" class="action-red-btn mini-action-btn">CANCEL</button>
