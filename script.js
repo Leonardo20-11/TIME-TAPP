@@ -1,6 +1,6 @@
 function initTimeTapGame() {
     const SUPABASE_URL = "https://supabase.co";
-    const SUPABASE_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaGtrdHZ0eGJzZmJyYWZzbmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NTMzNjAsImV4cCI6MjExMTAyOTM2MH0.xRde38jj8K1cBpbXIIDyc14OMSsjRVUMkqTEvwDq2Tw;
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaGtrdHZ0eGJzZmJyYWZzbmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NTMzNjAsImV4cCI6MjExMTAyOTM2MH0.xRde38jj8K1cBpbXIIDyc14OMSsjRVUMkqTEvwDq2Tw";
 
     const onboardingScreen = document.getElementById("onboardingScreen");
     const usernameInput = document.getElementById("usernameInput");
