@@ -199,25 +199,21 @@ function initTimeTapGame() {
         const reversed = normalized.split("").reverse().join("");
 
         const bannedWords = [
-            // Italiano
             "CAZZ", "MERD", "STRONZ", "PUTTAN", "TROIA", "TROIE", "VAFANC", "VAFFANC",
             "COGLION", "MINCHI", "FICA", "FIGA", "PORCOD", "PORCAM", "DIOCAN", "DIOPORC",
             "MADONNAP", "BASTARD", "BOCCIN", "POMPIN", "SBORR", "CULATTON", "FROC", "NEGR",
             "HANDICAPP", "MONGOLOID", "RITARDAT", "ZOCCOL", "BALDRACC", "PUTTANI",
-            // Inglese
             "FUCK", "SHIT", "BITCH", "ASSHOLE", "DICK", "COCK", "PUSSY", "CUNT",
             "NIGGA", "NIGGER", "FAGGOT", "WHORE", "SLUT", "MOTHERFUCK", "RETARD", "WANKER",
-            // Spagnolo & Portoghese
             "PUTA", "PUTO", "MIERDA", "CABRON", "PENDEJO", "GILIPOLLAS", "JODER", "COJONES",
             "MARICON", "VERGA", "CHINGA", "CARALHO", "FODASE", "BUCETA", "PORRA", "MERDA",
-            // Francese
             "PUTAIN", "MERDE", "CONNARD", "SALOPE", "ENCULE", "BITE", "COUILLE", "FOUTRE", "NIQUE", "BATARD",
-            // Tedesco
             "SCHEISSE", "ARSCHLOCH", "HURE", "SCHLAMPE", "FICK", "WICHSER", "HUSO", "MISSGEBURT"
         ];
 
-return bannedWords.some(word => normalized.includes(word) || reversed.includes(word));
-}
+        return bannedWords.some(word => normalized.includes(word) || reversed.includes(word));
+    }
+
 function forceRenameIfProfane() {
 if (!playerUsername || !containsProfanity(playerUsername)) return false;
 const overlay = document.createElement("div");
@@ -329,8 +325,67 @@ body: JSON.stringify(payload)
 });
 } catch (e) {}
 }
-async function loadAndRenderTop50() {
+let currentLeaderboardMode = "record";
+let chooseLeaderboardModal = document.getElementById("chooseLeaderboardModal");
+if (!chooseLeaderboardModal) {
+chooseLeaderboardModal = document.createElement("div");
+chooseLeaderboardModal.id = "chooseLeaderboardModal";
+chooseLeaderboardModal.className = "modal-overlay";
+const card = document.createElement("div");
+card.className = "modal-card";
+const header = document.createElement("div");
+header.className = "modal-header";
+const title = document.createElement("h3");
+title.textContent = "LEADERBOARD";
+const closeBtn = document.createElement("button");
+closeBtn.className = "close-modal-btn";
+closeBtn.textContent = "X";
+closeBtn.addEventListener("click", () => {
+playSynthEffect("click");
+chooseLeaderboardModal.style.display = "none";
+});
+header.appendChild(title);
+header.appendChild(closeBtn);
+const actions = document.createElement("div");
+actions.className = "resume-actions";
+const recordModeBtn = document.createElement("button");
+recordModeBtn.className = "lb-choice-btn lb-choice-record";
+recordModeBtn.textContent = "RECORD";
+recordModeBtn.addEventListener("click", () => {
+playSynthEffect("click");
+chooseLeaderboardModal.style.display = "none";
+openLeaderboardByMode("record");
+});
+const comboModeBtn = document.createElement("button");
+comboModeBtn.className = "lb-choice-btn lb-choice-combo";
+comboModeBtn.textContent = "COMBO";
+comboModeBtn.addEventListener("click", () => {
+playSynthEffect("click");
+chooseLeaderboardModal.style.display = "none";
+openLeaderboardByMode("combo");
+});
+actions.appendChild(recordModeBtn);
+actions.appendChild(comboModeBtn);
+card.appendChild(header);
+card.appendChild(actions);
+chooseLeaderboardModal.appendChild(card);
+document.body.appendChild(chooseLeaderboardModal);
+}
+async function openLeaderboardByMode(mode) {
+currentLeaderboardMode = mode;
+if (!leaderboardModal) return;
+const headerTitle = leaderboardModal.querySelector(".fullscreen-header h2");
+if (headerTitle) {
+headerTitle.textContent = mode === "combo" ? "TOP 50 COMBO" : "TOP 50 RECORD";
+}
+leaderboardModal.style.display = "flex";
+await syncPlayerToCloud(playerUsername);
+loadAndRenderTop50(mode);
+}
+async function loadAndRenderTop50(mode = currentLeaderboardMode) {
 if (!leaderboardListContainer) return;
+const isCombo = mode === "combo";
+const field = isCombo ? "best_combo" : "record";
 leaderboardListContainer.className = "leaderboard-list-body";
 leaderboardListContainer.removeAttribute("style");
 leaderboardListContainer.innerHTML = "";
@@ -344,7 +399,7 @@ yourRankBanner.removeAttribute("style");
 yourRankBanner.textContent = "CHECKING YOUR RANK...";
 }
 try {
-const url = SUPABASE_URL + "/rest/v1/players?select=username,record&order=record.desc";
+const url = SUPABASE_URL + "/rest/v1/players?select=username," + field + "&order=" + field + ".desc";
 const res = await fetch(url, { headers: sbHeaders() });
 if (!res.ok) throw new Error("Fetch failed");
 const allPlayers = await res.json();
@@ -360,7 +415,7 @@ return;
 const myIndex = allPlayers.findIndex(p => p.username === playerUsername);
 if (yourRankBanner) {
 if (myIndex >= 0) {
-yourRankBanner.textContent = "YOUR GLOBAL RANK: #" + (myIndex + 1) + " / " + allPlayers.length;
+yourRankBanner.textContent = "YOUR " + (isCombo ? "COMBO" : "RECORD") + " RANK: #" + (myIndex + 1) + " / " + allPlayers.length;
 } else {
 yourRankBanner.textContent = "PLAY A RUN TO ENTER THE RANKING!";
 }
@@ -369,6 +424,7 @@ const top50 = allPlayers.slice(0, 50);
 top50.forEach((p, idx) => {
 const pos = idx + 1;
 const isMe = p.username === playerUsername;
+const val = Number(p[field] || 0);
 const row = document.createElement("div");
 row.className = "lb-row";
 if (pos === 1) row.classList.add("top-1");
@@ -395,10 +451,10 @@ const scoreBox = document.createElement("div");
 scoreBox.className = "lb-score-box";
 const scoreLabel = document.createElement("span");
 scoreLabel.className = "lb-score-label";
-scoreLabel.textContent = "BEST";
+scoreLabel.textContent = isCombo ? "MAX COMBO" : "BEST";
 const scoreVal = document.createElement("span");
 scoreVal.className = "lb-score-val";
-scoreVal.textContent = fmtNum(p.record || 0);
+scoreVal.textContent = fmtNum(val);
 scoreBox.appendChild(scoreLabel);
 scoreBox.appendChild(scoreVal);
 row.appendChild(posEl);
@@ -414,12 +470,10 @@ errEl.textContent = "CONNECTION ERROR";
 leaderboardListContainer.appendChild(errEl);
 }
 }
-if (leaderboardBtn && leaderboardModal) {
-leaderboardBtn.addEventListener("click", async () => {
+if (leaderboardBtn && chooseLeaderboardModal) {
+leaderboardBtn.addEventListener("click", () => {
 playSynthEffect("click");
-leaderboardModal.style.display = "flex";
-await syncPlayerToCloud(playerUsername);
-loadAndRenderTop50();
+chooseLeaderboardModal.style.display = "flex";
 });
 }
 if (closeLeaderboardBtn && leaderboardModal) {
@@ -436,8 +490,8 @@ const xpFromScore = Math.floor(totalScoreAccumulated * 0.04);
 return Math.min(MAX_XP, xpFromGames + xpFromRecord + xpFromScore + storedBonusXP);
 }
 function getCurrentAndNextTier(currentXP) {
-let currentTier = LEVELS_CONFIG[0];
-let nextTier = LEVELS_CONFIG[1] || null;
+let currentTier = LEVELS_CONFIG;
+let nextTier = LEVELS_CONFIG || null;
 for (let i = 0; i < LEVELS_CONFIG.length; i++) {
 const item = LEVELS_CONFIG[i];
 if (currentXP >= item.xpRequired) {
