@@ -183,364 +183,468 @@ function initTimeTapGame() {
         return name.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "");
     }
 
-    function showErrorBox(el, msg) {
-        if (!el) return;
-        el.textContent = msg;
-        el.style.cssText = "color:#fecaca;background:rgba(153,27,27,0.92);border:3px solid #f87171;border-radius:16px;padding:8px 14px;font-size:15px;text-align:center;display:block;width:100%;font-family:'Lilita One','Fredoka',sans-serif;";
-    }
+    function containsProfanity(rawName) {
+        if (!rawName) return false;
+        const normalized = rawName
+            .toUpperCase()
+            .replace(/0/g, "O")
+            .replace(/1/g, "I")
+            .replace(/3/g, "E")
+            .replace(/4/g, "A")
+            .replace(/5/g, "S")
+            .replace(/7/g, "T")
+            .replace(/8/g, "B")
+            .replace(/[^A-Z]/g, "");
 
-    function hideErrorBox(el) {
-        if (!el) return;
-        el.textContent = "";
-        el.style.display = "none";
-    }
+        const reversed = normalized.split("").reverse().join("");
 
-    async function checkUsernameAvailable(cleanName) {
-        try {
-            const url = SUPABASE_URL + "/rest/v1/players?username=eq." + encodeURIComponent(cleanName) + "&select=username";
-            const res = await fetch(url, { headers: sbHeaders() });
-            if (!res.ok) return true;
-            const rows = await res.json();
-            return Array.isArray(rows) && rows.length === 0;
-        } catch (e) {
-            return true;
-        }
-    }
+        const bannedWords = [
+            // Italiano
+            "CAZZ", "MERD", "STRONZ", "PUTTAN", "TROIA", "TROIE", "VAFANC", "VAFFANC",
+            "COGLION", "MINCHI", "FICA", "FIGA", "PORCOD", "PORCAM", "DIOCAN", "DIOPORC",
+            "MADONNAP", "BASTARD", "BOCCIN", "POMPIN", "SBORR", "CULATTON", "FROC", "NEGR",
+            "HANDICAPP", "MONGOLOID", "RITARDAT", "ZOCCOL", "BALDRACC", "PUTTANI",
+            // Inglese
+            "FUCK", "SHIT", "BITCH", "ASSHOLE", "DICK", "COCK", "PUSSY", "CUNT",
+            "NIGGA", "NIGGER", "FAGGOT", "WHORE", "SLUT", "MOTHERFUCK", "RETARD", "WANKER",
+            // Spagnolo & Portoghese
+            "PUTA", "PUTO", "MIERDA", "CABRON", "PENDEJO", "GILIPOLLAS", "JODER", "COJONES",
+            "MARICON", "VERGA", "CHINGA", "CARALHO", "FODASE", "BUCETA", "PORRA", "MERDA",
+            // Francese
+            "PUTAIN", "MERDE", "CONNARD", "SALOPE", "ENCULE", "BITE", "COUILLE", "FOUTRE", "NIQUE", "BATARD",
+            // Tedesco
+            "SCHEISSE", "ARSCHLOCH", "HURE", "SCHLAMPE", "FICK", "WICHSER", "HUSO", "MISSGEBURT"
+        ];
 
-    async function syncPlayerToCloud(usernameToSave, oldUsernameToRemove = "") {
-        if (!usernameToSave) return;
-        const currentXP = calculateTotalXP();
-        const { currentTier } = getCurrentAndNextTier(currentXP);
-        const payload = {
-            username: usernameToSave,
-            record: record,
-            best_combo: bestCombo,
-            level: currentTier.level
-        };
-        try {
-            if (oldUsernameToRemove && oldUsernameToRemove !== usernameToSave) {
-                await fetch(SUPABASE_URL + "/rest/v1/players?username=eq." + encodeURIComponent(oldUsernameToRemove), {
-                    method: "DELETE",
-                    headers: sbHeaders()
-                });
-            }
-            await fetch(SUPABASE_URL + "/rest/v1/players?on_conflict=username", {
-                method: "POST",
-                headers: sbHeaders({ "Prefer": "resolution=merge-duplicates" }),
-                body: JSON.stringify(payload)
+return bannedWords.some(word => normalized.includes(word) || reversed.includes(word));
+}
+function forceRenameIfProfane() {
+if (!playerUsername || !containsProfanity(playerUsername)) return false;
+const overlay = document.createElement("div");
+overlay.className = "fullscreen-screen";
+overlay.style.zIndex = "9999";
+const card = document.createElement("div");
+card.className = "modal-card onboarding-card";
+const title = document.createElement("h2");
+title.className = "onboarding-title";
+title.textContent = "CHANGE USERNAME";
+const sub = document.createElement("p");
+sub.className = "onboarding-sub";
+sub.textContent = "YOUR CURRENT USERNAME IS NOT ALLOWED. CHOOSE A NEW CLEAN NAME TO CONTINUE:";
+const inputEl = document.createElement("input");
+inputEl.className = "profile-input";
+inputEl.type = "text";
+inputEl.maxLength = 16;
+inputEl.placeholder = "NEW USERNAME";
+inputEl.autocomplete = "off";
+const errEl = document.createElement("div");
+errEl.className = "username-error-msg";
+const saveBtn = document.createElement("button");
+saveBtn.className = "action-green-btn full-width-btn";
+saveBtn.textContent = "SAVE & CONTINUE";
+card.appendChild(title);
+card.appendChild(sub);
+card.appendChild(inputEl);
+card.appendChild(errEl);
+card.appendChild(saveBtn);
+overlay.appendChild(card);
+document.body.appendChild(overlay);
+inputEl.focus();
+saveBtn.addEventListener("click", async () => {
+const chosen = sanitizeUsernameKey(inputEl.value);
+if (chosen.length < 2) {
+showErrorBox(errEl, "USE AT LEAST 2 LETTERS/NUMBERS!");
+inputEl.focus();
+return;
+}
+if (containsProfanity(chosen)) {
+playSynthEffect("red");
+showErrorBox(errEl, "OFFENSIVE USERNAME NOT ALLOWED!");
+inputEl.focus();
+return;
+}
+saveBtn.disabled = true;
+saveBtn.textContent = "CHECKING...";
+const isFree = await checkUsernameAvailable(chosen);
+saveBtn.disabled = false;
+saveBtn.textContent = "SAVE & CONTINUE";
+if (!isFree) {
+playSynthEffect("red");
+showErrorBox(errEl, "USERNAME ALREADY IN USE!");
+inputEl.focus();
+return;
+}
+const oldName = playerUsername;
+playerUsername = chosen;
+localStorage.setItem("timeTapUsername", playerUsername);
+playSynthEffect("gold");
+await syncPlayerToCloud(playerUsername, oldName);
+overlay.remove();
+enterHomeScreen();
+});
+return true;
+}
+function showErrorBox(el, msg) {
+if (!el) return;
+el.textContent = msg;
+el.style.cssText = "color:#fecaca;background:rgba(153,27,27,0.92);border:3px solid #f87171;border-radius:16px;padding:8px 14px;font-size:15px;text-align:center;display:block;width:100%;font-family:'Lilita One','Fredoka',sans-serif;";
+}
+function hideErrorBox(el) {
+if (!el) return;
+el.textContent = "";
+el.style.display = "none";
+}
+async function checkUsernameAvailable(cleanName) {
+try {
+const url = SUPABASE_URL + "/rest/v1/players?username=eq." + encodeURIComponent(cleanName) + "&select=username";
+const res = await fetch(url, { headers: sbHeaders() });
+if (!res.ok) return true;
+const rows = await res.json();
+return Array.isArray(rows) && rows.length === 0;
+} catch (e) {
+return true;
+}
+}
+async function syncPlayerToCloud(usernameToSave, oldUsernameToRemove = "") {
+if (!usernameToSave) return;
+const currentXP = calculateTotalXP();
+const { currentTier } = getCurrentAndNextTier(currentXP);
+const payload = {
+username: usernameToSave,
+record: record,
+best_combo: bestCombo,
+level: currentTier.level
+};
+try {
+if (oldUsernameToRemove && oldUsernameToRemove !== usernameToSave) {
+await fetch(SUPABASE_URL + "/rest/v1/players?username=eq." + encodeURIComponent(oldUsernameToRemove), {
+method: "DELETE",
+headers: sbHeaders()
+});
+}
+await fetch(SUPABASE_URL + "/rest/v1/players?on_conflict=username", {
+method: "POST",
+headers: sbHeaders({ "Prefer": "resolution=merge-duplicates" }),
+body: JSON.stringify(payload)
 });
 } catch (e) {}
 }
 async function loadAndRenderTop50() {
 if (!leaderboardListContainer) return;
-    leaderboardListContainer.className = "leaderboard-list-body";
-    leaderboardListContainer.removeAttribute("style");
-    leaderboardListContainer.innerHTML = '<div class="lb-loading">LOADING TOP 50...</div>';
-
-    if (yourRankBanner) {
-        yourRankBanner.className = "your-rank-banner";
-        yourRankBanner.removeAttribute("style");
-        yourRankBanner.textContent = "CHECKING YOUR RANK...";
-    }
-
-    try {
-        const url = SUPABASE_URL + "/rest/v1/players?select=username,record&order=record.desc";
-        const res = await fetch(url, { headers: sbHeaders() });
-        if (!res.ok) throw new Error("Fetch failed");
-        const allPlayers = await res.json();
-
-        if (!Array.isArray(allPlayers) || allPlayers.length === 0) {
-            leaderboardListContainer.innerHTML = '<div class="lb-loading">NO PLAYERS YET!</div>';
-            if (yourRankBanner) yourRankBanner.textContent = "BE THE FIRST #1!";
-            return;
-        }
-
-        const myIndex = allPlayers.findIndex(p => p.username === playerUsername);
-        if (yourRankBanner) {
-            if (myIndex >= 0) {
-                yourRankBanner.textContent = "YOUR GLOBAL RANK: #" + (myIndex + 1) + " / " + allPlayers.length;
-            } else {
-                yourRankBanner.textContent = "PLAY A RUN TO ENTER THE RANKING!";
-            }
-        }
-
-        const top50 = allPlayers.slice(0, 50);
-        leaderboardListContainer.innerHTML = top50.map((p, idx) => {
-            const pos = idx + 1;
-            const isMe = p.username === playerUsername;
-            let rankClass = "";
-            if (pos === 1) rankClass = " top-1";
-            else if (pos === 2) rankClass = " top-2";
-            else if (pos === 3) rankClass = " top-3";
-            if (isMe) rankClass += " is-me";
-
-            const youBadge = isMe ? '<span class="lb-you-pill">YOU</span>' : "";
-            const delay = (idx * 0.035).toFixed(3);
-
-            return (
-                '<div class="lb-row' + rankClass + '" style="animation-delay:' + delay + 's">' +
-                    '<div class="lb-pos">#' + pos + '</div>' +
-                    '<div class="lb-user-info">' +
-                        '<span class="lb-username">' + p.username + '</span>' +
-                        youBadge +
-                    '</div>' +
-                    '<div class="lb-score-box">' +
-                        '<span class="lb-score-label">BEST</span>' +
-                        '<span class="lb-score-val">' + fmtNum(p.record || 0) + '</span>' +
-                    '</div>' +
-                '</div>'
-            );
-        }).join("");
-    } catch (e) {
-        leaderboardListContainer.innerHTML = '<div class="lb-loading">CONNECTION ERROR</div>';
-    }
+leaderboardListContainer.className = "leaderboard-list-body";
+leaderboardListContainer.removeAttribute("style");
+leaderboardListContainer.innerHTML = "";
+const loadingEl = document.createElement("div");
+loadingEl.className = "lb-loading";
+loadingEl.textContent = "LOADING TOP 50...";
+leaderboardListContainer.appendChild(loadingEl);
+if (yourRankBanner) {
+yourRankBanner.className = "your-rank-banner";
+yourRankBanner.removeAttribute("style");
+yourRankBanner.textContent = "CHECKING YOUR RANK...";
+}
+try {
+const url = SUPABASE_URL + "/rest/v1/players?select=username,record&order=record.desc";
+const res = await fetch(url, { headers: sbHeaders() });
+if (!res.ok) throw new Error("Fetch failed");
+const allPlayers = await res.json();
+leaderboardListContainer.innerHTML = "";
+if (!Array.isArray(allPlayers) || allPlayers.length === 0) {
+const emptyEl = document.createElement("div");
+emptyEl.className = "lb-loading";
+emptyEl.textContent = "NO PLAYERS YET!";
+leaderboardListContainer.appendChild(emptyEl);
+if (yourRankBanner) yourRankBanner.textContent = "BE THE FIRST #1!";
+return;
+}
+const myIndex = allPlayers.findIndex(p => p.username === playerUsername);
+if (yourRankBanner) {
+if (myIndex >= 0) {
+yourRankBanner.textContent = "YOUR GLOBAL RANK: #" + (myIndex + 1) + " / " + allPlayers.length;
+} else {
+yourRankBanner.textContent = "PLAY A RUN TO ENTER THE RANKING!";
+}
+}
+const top50 = allPlayers.slice(0, 50);
+top50.forEach((p, idx) => {
+const pos = idx + 1;
+const isMe = p.username === playerUsername;
+const row = document.createElement("div");
+row.className = "lb-row";
+if (pos === 1) row.classList.add("top-1");
+else if (pos === 2) row.classList.add("top-2");
+else if (pos === 3) row.classList.add("top-3");
+if (isMe) row.classList.add("is-me");
+row.style.animationDelay = (idx * 0.035).toFixed(3) + "s";
+const posEl = document.createElement("div");
+posEl.className = "lb-pos";
+posEl.textContent = "#" + pos;
+const userInfo = document.createElement("div");
+userInfo.className = "lb-user-info";
+const nameSpan = document.createElement("span");
+nameSpan.className = "lb-username";
+nameSpan.textContent = p.username;
+userInfo.appendChild(nameSpan);
+if (isMe) {
+const youPill = document.createElement("span");
+youPill.className = "lb-you-pill";
+youPill.textContent = "YOU";
+userInfo.appendChild(youPill);
+}
+const scoreBox = document.createElement("div");
+scoreBox.className = "lb-score-box";
+const scoreLabel = document.createElement("span");
+scoreLabel.className = "lb-score-label";
+scoreLabel.textContent = "BEST";
+const scoreVal = document.createElement("span");
+scoreVal.className = "lb-score-val";
+scoreVal.textContent = fmtNum(p.record || 0);
+scoreBox.appendChild(scoreLabel);
+scoreBox.appendChild(scoreVal);
+row.appendChild(posEl);
+row.appendChild(userInfo);
+row.appendChild(scoreBox);
+leaderboardListContainer.appendChild(row);
+});
+} catch (e) {
+leaderboardListContainer.innerHTML = "";
+const errEl = document.createElement("div");
+errEl.className = "lb-loading";
+errEl.textContent = "CONNECTION ERROR";
+leaderboardListContainer.appendChild(errEl);
+}
 }
 if (leaderboardBtn && leaderboardModal) {
-    leaderboardBtn.addEventListener("click", async () => {
-        playSynthEffect("click");
-        leaderboardModal.style.display = "flex";
-        await syncPlayerToCloud(playerUsername);
-        loadAndRenderTop50();
-    });
+leaderboardBtn.addEventListener("click", async () => {
+playSynthEffect("click");
+leaderboardModal.style.display = "flex";
+await syncPlayerToCloud(playerUsername);
+loadAndRenderTop50();
+});
 }
-
 if (closeLeaderboardBtn && leaderboardModal) {
-    closeLeaderboardBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        playSynthEffect("click");
-        leaderboardModal.style.display = "none";
-    });
+closeLeaderboardBtn.addEventListener("click", (e) => {
+e.stopPropagation();
+playSynthEffect("click");
+leaderboardModal.style.display = "none";
+});
 }
 function calculateTotalXP() {
-        const xpFromGames = gamesPlayed * 2000;
-        const xpFromRecord = Math.floor(record * 0.1);
-        const xpFromScore = Math.floor(totalScoreAccumulated * 0.04);
-        return Math.min(MAX_XP, xpFromGames + xpFromRecord + xpFromScore + storedBonusXP);
-    }
-
-    function getCurrentAndNextTier(currentXP) {
-        let currentTier = LEVELS_CONFIG[0];
-        let nextTier = LEVELS_CONFIG[1] || null;
-        for (let i = 0; i < LEVELS_CONFIG.length; i++) {
-            const item = LEVELS_CONFIG[i];
-            if (currentXP >= item.xpRequired) {
-                currentTier = item;
-                nextTier = LEVELS_CONFIG[i + 1] || null;
-            } else {
-                break;
-            }
-        }
-        return { currentTier, nextTier };
-    }
-
-    function computeSegmentPercent(xpVal) {
-        const { currentTier, nextTier } = getCurrentAndNextTier(xpVal);
-        if (!nextTier) return 100;
-        const span = nextTier.xpRequired - currentTier.xpRequired;
-        if (span <= 0) return 100;
-        return Math.max(0, Math.min(100, ((xpVal - currentTier.xpRequired) / span) * 100));
-    }
-
-    function hasSavedRun() {
-        const raw = localStorage.getItem(PAUSE_STATE_KEY);
-        if (!raw) return false;
-        try {
-            const saved = JSON.parse(raw);
-            return Boolean(saved && typeof saved.time === "number" && saved.time > 0);
-        } catch (e) {
-            return false;
-        }
-    }
-
-    function updateHomePlayButtonState() {
-        if (!playBtn) return;
-        if (hasSavedRun()) {
-            playBtn.textContent = "CONTINUE";
-            playBtn.classList.add("continue-mode");
-            if (discardSavedBtn) discardSavedBtn.style.display = "inline-block";
-        } else {
-            playBtn.textContent = "PLAY";
-            playBtn.classList.remove("continue-mode");
-            if (discardSavedBtn) discardSavedBtn.style.display = "none";
-        }
-    }
-
-    function refreshAllProfileAndRankUI(animateHomeBarFromXP = null) {
-        const currentXP = calculateTotalXP();
-        const { currentTier, nextTier } = getCurrentAndNextTier(currentXP);
-        const displayName = playerUsername || "PLAYER";
-
-        if (homeProfileName) homeProfileName.textContent = displayName;
-        if (homeProfileTitle) homeProfileTitle.textContent = currentTier.name;
-
-        const targetPct = computeSegmentPercent(currentXP);
-        if (homeXpRank) homeXpRank.textContent = currentTier.name;
-        if (homeXpNextLevel) {
-            homeXpNextLevel.textContent = nextTier ? nextTier.name : "MAX";
-        }
-        if (homeXpNums) {
-            homeXpNums.textContent = nextTier
-                ? fmtNum(currentXP) + " / " + fmtNum(nextTier.xpRequired) + " XP"
-                : fmtNum(currentXP) + " XP (MAX)";
-        }
-
-        if (homeXpFill) {
-            if (animateHomeBarFromXP !== null && animateHomeBarFromXP < currentXP) {
-                const startPct = computeSegmentPercent(animateHomeBarFromXP);
-                homeXpFill.style.transition = "none";
-                homeXpFill.style.width = startPct.toFixed(1) + "%";
-                void homeXpFill.offsetWidth;
-                homeXpFill.classList.add("xp-boosting");
-                homeXpFill.style.transition = "width 1.15s cubic-bezier(0.22, 1, 0.36, 1)";
-                homeXpFill.style.width = targetPct.toFixed(1) + "%";
-                setTimeout(() => homeXpFill.classList.remove("xp-boosting"), 1300);
-            } else {
-                homeXpFill.style.width = targetPct.toFixed(1) + "%";
-            }
-        }
-
-        const recordEl = document.getElementById("record");
-        const bestComboEl = document.getElementById("bestComboHome");
-        if (recordEl) recordEl.textContent = fmtNum(record);
-        if (bestComboEl) bestComboEl.textContent = fmtNum(bestCombo);
-
-        if (profileModalUsername) profileModalUsername.textContent = displayName;
-        if (profileModalStats) {
-            profileModalStats.textContent = "GAMES: " + fmtNum(gamesPlayed) + " | XP: " + fmtNum(currentXP);
-        }
-        if (equippedTitleLabel) {
-            equippedTitleLabel.textContent = currentTier.name;
-        }
-        if (profileBestScore) profileBestScore.textContent = fmtNum(record);
-        if (profileBestCombo) profileBestCombo.textContent = fmtNum(bestCombo);
-        if (profileCurrentRank) profileCurrentRank.textContent = currentTier.name;
-
-        lastKnownXP = currentXP;
-        updateHomePlayButtonState();
-    }
-
-    if (profileCornerBtn && profileModal) {
-        profileCornerBtn.addEventListener("click", () => {
-            playSynthEffect("click");
-            if (editUsernameBox) editUsernameBox.style.display = "none";
-            hideErrorBox(editUsernameErrorMsg);
-            refreshAllProfileAndRankUI();
-            profileModal.style.display = "flex";
-        });
-    }
-
-    if (closeProfileBtn && profileModal) {
-        closeProfileBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            playSynthEffect("click");
-            if (editUsernameBox) editUsernameBox.style.display = "none";
-            hideErrorBox(editUsernameErrorMsg);
-            profileModal.style.display = "none";
-        });
-    }
-
-    if (editUsernameBtn && editUsernameBox) {
-        editUsernameBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            playSynthEffect("click");
-            hideErrorBox(editUsernameErrorMsg);
-            if (newUsernameInput) newUsernameInput.value = playerUsername;
-            editUsernameBox.style.display = "flex";
-            if (newUsernameInput) newUsernameInput.focus();
-        });
-    }
-
-    if (cancelUsernameChangeBtn && editUsernameBox) {
-        cancelUsernameChangeBtn.addEventListener("click", () => {
-            playSynthEffect("click");
-            hideErrorBox(editUsernameErrorMsg);
-            editUsernameBox.style.display = "none";
-        });
-    }
-
-    if (confirmUsernameChangeBtn && newUsernameInput) {
-        confirmUsernameChangeBtn.addEventListener("click", async () => {
-            const updated = sanitizeUsernameKey(newUsernameInput.value);
-            if (updated.length < 2) {
-                showErrorBox(editUsernameErrorMsg, "USE AT LEAST 2 LETTERS/NUMBERS!");
-                newUsernameInput.focus();
-                return;
-            }
-            if (updated === playerUsername) {
-                editUsernameBox.style.display = "none";
-                return;
-            }
-            confirmUsernameChangeBtn.disabled = true;
-            confirmUsernameChangeBtn.textContent = "...";
-            const isFree = await checkUsernameAvailable(updated);
-            confirmUsernameChangeBtn.disabled = false;
-            confirmUsernameChangeBtn.textContent = "SAVE";
-
-            if (!isFree) {
-                playSynthEffect("red");
-                showErrorBox(editUsernameErrorMsg, "USERNAME ALREADY IN USE!");
-                newUsernameInput.focus();
-                return;
-            }
-
-            const oldName = playerUsername;
-            playerUsername = updated;
-            localStorage.setItem("timeTapUsername", playerUsername);
-            hideErrorBox(editUsernameErrorMsg);
-            playSynthEffect("gold");
-            if (editUsernameBox) editUsernameBox.style.display = "none";
-            refreshAllProfileAndRankUI();
-            syncPlayerToCloud(playerUsername, oldName);
-        });
-    }
-
-    function launchFireworksShow() {
-        if (!fireworksContainer) return;
-        fireworksContainer.innerHTML = "";
-        const colors = ["#fde047", "#ef4444", "#4ade80", "#38bdf8", "#c084fc", "#ffffff"];
-        for (let b = 0; b < 6; b++) {
-            setTimeout(() => {
-                const cx = 15 + Math.random() * 70;
-                const cy = 15 + Math.random() * 55;
-                playSynthEffect("milestone");
-                for (let p = 0; p < 26; p++) {
-                    const dot = document.createElement("span");
-                    dot.className = "fw-particle";
-                    const col = colors[Math.floor(Math.random() * colors.length)];
-                    const sz = (6 + Math.random() * 6).toFixed(0) + "px";
-                    dot.style.width = sz;
-                    dot.style.height = sz;
-                    dot.style.background = col;
-                    dot.style.boxShadow = "0 0 10px " + col;
-                    dot.style.left = cx + "%";
-                    dot.style.top = cy + "%";
-                    const angle = (Math.PI * 2 * p) / 26 + (Math.random() * 0.25);
-                    const dist = 60 + Math.random() * 110;
-                    dot.style.setProperty("--dx", (Math.cos(angle) * dist) + "px");
-                    dot.style.setProperty("--dy", (Math.sin(angle) * dist) + "px");
-                    fireworksContainer.appendChild(dot);
-                    setTimeout(() => dot.remove(), 1150);
-                }
-            }, b * 360);
-        }
-    }
-
-    function checkAndTriggerRankUpCelebration() {
-        const currentXP = calculateTotalXP();
-        const { currentTier } = getCurrentAndNextTier(currentXP);
-        if (currentTier.level > highestCelebratedLevel) {
-            highestCelebratedLevel = currentTier.level;
-            localStorage.setItem("highestCelebratedLevel", highestCelebratedLevel);
-            refreshAllProfileAndRankUI();
-            syncPlayerToCloud(playerUsername);
-            if (rankUpCelebration) {
-                if (celebrationRankName) celebrationRankName.textContent = currentTier.name;
-                if (celebrationTitleUnlocked) {
-                    celebrationTitleUnlocked.textContent = "LEVEL " + currentTier.level + " / " + MAX_LEVEL;
-                }
-                rankUpCelebration.style.display = "flex";
-                playSynthEffect("newrecord");
-                speakEnglish("Level up! " + currentTier.name, 1.05, 1.15);
+const xpFromGames = gamesPlayed * 2000;
+const xpFromRecord = Math.floor(record * 0.1);
+const xpFromScore = Math.floor(totalScoreAccumulated * 0.04);
+return Math.min(MAX_XP, xpFromGames + xpFromRecord + xpFromScore + storedBonusXP);
+}
+function getCurrentAndNextTier(currentXP) {
+let currentTier = LEVELS_CONFIG[0];
+let nextTier = LEVELS_CONFIG[1] || null;
+for (let i = 0; i < LEVELS_CONFIG.length; i++) {
+const item = LEVELS_CONFIG[i];
+if (currentXP >= item.xpRequired) {
+currentTier = item;
+nextTier = LEVELS_CONFIG[i + 1] || null;
+} else {
+break;
+}
+}
+return { currentTier, nextTier };
+}
+function computeSegmentPercent(xpVal) {
+const { currentTier, nextTier } = getCurrentAndNextTier(xpVal);
+if (!nextTier) return 100;
+const span = nextTier.xpRequired - currentTier.xpRequired;
+if (span <= 0) return 100;
+return Math.max(0, Math.min(100, ((xpVal - currentTier.xpRequired) / span) * 100));
+}
+function hasSavedRun() {
+const raw = localStorage.getItem(PAUSE_STATE_KEY);
+if (!raw) return false;
+try {
+const saved = JSON.parse(raw);
+return Boolean(saved && typeof saved.time === "number" && saved.time > 0);
+} catch (e) {
+return false;
+}
+}
+function updateHomePlayButtonState() {
+if (!playBtn) return;
+if (hasSavedRun()) {
+playBtn.textContent = "CONTINUE";
+playBtn.classList.add("continue-mode");
+if (discardSavedBtn) discardSavedBtn.style.display = "inline-block";
+} else {
+playBtn.textContent = "PLAY";
+playBtn.classList.remove("continue-mode");
+if (discardSavedBtn) discardSavedBtn.style.display = "none";
+}
+}
+function refreshAllProfileAndRankUI(animateHomeBarFromXP = null) {
+const currentXP = calculateTotalXP();
+const { currentTier, nextTier } = getCurrentAndNextTier(currentXP);
+const displayName = playerUsername || "PLAYER";
+if (homeProfileName) homeProfileName.textContent = displayName;
+if (homeProfileTitle) homeProfileTitle.textContent = currentTier.name;
+const targetPct = computeSegmentPercent(currentXP);
+if (homeXpRank) homeXpRank.textContent = currentTier.name;
+if (homeXpNextLevel) {
+homeXpNextLevel.textContent = nextTier ? nextTier.name : "MAX";
+}
+if (homeXpNums) {
+homeXpNums.textContent = nextTier
+? fmtNum(currentXP) + " / " + fmtNum(nextTier.xpRequired) + " XP"
+: fmtNum(currentXP) + " XP (MAX)";
+}
+if (homeXpFill) {
+if (animateHomeBarFromXP !== null && animateHomeBarFromXP < currentXP) {
+const startPct = computeSegmentPercent(animateHomeBarFromXP);
+homeXpFill.style.transition = "none";
+homeXpFill.style.width = startPct.toFixed(1) + "%";
+void homeXpFill.offsetWidth;
+homeXpFill.classList.add("xp-boosting");
+homeXpFill.style.transition = "width 1.15s cubic-bezier(0.22, 1, 0.36, 1)";
+homeXpFill.style.width = targetPct.toFixed(1) + "%";
+setTimeout(() => homeXpFill.classList.remove("xp-boosting"), 1300);
+} else {
+homeXpFill.style.width = targetPct.toFixed(1) + "%";
+}
+}
+const recordEl = document.getElementById("record");
+const bestComboEl = document.getElementById("bestComboHome");
+if (recordEl) recordEl.textContent = fmtNum(record);
+if (bestComboEl) bestComboEl.textContent = fmtNum(bestCombo);
+if (profileModalUsername) profileModalUsername.textContent = displayName;
+if (profileModalStats) {
+profileModalStats.textContent = "GAMES: " + fmtNum(gamesPlayed) + " | XP: " + fmtNum(currentXP);
+}
+if (equippedTitleLabel) {
+equippedTitleLabel.textContent = currentTier.name;
+}
+if (profileBestScore) profileBestScore.textContent = fmtNum(record);
+if (profileBestCombo) profileBestCombo.textContent = fmtNum(bestCombo);
+if (profileCurrentRank) profileCurrentRank.textContent = currentTier.name;
+lastKnownXP = currentXP;
+updateHomePlayButtonState();
+}
+if (profileCornerBtn && profileModal) {
+profileCornerBtn.addEventListener("click", () => {
+playSynthEffect("click");
+if (editUsernameBox) editUsernameBox.style.display = "none";
+hideErrorBox(editUsernameErrorMsg);
+refreshAllProfileAndRankUI();
+profileModal.style.display = "flex";
+});
+}
+if (closeProfileBtn && profileModal) {
+closeProfileBtn.addEventListener("click", (e) => {
+e.stopPropagation();
+playSynthEffect("click");
+if (editUsernameBox) editUsernameBox.style.display = "none";
+hideErrorBox(editUsernameErrorMsg);
+profileModal.style.display = "none";
+});
+}
+if (editUsernameBtn && editUsernameBox) {
+editUsernameBtn.addEventListener("click", (e) => {
+e.stopPropagation();
+playSynthEffect("click");
+hideErrorBox(editUsernameErrorMsg);
+if (newUsernameInput) newUsernameInput.value = playerUsername;
+editUsernameBox.style.display = "flex";
+if (newUsernameInput) newUsernameInput.focus();
+});
+}
+if (cancelUsernameChangeBtn && editUsernameBox) {
+cancelUsernameChangeBtn.addEventListener("click", () => {
+playSynthEffect("click");
+hideErrorBox(editUsernameErrorMsg);
+editUsernameBox.style.display = "none";
+});
+}
+if (confirmUsernameChangeBtn && newUsernameInput) {
+confirmUsernameChangeBtn.addEventListener("click", async () => {
+const updated = sanitizeUsernameKey(newUsernameInput.value);
+if (updated.length < 2) {
+showErrorBox(editUsernameErrorMsg, "USE AT LEAST 2 LETTERS/NUMBERS!");
+newUsernameInput.focus();
+return;
+}
+if (containsProfanity(updated)) {
+playSynthEffect("red");
+showErrorBox(editUsernameErrorMsg, "OFFENSIVE USERNAME NOT ALLOWED!");
+newUsernameInput.focus();
+return;
+}
+if (updated === playerUsername) {
+editUsernameBox.style.display = "none";
+return;
+}
+confirmUsernameChangeBtn.disabled = true;
+confirmUsernameChangeBtn.textContent = "...";
+const isFree = await checkUsernameAvailable(updated);
+confirmUsernameChangeBtn.disabled = false;
+confirmUsernameChangeBtn.textContent = "SAVE";
+if (!isFree) {
+playSynthEffect("red");
+showErrorBox(editUsernameErrorMsg, "USERNAME ALREADY IN USE!");
+newUsernameInput.focus();
+return;
+}
+const oldName = playerUsername;
+playerUsername = updated;
+localStorage.setItem("timeTapUsername", playerUsername);
+hideErrorBox(editUsernameErrorMsg);
+playSynthEffect("gold");
+if (editUsernameBox) editUsernameBox.style.display = "none";
+refreshAllProfileAndRankUI();
+syncPlayerToCloud(playerUsername, oldName);
+});
+}
+function launchFireworksShow() {
+if (!fireworksContainer) return;
+fireworksContainer.innerHTML = "";
+const colors = ["#fde047", "#ef4444", "#4ade80", "#38bdf8", "#c084fc", "#ffffff"];
+for (let b = 0; b < 6; b++) {
+setTimeout(() => {
+const cx = 15 + Math.random() * 70;
+const cy = 15 + Math.random() * 55;
+playSynthEffect("milestone");
+for (let p = 0; p < 26; p++) {
+const dot = document.createElement("span");
+dot.className = "fw-particle";
+const col = colors[Math.floor(Math.random() * colors.length)];
+const sz = (6 + Math.random() * 6).toFixed(0) + "px";
+dot.style.width = sz;
+dot.style.height = sz;
+dot.style.background = col;
+dot.style.boxShadow = "0 0 10px " + col;
+dot.style.left = cx + "%";
+dot.style.top = cy + "%";
+const angle = (Math.PI * 2 * p) / 26 + (Math.random() * 0.25);
+const dist = 60 + Math.random() * 110;
+dot.style.setProperty("--dx", (Math.cos(angle) * dist) + "px");
+dot.style.setProperty("--dy", (Math.sin(angle) * dist) + "px");
+fireworksContainer.appendChild(dot);
+setTimeout(() => dot.remove(), 1150);
+}
+}, b * 360);
+}
+}
+function checkAndTriggerRankUpCelebration() {
+const currentXP = calculateTotalXP();
+const { currentTier } = getCurrentAndNextTier(currentXP);
+if (currentTier.level > highestCelebratedLevel) {
+highestCelebratedLevel = currentTier.level;
+localStorage.setItem("highestCelebratedLevel", highestCelebratedLevel);
+refreshAllProfileAndRankUI();
+syncPlayerToCloud(playerUsername);
+if (rankUpCelebration) {
+if (celebrationRankName) celebrationRankName.textContent = currentTier.name;
+if (celebrationTitleUnlocked) {
+celebrationTitleUnlocked.textContent = "LEVEL " + currentTier.level + " / " + MAX_LEVEL;
+}
+rankUpCelebration.style.display = "flex";
+playSynthEffect("newrecord");
+speakEnglish("Level up! " + currentTier.name, 1.05, 1.15);
 launchFireworksShow();
 }
 }
@@ -576,6 +680,44 @@ window.speechSynthesis.cancel();
 }
 });
 }
+let musicEnabled = localStorage.getItem("musicEnabled") !== "false";
+let musicToggleBtn = document.getElementById("musicToggleBtn");
+if (!musicToggleBtn && settingsModal) {
+const modalCard = settingsModal.querySelector(".modal-card");
+if (modalCard) {
+const musicRow = document.createElement("div");
+musicRow.className = "setting-row";
+musicRow.style.marginTop = "12px";
+const musicLabel = document.createElement("span");
+musicLabel.textContent = "Music";
+musicToggleBtn = document.createElement("button");
+musicToggleBtn.id = "musicToggleBtn";
+musicToggleBtn.className = "toggle-pill-btn";
+musicToggleBtn.textContent = "ON";
+musicRow.appendChild(musicLabel);
+musicRow.appendChild(musicToggleBtn);
+modalCard.appendChild(musicRow);
+}
+}
+function updateMusicButton() {
+if (!musicToggleBtn) return;
+musicToggleBtn.textContent = musicEnabled ? "ON" : "OFF";
+musicToggleBtn.classList.toggle("muted", !musicEnabled);
+}
+updateMusicButton();
+if (musicToggleBtn) {
+musicToggleBtn.addEventListener("click", () => {
+musicEnabled = !musicEnabled;
+localStorage.setItem("musicEnabled", musicEnabled);
+updateMusicButton();
+playSynthEffect("click");
+if (musicEnabled) {
+startHomeSymphony();
+} else {
+stopHomeSymphony();
+}
+});
+}
 if (settingsBtn && settingsModal) {
 settingsBtn.addEventListener("click", () => {
 playSynthEffect("click");
@@ -593,22 +735,102 @@ const arrows = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
 let baseButtonDuration = isDesktop ? 1850 : 1350;
 let baseSpawnDelay = isDesktop ? 210 : 220;
 let audioCtx = null;
-function initAudio() {
-if (!soundEnabled) return;
+function ensureAudioContext() {
 try {
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
-if (!AudioCtx) return;
+if (!AudioCtx) return null;
 if (!audioCtx) audioCtx = new AudioCtx();
 if (audioCtx.state === "suspended") audioCtx.resume();
-const buffer = audioCtx.createBuffer(1, 1, 22050);
-const source = audioCtx.createBufferSource();
+return audioCtx;
+} catch (e) {
+return null;
+}
+}
+function initAudio() {
+const ctx = ensureAudioContext();
+if (!ctx) return;
+try {
+const buffer = ctx.createBuffer(1, 1, 22050);
+const source = ctx.createBufferSource();
 source.buffer = buffer;
-source.connect(audioCtx.destination);
+source.connect(ctx.destination);
 source.start(0);
 } catch (e) {}
 }
-document.addEventListener("touchstart", initAudio, { once: true });
-document.addEventListener("pointerdown", initAudio, { once: true });
+let symphonyInterval = null;
+let symphonyStep = 0;
+function playSymphonyNote(freq, duration, startTime, vol, waveType = "triangle") {
+if (!audioCtx || !musicEnabled || !freq) return;
+const osc = audioCtx.createOscillator();
+const gain = audioCtx.createGain();
+osc.type = waveType;
+osc.frequency.setValueAtTime(freq, startTime);
+gain.gain.setValueAtTime(0.001, startTime);
+gain.gain.linearRampToValueAtTime(vol, startTime + 0.025);
+gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+osc.connect(gain);
+gain.connect(audioCtx.destination);
+osc.start(startTime);
+osc.stop(startTime + duration + 0.02);
+}
+function startHomeSymphony() {
+if (!musicEnabled || symphonyInterval) return;
+if (menu && menu.style.display === "none") return;
+const ctx = ensureAudioContext();
+if (!ctx) return;
+const melody = [
+523.25, 659.25, 783.99, 1046.50,  987.77, 783.99, 659.25, 0,
+587.33, 698.46, 880.00, 987.77,   783.99, 0,      659.25, 0,
+523.25, 659.25, 783.99, 1046.50,  1174.66, 1046.50, 880.00, 698.46,
+783.99, 659.25, 587.33, 493.88,   523.25, 0,      523.25, 0
+];
+const harmony = [
+261.63, 329.63, 392.00, 329.63,   293.66, 392.00, 493.88, 392.00,
+349.23, 440.00, 523.25, 440.00,   392.00, 493.88, 587.33, 493.88,
+261.63, 329.63, 392.00, 329.63,   349.23, 440.00, 523.25, 440.00,
+392.00, 329.63, 293.66, 246.94,   261.63, 196.00, 261.63, 0
+];
+const bass = [
+130.81, 0, 196.00, 0,   146.83, 0, 196.00, 0,
+174.61, 0, 130.81, 0,   196.00, 0, 146.83, 0,
+130.81, 0, 196.00, 0,   174.61, 0, 220.00, 0,
+196.00, 0, 196.00, 0,   130.81, 0, 130.81, 0
+];
+symphonyStep = 0;
+const STEP_MS = 230;
+symphonyInterval = setInterval(() => {
+if (!musicEnabled || (menu && menu.style.display === "none")) {
+stopHomeSymphony();
+return;
+}
+if (!audioCtx || audioCtx.state !== "running") return;
+const now = audioCtx.currentTime;
+const i = symphonyStep % melody.length;
+symphonyStep++;
+if (melody[i] > 0) {
+playSymphonyNote(melody[i], 0.24, now, 0.13, "triangle");
+playSymphonyNote(melody[i] * 2, 0.18, now, 0.03, "sine");
+}
+if (harmony[i] > 0) {
+playSymphonyNote(harmony[i], 0.21, now, 0.055, "sine");
+}
+if (bass[i] > 0) {
+playSymphonyNote(bass[i], 0.34, now, 0.12, "sine");
+}
+}, STEP_MS);
+}
+function stopHomeSymphony() {
+if (symphonyInterval) {
+clearInterval(symphonyInterval);
+symphonyInterval = null;
+}
+}
+function handleFirstInteraction() {
+initAudio();
+startHomeSymphony();
+}
+document.addEventListener("touchstart", handleFirstInteraction, { once: true });
+document.addEventListener("pointerdown", handleFirstInteraction, { once: true });
 function playTone(freq, endFreq, type, startTime, duration, vol) {
 if (!audioCtx || !soundEnabled) return;
 const osc = audioCtx.createOscillator();
@@ -690,266 +912,255 @@ playTone(246.94, 190, "sawtooth", now + 0.78, 0.7, 0.28);
 }
 }
 function spawnFloatingText(x, y, text, color) {
-        const el = document.createElement("div");
-        el.className = "floating-text";
-        el.textContent = text;
-        el.style.left = x + "px";
-        el.style.top = y + "px";
-        el.style.color = color;
-        game.appendChild(el);
-        setTimeout(() => el.remove(), 600);
-    }
-
-    function spawnTapRipple(x, y, color) {
-        const ripple = document.createElement("div");
-        ripple.className = "tap-ripple";
-        ripple.style.left = x + "px";
-        ripple.style.top = y + "px";
-        ripple.style.borderColor = color;
-        game.appendChild(ripple);
-        setTimeout(() => ripple.remove(), 460);
-    }
-
-    function triggerScreenShake() {
-        game.classList.remove("screen-shake");
-        void game.offsetWidth;
-        game.classList.add("screen-shake");
-    }
-
-    function triggerMaxCapFeedback() {
-        if (navigator.vibrate) {
-            try { navigator.vibrate(35); } catch (e) {}
-        }
-        if (timerCircle) {
-            timerCircle.classList.remove("timer-max-cap");
-            void timerCircle.offsetWidth;
-            timerCircle.classList.add("timer-max-cap");
-        }
-    }
-
-    function savePausedGameState() {
-        const savedButtons = activeButtons.map(btn => ({
-            action: btn.dataset.action,
-            key: btn.dataset.key,
-            value: btn.dataset.value || "",
-            left: parseFloat(btn.style.left) || 0,
-            top: parseFloat(btn.style.top) || 0,
-            remainingMs: Math.max(250, Number(btn.dataset.remainingMs) || baseButtonDuration),
-            totalMs: Number(btn.dataset.totalMs) || baseButtonDuration
-        }));
-        const payload = {
-            time,
-            score,
-            comboCount,
-            maxComboRun,
-            doubleBonus,
-            doubleBonusRemainingMs,
-            isFrozen,
-            freezeRemainingMs,
-            isSlowMo,
-            slowMoRemainingMs,
-            overdriveRemainingMs,
-            buttons: savedButtons
-        };
-        localStorage.setItem(PAUSE_STATE_KEY, JSON.stringify(payload));
-    }
-
-    function clearSavedPausedState() {
-        localStorage.removeItem(PAUSE_STATE_KEY);
-        updateHomePlayButtonState();
-    }
-
-    function updatePauseButtonUI() {
-        if (!pauseBtn) return;
-        if (pauseCooldownRemainingMs > 0) {
-            const secLeft = Math.ceil(pauseCooldownRemainingMs / 1000);
-            pauseBtn.disabled = true;
-            pauseBtn.classList.add("on-cooldown");
-            pauseBtn.textContent = secLeft + "s";
-        } else {
-            pauseBtn.disabled = false;
-            pauseBtn.classList.remove("on-cooldown");
-            pauseBtn.textContent = "II";
-        }
-    }
-
-    function pauseGame() {
-        if (!running || isPaused || isResumingCountdown || pauseCooldownRemainingMs > 0) return;
-        isPaused = true;
-        savePausedGameState();
-        if (pauseOverlay) pauseOverlay.style.display = "flex";
-    }
-
-    function runResumeCountdown(onComplete) {
-        if (isResumingCountdown) return;
-        isResumingCountdown = true;
-        initAudio();
-        if (pauseOverlay) pauseOverlay.style.display = "none";
-        if (menu) menu.style.display = "none";
-        if (game) game.style.display = "block";
-        if (pauseBtn) pauseBtn.disabled = true;
-        countdown.style.display = "block";
-
-        triggerCountdownStep("3", "beep", "Three!", 1.0);
-        setTimeout(() => triggerCountdownStep("2", "beep", "Two!", 1.05), 1000);
-        setTimeout(() => triggerCountdownStep("1", "beep", "One!", 1.1), 2000);
-        setTimeout(() => triggerCountdownStep("GO!", "go", "Go!", 1.2), 3000);
-        setTimeout(() => {
-            countdown.style.display = "none";
-            isResumingCountdown = false;
-            onComplete();
-        }, 4000);
-    }
-
-    function resumeGame() {
-        if (!isPaused || isResumingCountdown) return;
-        runResumeCountdown(() => {
-            isPaused = false;
-            clearSavedPausedState();
-            pauseCooldownRemainingMs = PAUSE_COOLDOWN_MS;
-            updatePauseButtonUI();
-        });
-    }
-
-    function finalizeRunStatsAndShowSummary() {
-        const xpBeforeRun = calculateTotalXP();
-        const isNewBest = score > record && score > 0;
-        const pcMultiplier = isDesktop ? 1.25 : 1.0;
-        let comboBonusPct = 0;
-        if (maxComboRun > 200) {
-            comboBonusPct = 20;
-        } else if (maxComboRun > 100) {
-            comboBonusPct = 10;
-        }
-        gamesPlayed++;
-        totalScoreAccumulated += score;
-        if (isNewBest) {
-            record = score;
-            localStorage.setItem("record", record);
-        }
-        const baseRunXP = 2000 + Math.floor(score * 0.1) + (isNewBest ? 1500 : 0);
-        const withPcXP = Math.floor(baseRunXP * pcMultiplier);
-        const comboBonusXP = Math.floor(withPcXP * (comboBonusPct / 100));
-        const finalRunXP = withPcXP + comboBonusXP;
-        const diffPart = isNewBest ? Math.floor((score - record) * 0.1) : 0;
-        const naturalFormulaDiff = 2000 + Math.floor(score * 0.04) + diffPart;
-        const extraToStore = Math.max(0, finalRunXP - Math.max(0, naturalFormulaDiff));
-        storedBonusXP += extraToStore;
-        localStorage.setItem("gamesPlayed", gamesPlayed);
-        localStorage.setItem("totalScoreAccumulated", totalScoreAccumulated);
-        localStorage.setItem("storedBonusXP", storedBonusXP);
-        if (maxComboRun > bestCombo) {
-            bestCombo = maxComboRun;
-            localStorage.setItem("bestCombo", bestCombo);
-        }
-        const xpAfterRun = calculateTotalXP();
-        const earnedXP = Math.max(0, xpAfterRun - xpBeforeRun);
-        if (xpEarnedBadge) {
-            const comboLabel = comboBonusPct > 0 ? " + " + comboBonusPct + "% COMBO" : "";
-            xpEarnedBadge.textContent = "+" + fmtNum(earnedXP) + " XP" + comboLabel;
-        }
-        const { currentTier: tierAfter, nextTier: nextAfter } = getCurrentAndNextTier(xpAfterRun);
-        if (goRankFrom) goRankFrom.textContent = tierAfter.name;
-        if (goRankTo) goRankTo.textContent = nextAfter ? nextAfter.name : "MAX";
-        if (goXpProgressText) {
-            goXpProgressText.textContent = nextAfter
-                ? fmtNum(xpAfterRun) + " / " + fmtNum(nextAfter.xpRequired) + " XP"
-                : fmtNum(xpAfterRun) + " XP";
-        }
-        if (menu) menu.style.display = "none";
-        if (gameOverScreen) gameOverScreen.style.display = "flex";
-        finalScore.textContent = fmtNum(score);
-        finalCombo.textContent = fmtNum(maxComboRun);
-        if (goXpBarFill) {
-            const startPct = computeSegmentPercent(xpBeforeRun);
-            const endPct = computeSegmentPercent(xpAfterRun);
-            goXpBarFill.style.transition = "none";
-            goXpBarFill.style.width = startPct.toFixed(1) + "%";
-            setTimeout(() => {
-                goXpBarFill.style.transition = "width 1.15s cubic-bezier(0.22, 1, 0.36, 1)";
-                goXpBarFill.style.width = endPct.toFixed(1) + "%";
-            }, 120);
-        }
-        if (isNewBest) {
-            newRecordMessage.style.display = "block";
-            isAnimatingRecord = true;
-            playSynthEffect("newrecord");
-            speakEnglish("New record!", 1.05, 1.15);
-            finalRecord.textContent = "0";
-            animateScoreCounter(finalRecord, record, () => {
-                isAnimatingRecord = false;
-            });
-        } else {
-            newRecordMessage.style.display = "none";
-            playSynthEffect("gameover");
-            speakEnglish("Game over!", 0.95, 0.95);
-            finalRecord.textContent = fmtNum(record);
-        }
-        refreshAllProfileAndRankUI(xpBeforeRun);
-        syncPlayerToCloud(playerUsername);
-    }
-
-    function returnToHome(keepPausedRun = false) {
-        const xpAtEnter = lastKnownXP;
-        if (keepPausedRun) {
-            savePausedGameState();
-        } else {
-            clearSavedPausedState();
-        }
-        running = false;
-        isPaused = false;
-        isResumingCountdown = false;
-        isFrozen = false;
-        isSlowMo = false;
-        doubleBonus = false;
-        overdriveRemainingMs = 0;
-        pauseCooldownRemainingMs = 0;
-        updatePauseButtonUI();
-        clearInterval(gameLoopInterval);
-        while (activeButtons.length > 0) {
-            const b = activeButtons.shift();
-            if (b && b.parentNode) b.remove();
-        }
-        if (pauseOverlay) pauseOverlay.style.display = "none";
-        if (gameOverScreen) gameOverScreen.style.display = "none";
-        if (game) {
-            game.style.display = "none";
-            game.classList.remove("overdrive-active", "slowmo-active");
-        }
-        if (countdown) countdown.style.display = "none";
-        if (menu) menu.style.display = "flex";
-        time = baseTime;
-        score = 0;
-        comboCount = 0;
-        maxComboRun = 0;
-        normalSpawnsSinceLastSpecial = 8;
-        if (timerCircle) {
-            timerCircle.textContent = time.toFixed(1);
-            timerCircle.classList.remove("timer-panic", "timer-frozen", "timer-slowmo", "timer-max-cap");
-        }
-        if (scoreText) scoreText.textContent = "SCORE: 0";
-        if (comboText) {
-            comboText.textContent = "COMBO 0";
-            comboText.classList.remove("combo-fire");
-        }
-        refreshAllProfileAndRankUI(xpAtEnter);
-        checkAndTriggerRankUpCelebration();
-    }
-
-    if (pauseBtn) {
-        pauseBtn.addEventListener("click", () => {
-            playSynthEffect("click");
-            pauseGame();
-        });
-    }
-    if (resumeBtn) {
-        resumeBtn.addEventListener("click", () => {
-            playSynthEffect("click");
-            resumeGame();
-        });
-    }
-    if (quitToHomeBtn) {
-        quitToHomeBtn.addEventListener("click", () => {
+const el = document.createElement("div");
+el.className = "floating-text";
+el.textContent = text;
+el.style.left = x + "px";
+el.style.top = y + "px";
+el.style.color = color;
+game.appendChild(el);
+setTimeout(() => el.remove(), 600);
+}
+function spawnTapRipple(x, y, color) {
+const ripple = document.createElement("div");
+ripple.className = "tap-ripple";
+ripple.style.left = x + "px";
+ripple.style.top = y + "px";
+ripple.style.borderColor = color;
+game.appendChild(ripple);
+setTimeout(() => ripple.remove(), 460);
+}
+function triggerScreenShake() {
+game.classList.remove("screen-shake");
+void game.offsetWidth;
+game.classList.add("screen-shake");
+}
+function triggerMaxCapFeedback() {
+if (navigator.vibrate) {
+try { navigator.vibrate(35); } catch (e) {}
+}
+if (timerCircle) {
+timerCircle.classList.remove("timer-max-cap");
+void timerCircle.offsetWidth;
+timerCircle.classList.add("timer-max-cap");
+}
+}
+function savePausedGameState() {
+const savedButtons = activeButtons.map(btn => ({
+action: btn.dataset.action,
+key: btn.dataset.key,
+value: btn.dataset.value || "",
+left: parseFloat(btn.style.left) || 0,
+top: parseFloat(btn.style.top) || 0,
+remainingMs: Math.max(250, Number(btn.dataset.remainingMs) || baseButtonDuration),
+totalMs: Number(btn.dataset.totalMs) || baseButtonDuration
+}));
+const payload = {
+time,
+score,
+comboCount,
+maxComboRun,
+doubleBonus,
+doubleBonusRemainingMs,
+isFrozen,
+freezeRemainingMs,
+isSlowMo,
+slowMoRemainingMs,
+overdriveRemainingMs,
+buttons: savedButtons
+};
+localStorage.setItem(PAUSE_STATE_KEY, JSON.stringify(payload));
+}
+function clearSavedPausedState() {
+localStorage.removeItem(PAUSE_STATE_KEY);
+updateHomePlayButtonState();
+}
+function updatePauseButtonUI() {
+if (!pauseBtn) return;
+if (pauseCooldownRemainingMs > 0) {
+const secLeft = Math.ceil(pauseCooldownRemainingMs / 1000);
+pauseBtn.disabled = true;
+pauseBtn.classList.add("on-cooldown");
+pauseBtn.textContent = secLeft + "s";
+} else {
+pauseBtn.disabled = false;
+pauseBtn.classList.remove("on-cooldown");
+pauseBtn.textContent = "II";
+}
+}
+function pauseGame() {
+if (!running || isPaused || isResumingCountdown || pauseCooldownRemainingMs > 0) return;
+isPaused = true;
+savePausedGameState();
+if (pauseOverlay) pauseOverlay.style.display = "flex";
+}
+function runResumeCountdown(onComplete) {
+if (isResumingCountdown) return;
+isResumingCountdown = true;
+initAudio();
+stopHomeSymphony();
+if (pauseOverlay) pauseOverlay.style.display = "none";
+if (menu) menu.style.display = "none";
+if (game) game.style.display = "block";
+if (pauseBtn) pauseBtn.disabled = true;
+countdown.style.display = "block";
+triggerCountdownStep("3", "beep", "Three!", 1.0);
+setTimeout(() => triggerCountdownStep("2", "beep", "Two!", 1.05), 1000);
+setTimeout(() => triggerCountdownStep("1", "beep", "One!", 1.1), 2000);
+setTimeout(() => triggerCountdownStep("GO!", "go", "Go!", 1.2), 3000);
+setTimeout(() => {
+countdown.style.display = "none";
+isResumingCountdown = false;
+onComplete();
+}, 4000);
+}
+function resumeGame() {
+if (!isPaused || isResumingCountdown) return;
+runResumeCountdown(() => {
+isPaused = false;
+clearSavedPausedState();
+pauseCooldownRemainingMs = PAUSE_COOLDOWN_MS;
+updatePauseButtonUI();
+});
+}
+function finalizeRunStatsAndShowSummary() {
+const xpBeforeRun = calculateTotalXP();
+const isNewBest = score > record && score > 0;
+const pcMultiplier = isDesktop ? 1.25 : 1.0;
+let comboBonusPct = 0;
+if (maxComboRun > 200) {
+comboBonusPct = 20;
+} else if (maxComboRun > 100) {
+comboBonusPct = 10;
+}
+gamesPlayed++;
+totalScoreAccumulated += score;
+if (isNewBest) {
+record = score;
+localStorage.setItem("record", record);
+}
+const baseRunXP = 2000 + Math.floor(score * 0.1) + (isNewBest ? 1500 : 0);
+const withPcXP = Math.floor(baseRunXP * pcMultiplier);
+const comboBonusXP = Math.floor(withPcXP * (comboBonusPct / 100));
+const finalRunXP = withPcXP + comboBonusXP;
+const diffPart = isNewBest ? Math.floor((score - record) * 0.1) : 0;
+const naturalFormulaDiff = 2000 + Math.floor(score * 0.04) + diffPart;
+const extraToStore = Math.max(0, finalRunXP - Math.max(0, naturalFormulaDiff));
+storedBonusXP += extraToStore;
+localStorage.setItem("gamesPlayed", gamesPlayed);
+localStorage.setItem("totalScoreAccumulated", totalScoreAccumulated);
+localStorage.setItem("storedBonusXP", storedBonusXP);
+if (maxComboRun > bestCombo) {
+bestCombo = maxComboRun;
+localStorage.setItem("bestCombo", bestCombo);
+}
+const xpAfterRun = calculateTotalXP();
+const earnedXP = Math.max(0, xpAfterRun - xpBeforeRun);
+if (xpEarnedBadge) {
+const comboLabel = comboBonusPct > 0 ? " + " + comboBonusPct + "% COMBO" : "";
+xpEarnedBadge.textContent = "+" + fmtNum(earnedXP) + " XP" + comboLabel;
+}
+const { currentTier: tierAfter, nextTier: nextAfter } = getCurrentAndNextTier(xpAfterRun);
+if (goRankFrom) goRankFrom.textContent = tierAfter.name;
+if (goRankTo) goRankTo.textContent = nextAfter ? nextAfter.name : "MAX";
+if (goXpProgressText) {
+goXpProgressText.textContent = nextAfter
+? fmtNum(xpAfterRun) + " / " + fmtNum(nextAfter.xpRequired) + " XP"
+: fmtNum(xpAfterRun) + " XP";
+}
+if (menu) menu.style.display = "none";
+if (gameOverScreen) gameOverScreen.style.display = "flex";
+finalScore.textContent = fmtNum(score);
+finalCombo.textContent = fmtNum(maxComboRun);
+if (goXpBarFill) {
+const startPct = computeSegmentPercent(xpBeforeRun);
+const endPct = computeSegmentPercent(xpAfterRun);
+goXpBarFill.style.transition = "none";
+goXpBarFill.style.width = startPct.toFixed(1) + "%";
+setTimeout(() => {
+goXpBarFill.style.transition = "width 1.15s cubic-bezier(0.22, 1, 0.36, 1)";
+goXpBarFill.style.width = endPct.toFixed(1) + "%";
+}, 120);
+}
+if (isNewBest) {
+newRecordMessage.style.display = "block";
+isAnimatingRecord = true;
+playSynthEffect("newrecord");
+speakEnglish("New record!", 1.05, 1.15);
+finalRecord.textContent = "0";
+animateScoreCounter(finalRecord, record, () => {
+isAnimatingRecord = false;
+});
+} else {
+newRecordMessage.style.display = "none";
+playSynthEffect("gameover");
+speakEnglish("Game over!", 0.95, 0.95);
+finalRecord.textContent = fmtNum(record);
+}
+refreshAllProfileAndRankUI(xpBeforeRun);
+syncPlayerToCloud(playerUsername);
+}
+function returnToHome(keepPausedRun = false) {
+const xpAtEnter = lastKnownXP;
+if (keepPausedRun) {
+savePausedGameState();
+} else {
+clearSavedPausedState();
+}
+running = false;
+isPaused = false;
+isResumingCountdown = false;
+isFrozen = false;
+isSlowMo = false;
+doubleBonus = false;
+overdriveRemainingMs = 0;
+pauseCooldownRemainingMs = 0;
+updatePauseButtonUI();
+clearInterval(gameLoopInterval);
+while (activeButtons.length > 0) {
+const b = activeButtons.shift();
+if (b && b.parentNode) b.remove();
+}
+if (pauseOverlay) pauseOverlay.style.display = "none";
+if (gameOverScreen) gameOverScreen.style.display = "none";
+if (game) {
+game.style.display = "none";
+game.classList.remove("overdrive-active", "slowmo-active");
+}
+if (countdown) countdown.style.display = "none";
+if (menu) menu.style.display = "flex";
+time = baseTime;
+score = 0;
+comboCount = 0;
+maxComboRun = 0;
+normalSpawnsSinceLastSpecial = 8;
+if (timerCircle) {
+timerCircle.textContent = time.toFixed(1);
+timerCircle.classList.remove("timer-panic", "timer-frozen", "timer-slowmo", "timer-max-cap");
+}
+if (scoreText) scoreText.textContent = "SCORE: 0";
+if (comboText) {
+comboText.textContent = "COMBO 0";
+comboText.classList.remove("combo-fire");
+}
+refreshAllProfileAndRankUI(xpAtEnter);
+checkAndTriggerRankUpCelebration();
+startHomeSymphony();
+}
+if (pauseBtn) {
+pauseBtn.addEventListener("click", () => {
+playSynthEffect("click");
+pauseGame();
+});
+}
+if (resumeBtn) {
+resumeBtn.addEventListener("click", () => {
+playSynthEffect("click");
+resumeGame();
+});
+}
+if (quitToHomeBtn) {
+quitToHomeBtn.addEventListener("click", () => {
 playSynthEffect("click");
 returnToHome(true);
 });
@@ -984,6 +1195,7 @@ isSlowMo = Boolean(saved.isSlowMo);
 slowMoRemainingMs = saved.slowMoRemainingMs || 0;
 overdriveRemainingMs = saved.overdriveRemainingMs || 0;
 pauseCooldownRemainingMs = 0;
+stopHomeSymphony();
 if (menu) menu.style.display = "none";
 if (game) game.style.display = "block";
 timerCircle.textContent = time.toFixed(1);
@@ -1123,6 +1335,7 @@ speakEnglish(spoken, 1.08, pitch);
 }
 function startCountdown() {
 initAudio();
+stopHomeSymphony();
 pauseCooldownRemainingMs = 0;
 updatePauseButtonUI();
 menu.style.display = "none";
@@ -1352,7 +1565,7 @@ btn.classList.add("button-circle");
 let valueText = "";
 if (type === "green") {
 btn.classList.add("green");
-const greenOptions = isDesktop ? [0.400, 0.500, 0.550] : [0.250, 0.300, 0.350, 0.380];
+const greenOptions = isDesktop ? [0.300, 0.320, 0.350, 0.380] : [0.250, 0.300, 0.350, 0.380];
 const value = forcedConfig ? Number(valueStr) : greenOptions[Math.floor(Math.random() * greenOptions.length)];
 btn.dataset.value = value;
 valueText = "+" + value.toFixed(3);
@@ -1668,11 +1881,13 @@ refreshAllProfileAndRankUI();
 if (menu) menu.style.display = "flex";
 syncPlayerToCloud(playerUsername);
 checkAndTriggerRankUpCelebration();
+startHomeSymphony();
 }
 function runStartupSequence() {
 if (!playerUsername) {
 if (onboardingScreen) onboardingScreen.style.display = "flex";
 } else {
+if (forceRenameIfProfane()) return;
 enterHomeScreen();
 }
 }
@@ -1682,6 +1897,12 @@ if (playerUsername) return;
 const chosen = sanitizeUsernameKey(usernameInput.value);
 if (chosen.length < 2) {
 showErrorBox(onboardingErrorMsg, "USE AT LEAST 2 LETTERS/NUMBERS!");
+usernameInput.focus();
+return;
+}
+if (containsProfanity(chosen)) {
+playSynthEffect("red");
+showErrorBox(onboardingErrorMsg, "OFFENSIVE USERNAME NOT ALLOWED!");
 usernameInput.focus();
 return;
 }
