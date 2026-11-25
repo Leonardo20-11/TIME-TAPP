@@ -5,6 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TIME TAP</title>
+    <link rel="preconnect" href="https://googleapis.com">
+<link rel="preconnect" href="https://gstatic.com" crossorigin>
+<link href="https://googleapis.com/css2?family=Fredoka:wght@600;700&family=Lilita+One&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <style>
 @import url('https://googleapis.com');
@@ -181,7 +184,8 @@
             <button id="settingsBtn" class="top-icon-btn" aria-label="Settings"><span class="gear-css-icon"></span></button>
             <button id="leaderboardBtn" class="top-icon-btn leaderboard-trigger" aria-label="Leaderboard"><span class="trophy-css-icon"></span></button>
         <button id="missionsBtn" class="top-icon-btn missions-trigger" aria-label="Missions"><span class="mission-css-icon"></span><span id="missionsAlertDot" class="missions-alert-dot" style="display: none;">!</span></button>
-        </div>
+       <button id="inventoryBtn" class="top-icon-btn inventory-trigger" aria-label="Items"><span class="chest-css-icon"></span><span id="inventoryAlertDot" class="missions-alert-dot" style="display: none;">!</span></button>
+    </div>
 
         <div class="logo-wrapper">
             <div class="logo-row row-top">
@@ -299,6 +303,7 @@
                 </div>
                 <div id="equippedTitleLabel" class="profile-hero-badge-tag">LEVEL 1</div>
                 <div id="profileModalStats" class="profile-hero-stats">GAMES: 0 | XP: 0</div>
+                <button id="openNameCustomBtn" class="customize-name-open-btn">CUSTOMIZE NAME</button>
             </div>
             <div class="profile-summary-grid">
                 <div class="profile-stat-box gold-box"><span class="p-stat-label">BEST SCORE</span><span id="profileBestScore" class="p-stat-val">0</span></div>
@@ -335,6 +340,63 @@
             <div id="missionsListContainer" class="missions-list-container"></div>
         </div>
     </div>
+    <div id="inventoryModal" class="fullscreen-modal">
+        <div class="fullscreen-header">
+            <div class="header-title-group">
+                <span class="chest-css-icon"></span>
+                <h2>ITEMS &amp; CHESTS</h2>
+            </div>
+            <button id="closeInventoryBtn" class="close-fullscreen-btn">X</button>
+        </div>
+        <div class="missions-body">
+            <div class="level-rewards-guide">
+                <div class="guide-title">LEVEL MILESTONE REWARDS</div>
+                <div class="guide-pills-row">
+                    <span class="guide-pill">EVERY 10 LV: +2 REVIVES</span>
+                    <span class="guide-pill">EVERY 25 LV: +15% XP BOOST</span>
+                    <span class="guide-pill gold-guide">EVERY 40 LV: LUXURY CHEST</span>
+                </div>
+            </div>
+            <div id="inventoryGridContainer" class="inventory-grid"></div>
+        </div>
+    </div>
+
+    <!-- MODALE APERTURA CASSA SFARZOSA -->
+    <div id="chestOpenModal" class="fullscreen-modal celebration-overlay">
+        <div id="chestFireworksContainer" class="fireworks-container"></div>
+        <div class="luxury-chest-card">
+            <div class="luxury-chest-tag">LUXURY CHEST</div>
+            <div id="chestVisualBox" class="luxury-chest-box">
+                <div class="chest-lid"></div>
+                <div class="chest-lock"></div>
+            </div>
+            <div id="chestRewardDisplay" class="chest-reward-display" style="display: none;">
+                <span id="chestRewardRarity" class="rarity-badge">RARE</span>
+                <div id="chestRewardName" class="chest-reward-name">+500 XP</div>
+                <div id="chestRewardDesc" class="chest-reward-desc">Added to your account!</div>
+            </div>
+            <button id="openChestActionBtn" class="action-green-btn full-width-btn">OPEN CHEST!</button>
+            <button id="closeChestActionBtn" class="action-red-btn full-width-btn" style="display: none;">COLLECT</button>
+        </div>
+    </div>
+
+    <!-- SCHERMATA PERSONALIZZAZIONE NOME -->
+    <div id="nameCustomModal" class="fullscreen-modal">
+        <div class="fullscreen-header">
+            <div class="header-title-group">
+                <span class="crown-css-icon"></span>
+                <h2>NAME STYLE</h2>
+            </div>
+            <button id="closeNameCustomBtn" class="close-fullscreen-btn">X</button>
+        </div>
+        <div class="missions-body">
+            <div class="name-preview-card">
+                <span class="preview-label">LIVE PREVIEW</span>
+                <div id="nameCustomPreview" class="name-custom-preview">PLAYER</div>
+            </div>
+            <div id="nameStylesContainer" class="name-styles-grid"></div>
+        </div>
+    </div>
 
     <div id="rankUpCelebration" class="fullscreen-modal celebration-overlay">
         <div id="fireworksContainer" class="fireworks-container"></div>
@@ -368,6 +430,11 @@
                 <div class="mini-card gold-card"><span class="mini-label">BEST</span><span id="finalRecord" class="mini-value">0</span></div>
                 <div class="mini-card fire-card"><span class="mini-label">MAX COMBO</span><span id="finalCombo" class="mini-value">0</span></div>
             </div>
+            <div id="goConsumablesRow" class="go-consumables-row">
+    <button id="useReviveTokenBtn" class="consumable-use-btn revive-btn-style" style="display: none;">CONTINUE (0)</button>
+    <button id="useXp15TokenBtn" class="consumable-use-btn xp15-btn-style" style="display: none;">+15% XP (0)</button>
+    <button id="useXp2xTokenBtn" class="consumable-use-btn xp2x-btn-style" style="display: none;">2X XP (0)</button>
+</div>
             <div class="gameover-buttons">
                 <button id="playAgainBtn">PLAY</button>
                 <button id="homeBtn">HOME</button>

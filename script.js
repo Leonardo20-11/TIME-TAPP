@@ -127,6 +127,8 @@ const onboardingScreen = document.getElementById("onboardingScreen");
     let isAnimatingRecord = false;
     let secondChanceUsed = false;
     let normalSpawnsSinceLastSpecial = 8;
+    let lastRunBaseEarnedXP = 0;
+    let runXpBoostApplied = false;
 
     let freezeRemainingMs = 0;
     let slowMoRemainingMs = 0;
@@ -198,7 +200,6 @@ const onboardingScreen = document.getElementById("onboardingScreen");
             .replace(/[^A-Z]/g, "");
 
         const reversed = normalized.split("").reverse().join("");
-
         const bannedWords = [
             "CAZZ", "MERD", "STRONZ", "PUTTAN", "TROIA", "TROIE", "VAFANC", "VAFFANC",
             "COGLION", "MINCHI", "FICA", "FIGA", "PORCOD", "PORCAM", "DIOCAN", "DIOPORC",
@@ -209,12 +210,10 @@ const onboardingScreen = document.getElementById("onboardingScreen");
             "PUTA", "PUTO", "MIERDA", "CABRON", "PENDEJO", "GILIPOLLAS", "JODER", "COJONES",
             "MARICON", "VERGA", "CHINGA", "CARALHO", "FODASE", "BUCETA", "PORRA", "MERDA",
             "PUTAIN", "MERDE", "CONNARD", "SALOPE", "ENCULE", "BITE", "COUILLE", "FOUTRE", "NIQUE", "BATARD",
-            "SCHEISSE", "ARSCHLOCH", "HURE", "SCHLAMPE", "FICK", "WICHSER", "HUSO", "MISSGEBURT"
-        ];
-
-        return bannedWords.some(word => normalized.includes(word) || reversed.includes(word));
-    }
-
+"SCHEISSE", "ARSCHLOCH", "HURE", "SCHLAMPE", "FICK", "WICHSER", "HUSO", "MISSGEBURT"
+];
+return bannedWords.some(word => normalized.includes(word) || reversed.includes(word));
+}
 function forceRenameIfProfane() {
 if (!playerUsername || !containsProfanity(playerUsername)) return false;
 const overlay = document.createElement("div");
@@ -531,6 +530,7 @@ if (discardSavedBtn) discardSavedBtn.style.display = "none";
 }
 }
 function refreshAllProfileAndRankUI(animateHomeBarFromXP = null) {
+storedBonusXP = Number(localStorage.getItem("storedBonusXP")) || storedBonusXP;
 const currentXP = calculateTotalXP();
 const { currentTier, nextTier } = getCurrentAndNextTier(currentXP);
 const displayName = playerUsername || "PLAYER";
@@ -576,8 +576,9 @@ if (profileBestCombo) profileBestCombo.textContent = fmtNum(bestCombo);
 if (profileCurrentRank) profileCurrentRank.textContent = currentTier.name;
 lastKnownXP = currentXP;
 updateHomePlayButtonState();
-if (window.ttMissionEngine && window.ttMissionEngine.refreshCosmetics) {
-window.ttMissionEngine.refreshCosmetics();
+if (window.ttProgressionEngine) {
+window.ttProgressionEngine.syncLevelMilestones(currentTier.level);
+window.ttProgressionEngine.applyAllCosmetics();
 }
 }
 if (profileCornerBtn && profileModal) {
@@ -654,16 +655,16 @@ refreshAllProfileAndRankUI();
 syncPlayerToCloud(playerUsername, oldName);
 });
 }
-function launchFireworksShow() {
-if (!fireworksContainer) return;
-fireworksContainer.innerHTML = "";
+function launchFireworksShow(targetContainer = fireworksContainer) {
+if (!targetContainer) return;
+targetContainer.innerHTML = "";
 const colors = ["#fde047", "#ef4444", "#4ade80", "#38bdf8", "#c084fc", "#ffffff"];
-for (let b = 0; b < 6; b++) {
+for (let b = 0; b < 5; b++) {
 setTimeout(() => {
 const cx = 15 + Math.random() * 70;
 const cy = 15 + Math.random() * 55;
 playSynthEffect("milestone");
-for (let p = 0; p < 26; p++) {
+for (let p = 0; p < 22; p++) {
 const dot = document.createElement("span");
 dot.className = "fw-particle";
 const col = colors[Math.floor(Math.random() * colors.length)];
@@ -674,14 +675,14 @@ dot.style.background = col;
 dot.style.boxShadow = "0 0 10px " + col;
 dot.style.left = cx + "%";
 dot.style.top = cy + "%";
-const angle = (Math.PI * 2 * p) / 26 + (Math.random() * 0.25);
+const angle = (Math.PI * 2 * p) / 22 + (Math.random() * 0.25);
 const dist = 60 + Math.random() * 110;
 dot.style.setProperty("--dx", (Math.cos(angle) * dist) + "px");
 dot.style.setProperty("--dy", (Math.sin(angle) * dist) + "px");
-fireworksContainer.appendChild(dot);
+targetContainer.appendChild(dot);
 setTimeout(() => dot.remove(), 1150);
 }
-}, b * 360);
+}, b * 320);
 }
 }
 function checkAndTriggerRankUpCelebration() {
@@ -710,12 +711,7 @@ playSynthEffect("click");
 rankUpCelebration.style.display = "none";
 });
 }
-const SPECIAL_SVGS = {
-bomb: '',
-ice: '',
-clock: '',
-gold: ''
-};
+const SPECIAL_SVGS = { bomb: "", ice: "", clock: "", gold: "" };
 let soundEnabled = localStorage.getItem("soundEnabled") !== "false";
 function updateAudioButton() {
 if (!audioToggleBtn) return;
@@ -728,11 +724,8 @@ audioToggleBtn.addEventListener("click", () => {
 soundEnabled = !soundEnabled;
 localStorage.setItem("soundEnabled", soundEnabled);
 updateAudioButton();
-if (soundEnabled) {
-playSynthEffect("click");
-} else if ("speechSynthesis" in window) {
-window.speechSynthesis.cancel();
-}
+if (soundEnabled) playSynthEffect("click");
+else if ("speechSynthesis" in window) window.speechSynthesis.cancel();
 });
 }
 let musicEnabled = localStorage.getItem("musicEnabled") !== "false";
@@ -766,11 +759,8 @@ musicEnabled = !musicEnabled;
 localStorage.setItem("musicEnabled", musicEnabled);
 updateMusicButton();
 playSynthEffect("click");
-if (musicEnabled) {
-startHomeSymphony();
-} else {
-stopHomeSymphony();
-}
+if (musicEnabled) startHomeSymphony();
+else stopHomeSymphony();
 });
 }
 if (settingsBtn && settingsModal) {
@@ -936,9 +926,17 @@ playTone(f, null, "sine", now + i * 0.04, 0.22, 0.35);
 } else if (type === "clock") {
 playTone(720, 260, "sine", now, 0.45, 0.4);
 playTone(540, 195, "triangle", now + 0.06, 0.45, 0.35);
-} else if (type === "bomb") {
-playTone(140, 35, "sawtooth", now, 0.45, 0.65);
-playTone(100, 28, "square", now, 0.45, 0.55);
+} else if (type === "bomb" || type === "explosion180") {
+playTone(140, 35, "sawtooth", now, 0.48, 0.65);
+playTone(100, 28, "square", now, 0.48, 0.55);
+[523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+playTone(f, null, "triangle", now + 0.12 + i * 0.05, 0.24, 0.38);
+});
+} else if (type === "xpclaim") {
+const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5, 1567.98, 2093.0];
+notes.forEach((f, i) => {
+playTone(f, f * 1.03, "sine", now + i * 0.055, 0.18, 0.42);
+});
 } else if (type === "epic") {
 [392, 493.88, 587.33, 783.99].forEach((f) => {
 playTone(f, null, "triangle", now, 0.3, 0.32);
@@ -1011,17 +1009,9 @@ remainingMs: Math.max(250, Number(btn.dataset.remainingMs) || baseButtonDuration
 totalMs: Number(btn.dataset.totalMs) || baseButtonDuration
 }));
 const payload = {
-time,
-score,
-comboCount,
-maxComboRun,
-doubleBonus,
-doubleBonusRemainingMs,
-isFrozen,
-freezeRemainingMs,
-isSlowMo,
-slowMoRemainingMs,
-overdriveRemainingMs,
+time, score, comboCount, maxComboRun, doubleBonus,
+doubleBonusRemainingMs, isFrozen, freezeRemainingMs,
+isSlowMo, slowMoRemainingMs, overdriveRemainingMs,
 buttons: savedButtons
 };
 localStorage.setItem(PAUSE_STATE_KEY, JSON.stringify(payload));
@@ -1078,29 +1068,7 @@ pauseCooldownRemainingMs = PAUSE_COOLDOWN_MS;
 updatePauseButtonUI();
 });
 }
-function showRewardedAd(onRewardCallback) {
-if (window.CrazyGames && window.CrazyGames.SDK && window.CrazyGames.SDK.ad) {
-window.CrazyGames.SDK.ad.requestAd("rewarded", {
-adFinished: () => onRewardCallback(),
-adError: () => showMessage("AD NOT READY", "")
-});
-return;
-}
-if (window.PokiSDK && typeof window.PokiSDK.rewardedBreak === "function") {
-window.PokiSDK.rewardedBreak().then((success) => {
-if (success) onRewardCallback();
-});
-return;
-}
-if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) {
-window.Capacitor.Plugins.AdMob.showRewardVideoAd()
-.then(() => onRewardCallback())
-.catch(() => showMessage("AD NOT READY", ""));
-return;
-}
-onRewardCallback();
-}
-function reviveRunAfterAd() {
+function reviveRunWithInventoryToken() {
 if (gameOverScreen) gameOverScreen.style.display = "none";
 if (game) game.style.display = "block";
 secondChanceUsed = true;
@@ -1121,11 +1089,8 @@ const xpBeforeRun = calculateTotalXP();
 const isNewBest = score > record && score > 0;
 const pcMultiplier = isDesktop ? 1.25 : 1.0;
 let comboBonusPct = 0;
-if (maxComboRun > 200) {
-comboBonusPct = 20;
-} else if (maxComboRun > 100) {
-comboBonusPct = 10;
-}
+if (maxComboRun > 200) comboBonusPct = 20;
+else if (maxComboRun > 100) comboBonusPct = 10;
 gamesPlayed++;
 totalScoreAccumulated += score;
 if (isNewBest) {
@@ -1149,6 +1114,8 @@ localStorage.setItem("bestCombo", bestCombo);
 }
 const xpAfterRun = calculateTotalXP();
 const earnedXP = Math.max(0, xpAfterRun - xpBeforeRun);
+lastRunBaseEarnedXP = earnedXP;
+runXpBoostApplied = false;
 if (xpEarnedBadge) {
 const comboLabel = comboBonusPct > 0 ? " + " + comboBonusPct + "% COMBO" : "";
 xpEarnedBadge.textContent = "+" + fmtNum(earnedXP) + " XP" + comboLabel;
@@ -1161,9 +1128,6 @@ goXpProgressText.textContent = nextAfter
 ? fmtNum(xpAfterRun) + " / " + fmtNum(nextAfter.xpRequired) + " XP"
 : fmtNum(xpAfterRun) + " XP";
 }
-if (reviveBtn) {
-reviveBtn.style.display = (!secondChanceUsed && score > 0) ? "block" : "none";
-}
 if (menu) menu.style.display = "none";
 if (gameOverScreen) gameOverScreen.style.display = "flex";
 finalScore.textContent = fmtNum(score);
@@ -1173,10 +1137,10 @@ const startPct = computeSegmentPercent(xpBeforeRun);
 const endPct = computeSegmentPercent(xpAfterRun);
 goXpBarFill.style.transition = "none";
 goXpBarFill.style.width = startPct.toFixed(1) + "%";
-setTimeout(() => {
+requestAnimationFrame(() => {
 goXpBarFill.style.transition = "width 1.15s cubic-bezier(0.22, 1, 0.36, 1)";
 goXpBarFill.style.width = endPct.toFixed(1) + "%";
-}, 120);
+});
 }
 if (isNewBest) {
 newRecordMessage.style.display = "block";
@@ -1193,17 +1157,16 @@ playSynthEffect("gameover");
 speakEnglish("Game over!", 0.95, 0.95);
 finalRecord.textContent = fmtNum(record);
 }
-if (window.ttMissionEngine) window.ttMissionEngine.onRunEnd(score, maxComboRun);
+if (window.ttProgressionEngine) {
+window.ttProgressionEngine.onRunEnd(score, maxComboRun, secondChanceUsed, earnedXP);
+}
 refreshAllProfileAndRankUI(xpBeforeRun);
-syncPlayerToCloud(playerUsername);
+setTimeout(() => syncPlayerToCloud(playerUsername), 400);
 }
 function returnToHome(keepPausedRun = false) {
 const xpAtEnter = lastKnownXP;
-if (keepPausedRun) {
-savePausedGameState();
-} else {
-clearSavedPausedState();
-}
+if (keepPausedRun) savePausedGameState();
+else clearSavedPausedState();
 running = false;
 isPaused = false;
 isResumingCountdown = false;
@@ -1239,8 +1202,7 @@ timerCircle.classList.remove("timer-panic", "timer-frozen", "timer-slowmo", "tim
 if (scoreText) scoreText.textContent = "SCORE: 0";
 if (comboText) {
 comboText.textContent = "COMBO 0";
-comboText.
-classList.remove("combo-fire");
+comboText.classList.remove("combo-fire");
 }
 refreshAllProfileAndRankUI(xpAtEnter);
 checkAndTriggerRankUpCelebration();
@@ -1265,9 +1227,7 @@ returnToHome(true);
 });
 }
 window.addEventListener("beforeunload", () => {
-if (running && isPaused) {
-savePausedGameState();
-}
+if (running && isPaused) savePausedGameState();
 });
 function resumeSavedRunFromHome() {
 const raw = localStorage.getItem(PAUSE_STATE_KEY);
@@ -1296,7 +1256,7 @@ overdriveRemainingMs = saved.overdriveRemainingMs || 0;
 pauseCooldownRemainingMs = 0;
 secondChanceUsed = false;
 stopHomeSymphony();
-if (window.ttMissionEngine) window.ttMissionEngine.onRunStart();
+if (window.ttProgressionEngine) window.ttProgressionEngine.onRunStart();
 if (menu) menu.style.display = "none";
 if (game) game.style.display = "block";
 timerCircle.textContent = time.toFixed(1);
@@ -1323,11 +1283,8 @@ startCountdown();
 if (playBtn) {
 playBtn.addEventListener("click", () => {
 playSynthEffect("click");
-if (hasSavedRun()) {
-resumeSavedRunFromHome();
-} else {
-startCountdown();
-}
+if (hasSavedRun()) resumeSavedRunFromHome();
+else startCountdown();
 });
 }
 if (discardSavedBtn && confirmNewRunModal) {
@@ -1407,13 +1364,8 @@ utterance.pitch = pitch;
 utterance.volume = 1;
 const voices = window.speechSynthesis.getVoices();
 const preferredVoices = [
-"Google US English",
-"Microsoft Aria",
-"Microsoft Jenny",
-"Samantha",
-"Karen",
-"Serena",
-"Natural"
+"Google US English", "Microsoft Aria", "Microsoft Jenny",
+"Samantha", "Karen", "Serena", "Natural"
 ];
 const selectedVoice =
 voices.find(v => v.lang.startsWith("en") && preferredVoices.some(name => v.name.includes(name))) ||
@@ -1438,7 +1390,7 @@ speakEnglish(spoken, 1.08, pitch);
 function startCountdown() {
 initAudio();
 stopHomeSymphony();
-if (window.ttMissionEngine) window.ttMissionEngine.onRunStart();
+if (window.ttProgressionEngine) window.ttProgressionEngine.onRunStart();
 secondChanceUsed = false;
 pauseCooldownRemainingMs = 0;
 updatePauseButtonUI();
@@ -1459,17 +1411,11 @@ if (timerRingProgress) {
 const ratio = Math.max(0, Math.min(1, time / MAX_TIME));
 const offset = RING_CIRCUMFERENCE * (1 - ratio);
 timerRingProgress.style.strokeDashoffset = offset.toFixed(1);
-if (isFrozen) {
-timerRingProgress.style.stroke = "#7dd3fc";
-} else if (isSlowMo) {
-timerRingProgress.style.stroke = "#e879f9";
-} else if (time <= 1.2) {
-timerRingProgress.style.stroke = "#ef4444";
-} else if (time <= 3.0) {
-timerRingProgress.style.stroke = "#facc15";
-} else {
-timerRingProgress.style.stroke = "#4ade80";
-}
+if (isFrozen) timerRingProgress.style.stroke = "#7dd3fc";
+else if (isSlowMo) timerRingProgress.style.stroke = "#e879f9";
+else if (time <= 1.2) timerRingProgress.style.stroke = "#ef4444";
+else if (time <= 3.0) timerRingProgress.style.stroke = "#facc15";
+else timerRingProgress.style.stroke = "#4ade80";
 }
 timerCircle.classList.toggle("timer-frozen", isFrozen);
 timerCircle.classList.toggle("timer-slowmo", isSlowMo && !isFrozen);
@@ -1480,24 +1426,18 @@ timerCircle.classList.remove("timer-panic");
 return;
 }
 if (isSlowMo) {
-timerCircle.style.background =
-"radial-gradient(circle at 30% 30%, #f5d0fe 0%, #c084fc 55%, #7e22ce 100%)";
-timerCircle.style.boxShadow =
-"inset 0 8px 0 rgba(255,255,255,0.45), 0 11px 0 #581c87, 0 0 32px rgba(192,132,252,0.9)";
+timerCircle.style.background = "radial-gradient(circle at 30% 30%, #f5d0fe 0%, #c084fc 55%, #7e22ce 100%)";
+timerCircle.style.boxShadow = "inset 0 8px 0 rgba(255,255,255,0.45), 0 11px 0 #581c87, 0 0 32px rgba(192,132,252,0.9)";
 timerCircle.classList.remove("timer-panic");
 return;
 }
 if (time <= 1.0) {
-timerCircle.style.background =
-"radial-gradient(circle at 30% 30%, #fecaca 0%, #ef4444 50%, #b91c1c 100%)";
-timerCircle.style.boxShadow =
-"inset 0 8px 0 rgba(255, 255, 255, 0.35), 0 11px 0 #7f1d1d, 0 0 28px rgba(239, 68, 68, 0.9)";
+timerCircle.style.background = "radial-gradient(circle at 30% 30%, #fecaca 0%, #ef4444 50%, #b91c1c 100%)";
+timerCircle.style.boxShadow = "inset 0 8px 0 rgba(255, 255, 255, 0.35), 0 11px 0 #7f1d1d, 0 0 28px rgba(239, 68, 68, 0.9)";
 timerCircle.classList.add("timer-panic");
 } else {
-timerCircle.style.background =
-"radial-gradient(circle at 30% 30%, #bfdbfe 0%, #3b82f6 50%, #1d4ed8 100%)";
-timerCircle.style.boxShadow =
-"inset 0 6px 0 rgba(255, 255, 255, 0.32), 0 11px 0 #1e3a8a, 0 20px 30px rgba(0, 0, 0, 0.45)";
+timerCircle.style.background = "radial-gradient(circle at 30% 30%, #bfdbfe 0%, #3b82f6 50%, #1d4ed8 100%)";
+timerCircle.style.boxShadow = "inset 0 6px 0 rgba(255, 255, 255, 0.32), 0 11px 0 #1e3a8a, 0 20px 30px rgba(0, 0, 0, 0.45)";
 timerCircle.classList.remove("timer-panic");
 }
 }
@@ -1506,6 +1446,7 @@ running = true;
 if (!isRestored) {
 pauseCooldownRemainingMs = 0;
 normalSpawnsSinceLastSpecial = 8;
+createButton();
 createButton();
 createButton();
 }
@@ -1531,24 +1472,15 @@ feverMusicTimer = 0;
 }
 if (isFrozen) {
 freezeRemainingMs -= TICK_MS;
-if (freezeRemainingMs <= 0) {
-isFrozen = false;
-freezeRemainingMs = 0;
-}
+if (freezeRemainingMs <= 0) { isFrozen = false; freezeRemainingMs = 0; }
 }
 if (isSlowMo) {
 slowMoRemainingMs -= TICK_MS;
-if (slowMoRemainingMs <= 0) {
-isSlowMo = false;
-slowMoRemainingMs = 0;
-}
+if (slowMoRemainingMs <= 0) { isSlowMo = false; slowMoRemainingMs = 0; }
 }
 if (doubleBonus) {
 doubleBonusRemainingMs -= TICK_MS;
-if (doubleBonusRemainingMs <= 0) {
-doubleBonus = false;
-doubleBonusRemainingMs = 0;
-}
+if (doubleBonusRemainingMs <= 0) { doubleBonus = false; doubleBonusRemainingMs = 0; }
 }
 const speedFactor = isSlowMo ? 0.4 : 1.0;
 if (!isFrozen) {
@@ -1557,9 +1489,7 @@ time = Math.max(0, Number((time - deltaSeconds).toFixed(3)));
 timerCircle.textContent = time.toFixed(1);
 if (time <= 1.0) {
 panicTickCounter++;
-if (panicTickCounter % 4 === 0 && time > 0) {
-playSynthEffect("tick");
-}
+if (panicTickCounter % 4 === 0 && time > 0) playSynthEffect("tick");
 } else {
 panicTickCounter = 0;
 }
@@ -1579,34 +1509,23 @@ if (ringCircle) {
 const frac = Math.max(0, Math.min(1, rem / tot));
 ringCircle.style.strokeDashoffset = (BTN_RING_CIRCUMFERENCE * (1 - frac)).toFixed(1);
 }
-if (rem <= 0) {
-removeButton(btn);
-}
+if (rem <= 0) removeButton(btn);
 }
 spawnAccumulatorMs += TICK_MS * speedFactor;
 if (spawnAccumulatorMs >= baseSpawnDelay) {
 spawnAccumulatorMs = 0;
-if (activeButtons.length < 6) {
-createButton();
-}
+if (activeButtons.length < 7) createButton();
 }
 }, TICK_MS);
 }
 function renderButtonInner(btn, type, valueText) {
 let contentHtml = "";
-if (type === "bomb") {
-contentHtml = SPECIAL_SVGS.bomb + 'BOMB';
-} else if (type === "ice") {
-contentHtml = SPECIAL_SVGS.ice + 'FREEZE';
-} else if (type === "clock") {
-contentHtml = SPECIAL_SVGS.clock + 'SLOW';
-} else if (type === "gold") {
-contentHtml = SPECIAL_SVGS.gold + '2X TIME';
-} else {
-contentHtml = valueText;
-}
-const ringSvg = '';
-btn.innerHTML = ringSvg + '' + contentHtml + '';
+if (type === "bomb") contentHtml = SPECIAL_SVGS.bomb + "BOMB";
+else if (type === "ice") contentHtml = SPECIAL_SVGS.ice + "FREEZE";
+else if (type === "clock") contentHtml = SPECIAL_SVGS.clock + "SLOW";
+else if (type === "gold") contentHtml = SPECIAL_SVGS.gold + "2X TIME";
+else contentHtml = valueText;
+btn.innerHTML = contentHtml;
 }
 function createButton(forcedConfig = null) {
 let type = "green";
@@ -1623,42 +1542,33 @@ const greenSlotsCount = activeButtons.filter(b =>
 const redSlotsCount = activeButtons.filter(b =>
 ["red", "bomb"].includes(b.dataset.action)
 ).length;
-if (greenSlotsCount >= 4 && redSlotsCount >= 2) return;
+if (greenSlotsCount >= 4 && redSlotsCount >= 3) return;
 const hasSpecialOnScreen = activeButtons.some(b =>
 ["gold", "ice", "bomb", "clock"].includes(b.dataset.action)
 );
 if (greenSlotsCount >= 4) {
 type = "red";
-} else if (redSlotsCount >= 2) {
+} else if (redSlotsCount >= 3) {
 type = "green";
 } else if (greenSlotsCount >= 2 && redSlotsCount === 0) {
 type = "red";
-} else if (redSlotsCount >= 1 && greenSlotsCount === 0) {
+} else if (redSlotsCount >= 2 && greenSlotsCount === 0) {
 type = "green";
 } else {
-type = Math.random() < 0.65 ? "green" : "red";
+type = Math.random() < 0.56 ? "green" : "red";
 }
 const canSpawnPowerup = !hasSpecialOnScreen && normalSpawnsSinceLastSpecial >= 8 && time < 3.0;
 const canSpawnBomb = !hasSpecialOnScreen && normalSpawnsSinceLastSpecial >= 8;
 if (type === "green" && canSpawnPowerup) {
 const rand = Math.random();
-if (rand < 0.008 && !isSlowMo) {
-type = "clock";
-} else if (rand < 0.017 && !isFrozen) {
-type = "ice";
-} else if (rand < 0.027 && !doubleBonus) {
-type = "gold";
-}
+if (rand < 0.008 && !isSlowMo) type = "clock";
+else if (rand < 0.017 && !isFrozen) type = "ice";
+else if (rand < 0.027 && !doubleBonus) type = "gold";
 } else if (type === "red" && canSpawnBomb) {
-if (Math.random() < 0.014) {
-type = "bomb";
+if (Math.random() < 0.014) type = "bomb";
 }
-}
-if (["gold", "ice", "bomb", "clock"].includes(type)) {
-normalSpawnsSinceLastSpecial = 0;
-} else {
-normalSpawnsSinceLastSpecial++;
-}
+if (["gold", "ice", "bomb", "clock"].includes(type)) normalSpawnsSinceLastSpecial = 0;
+else normalSpawnsSinceLastSpecial++;
 const freeArrows = arrows.filter(a => !activeButtons.some(b => b.dataset.key === a));
 key = freeArrows.length > 0
 ? freeArrows[Math.floor(Math.random() * freeArrows.length)]
@@ -1669,7 +1579,7 @@ btn.classList.add("button-circle");
 let valueText = "";
 if (type === "green") {
 btn.classList.add("green");
-const greenOptions = isDesktop ? [0.400, 0.450, 0.500, 0.550] : [0.280, 0.300, 0.350, 0.380];
+const greenOptions = isDesktop ? [0.400, 0.450, 0.500, 0.550] : [0.250, 0.300, 0.350, 0.380];
 const value = forcedConfig ? Number(valueStr) : greenOptions[Math.floor(Math.random() * greenOptions.length)];
 btn.dataset.value = value;
 valueText = "+" + value.toFixed(3);
@@ -1745,22 +1655,10 @@ function spawnStars(x, y, mode) {
 let count = 12;
 let colors = ["#4ade80", "#bbf7d0", "#ffffff"];
 let isDiamond = false;
-if (mode === "gold") {
-count = 20;
-colors = ["#fde047", "#f59e0b", "#ffffff"];
-isDiamond = true;
-} else if (mode === "ice") {
-count = 20;
-colors = ["#ffffff", "#bae6fd", "#38bdf8", "#0284c7"];
-isDiamond = true;
-} else if (mode === "clock") {
-count = 18;
-colors = ["#f5d0fe", "#c084fc", "#fde047"];
-isDiamond = true;
-} else if (mode === "bomb") {
-count = 24;
-colors = ["#ef4444", "#f97316", "#facc15", "#1e293b"];
-}
+if (mode === "gold") { count = 20; colors = ["#fde047", "#f59e0b", "#ffffff"]; isDiamond = true; }
+else if (mode === "ice") { count = 20; colors = ["#ffffff", "#bae6fd", "#38bdf8", "#0284c7"]; isDiamond = true; }
+else if (mode === "clock") { count = 18; colors = ["#f5d0fe", "#c084fc", "#fde047"]; isDiamond = true; }
+else if (mode === "bomb") { count = 24; colors = ["#ef4444", "#f97316", "#facc15", "#1e293b"]; }
 for (let i = 0; i < count; i++) {
 const spark = document.createElement("span");
 spark.className = "fx-spark" + (isDiamond ? " diamond" : "");
@@ -1801,7 +1699,9 @@ comboCount++;
 if (comboCount > maxComboRun) maxComboRun = comboCount;
 const earnedPoints = 100 + comboCount * 20;
 score += earnedPoints;
-if (window.ttMissionEngine) window.ttMissionEngine.onGreenHit(score, comboCount);
+if (window.ttProgressionEngine) {
+window.ttProgressionEngine.onGreenHit(score, comboCount);
+}
 if (timerCircle) {
 timerCircle.classList.remove("timer-bounce");
 void timerCircle.offsetWidth;
@@ -1815,7 +1715,11 @@ centerY,
 (doubleBonus ? "2X +" : "+") + earnedPoints,
 doubleBonus ? "#facc15" : "#4ade80"
 );
-if (comboCount === 101) {
+if (comboCount > 0 && comboCount % 180 === 0) {
+const mult = Math.floor(comboCount / 180);
+playSynthEffect("explosion180");
+speakEnglish("Combo " + comboCount + " times " + mult + "!", 1.1, 1.18);
+} else if (comboCount === 101) {
 playSynthEffect("newrecord");
 showMessage("+10% XP BONUS!", "Ten percent X P bonus!");
 } else if (comboCount === 201) {
@@ -1896,19 +1800,11 @@ updateTimerVisuals();
 removeButton(btn);
 }
 function checkComboMessages() {
-if (comboCount === 5) {
-playSynthEffect("milestone");
-showMessage("GREAT!", "Great!");
-} else if (comboCount === 10) {
-playSynthEffect("milestone");
-showMessage("FANTASTIC!", "Fantastic!");
-} else if (comboCount === 15) {
-playSynthEffect("milestone");
-showMessage("AMAZING!", "Amazing!");
-} else if (comboCount === 20) {
-playSynthEffect("milestone");
-showMessage("UNBELIEVABLE!", "Unbelievable!");
-} else if (comboCount > 0 && comboCount % 25 === 0 && comboCount % 80 !== 0) {
+if (comboCount === 5) { playSynthEffect("milestone"); showMessage("GREAT!", "Great!"); }
+else if (comboCount === 10) { playSynthEffect("milestone"); showMessage("FANTASTIC!", "Fantastic!"); }
+else if (comboCount === 15) { playSynthEffect("milestone"); showMessage("AMAZING!", "Amazing!"); }
+else if (comboCount === 20) { playSynthEffect("milestone"); showMessage("UNBELIEVABLE!", "Unbelievable!"); }
+else if (comboCount > 0 && comboCount % 25 === 0 && comboCount % 80 !== 0) {
 playSynthEffect("milestone");
 showMessage("LEGENDARY!", "Legendary!");
 }
@@ -1932,7 +1828,7 @@ if (btn.parentNode) btn.remove();
 }
 function animateScoreCounter(element, targetValue, onComplete) {
 let current = 0;
-const steps = 45;
+const steps = 35;
 const increment = targetValue / steps;
 const counter = setInterval(() => {
 current += increment;
@@ -1944,7 +1840,7 @@ if (onComplete) onComplete();
 } else {
 element.textContent = fmtNum(Math.round(current));
 }
-}, 30);
+}, 25);
 }
 function gameOver() {
 if (!running) return;
@@ -1972,15 +1868,47 @@ if (!running || isResumingCountdown) return;
 const k = event.key.toLowerCase();
 if (k === "d") {
 event.preventDefault();
-if (isPaused) {
-playSynthEffect("click");
-resumeGame();
-} else if (pauseCooldownRemainingMs <= 0) {
-playSynthEffect("click");
-pauseGame();
-}
+if (isPaused) { playSynthEffect("click"); resumeGame(); }
+else if (pauseCooldownRemainingMs <= 0) { playSynthEffect("click"); pauseGame(); }
 }
 });
+window.ttCoreBridge = {
+playXpSound: () => playSynthEffect("xpclaim"),
+playClick: () => playSynthEffect("click"),
+playNewRecord: () => playSynthEffect("newrecord"),
+speak: (txt) => speakEnglish(txt, 1.08, 1.15),
+fireworks: (container) => launchFireworksShow(container),
+refreshXPBar: (fromXP) => {
+storedBonusXP = Number(localStorage.getItem("storedBonusXP")) || 0;
+refreshAllProfileAndRankUI(fromXP);
+checkAndTriggerRankUpCelebration();
+},
+getCurrentXP: () => calculateTotalXP(),
+reviveRun: () => reviveRunWithInventoryToken(),
+applyRunXpMultiplier: (mult) => {
+if (runXpBoostApplied || lastRunBaseEarnedXP <= 0) return 0;
+runXpBoostApplied = true;
+const before = calculateTotalXP();
+const extraXP = Math.round(lastRunBaseEarnedXP * (mult - 1));
+storedBonusXP += extraXP;
+localStorage.setItem("storedBonusXP", storedBonusXP);
+const after = calculateTotalXP();
+if (xpEarnedBadge) {
+xpEarnedBadge.textContent = "+" + fmtNum(lastRunBaseEarnedXP + extraXP) + " XP (BOOSTED!)";
+}
+const { currentTier: tAfter, nextTier: nAfter } = getCurrentAndNextTier(after);
+if (goXpProgressText) {
+goXpProgressText.textContent = nAfter
+? fmtNum(after) + " / " + fmtNum(nAfter.xpRequired) + " XP"
+: fmtNum(after) + " XP";
+}
+if (goXpBarFill) {
+goXpBarFill.style.width = computeSegmentPercent(after).toFixed(1) + "%";
+}
+refreshAllProfileAndRankUI(before);
+return extraXP;
+}
+};
 function enterHomeScreen() {
 refreshAllProfileAndRankUI();
 if (menu) menu.style.display = "flex";
@@ -2034,187 +1962,270 @@ enterHomeScreen();
 }
 runStartupSequence();
 }
-if (document.readyState === "loading") {
-document.addEventListener("DOMContentLoaded", initTimeTapGame);
-} else {
-initTimeTapGame();
-}
-/* ==========================================================================
-ESTENSIONE MISSIONI, PREMIO GIORNALIERO, MAESTRO I-V, ESPLOSIONI 180 & RIVALI
-========================================================================== */
-(function initTimeTapMissionsExtension() {
-const SUPABASE_URL = "https://jnhkktvtxbsfbrafsnig.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaGtrdHZ0eGJzZmJyYWZzbmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NTMzNjAsImV4cCI6MjExMTAyOTM2MH0.xRde38jj8K1cBpbXIIDyc14OMSsjRVUMkqTEvwDq2Tw";
-const MISSIONS_STORAGE_KEY = "timeTapMissionsState_v1";
-const ROMAN_NUMERALS = ["", "I", "II", "III", "IV", "V"];
-function getCurrentMonthKey() {
-const d = new Date();
-return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
-}
-function getCurrentWeekKey() {
-const d = new Date();
-const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-const dayNum = date.getUTCDay() || 7;
-date.setUTCDate(date.getUTCDate() + 4 - dayNum);
-const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
-return date.getUTCFullYear() + "-W" + String(weekNo).padStart(2, "0");
-}
-function getTodayDateKey() {
-const d = new Date();
-return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-}
-function getPreviousMonthKey(monthKey) {
-const [y, m] = monthKey.split("-").map(Number);
-if (m === 1) return (y - 1) + "-12";
-return y + "-" + String(m - 1).padStart(2, "0");
-}
-function loadMissionsState() {
-const curMonth = getCurrentMonthKey();
-const curWeek = getCurrentWeekKey();
-let state = {
-monthKey: curMonth,
-weekKey: curWeek,
-lastDailyClaimDate: "",
-weeklyGames: 0,
-monthlyGames: 0,
-monthlyBestCombo: 0,
-monthlyBestScore: 0,
-monthlyTotalScore: 0,
-claimedIds: {},
-masterStreak: 0,
-lastCompletedMonthKey: "",
-activeMaestroRank: 0
-};
-try {
-const raw = localStorage.getItem(MISSIONS_STORAGE_KEY);
-if (raw) {
-const parsed = JSON.parse(raw);
-state = Object.assign(state, parsed);
-}
-} catch (e) {}
-if (state.weekKey !== curWeek) {
-state.weekKey = curWeek;
-state.weeklyGames = 0;
-delete state.claimedIds["w_40_games"];
-}
-if (state.monthKey !== curMonth) {
-const prevMonth = getPreviousMonthKey(curMonth);
-if (state.lastCompletedMonthKey !== prevMonth) {
-state.masterStreak = 0;
-state.activeMaestroRank = 0;
-}
-state.monthKey = curMonth;
-state.monthlyGames = 0;
-state.monthlyBestCombo = 0;
-state.monthlyBestScore = 0;
-state.monthlyTotalScore = 0;
-state.claimedIds = {};
-}
-saveMissionsState(state);
-return state;
-}
-function saveMissionsState(state) {
-localStorage.setItem(MISSIONS_STORAGE_KEY, JSON.stringify(state));
-}
-function getMissionsCatalog(state) {
-return [
-{
-id: "w_40_games",
-type: "WEEKLY",
-title: "MARATHON RUNNER",
-desc: "Play 40 games this week",
-progress: state.weeklyGames,
-target: 40,
-rewardType: "xp",
-rewardAmount: 500000,
-rewardLabel: "+500,000 XP"
-},
-{
-id: "m_200_games",
-type: "MONTHLY",
-title: "TRUE DEDICATION",
-desc: "Play 200 games this month",
-progress: state.monthlyGames,
-target: 200,
-rewardType: "maestro_base",
-rewardAmount: 0,
-rewardLabel: "RAINBOW NAME + MAESTRO"
-},
-{
-id: "m_combo_150",
-type: "MONTHLY",
-title: "COMBO OVERLORD",
-desc: "Reach a 150 Combo in a single run",
-progress: state.monthlyBestCombo,
-target: 150,
-rewardType: "xp",
-rewardAmount: 250000,
-rewardLabel: "+250,000 XP"
-},
-{
-id: "m_combo_360",
-type: "MONTHLY",
-title: "EXPLOSIVE REFLEXES",
-desc: "Reach a 360 Combo (2x Explosion!)",
-progress: state.monthlyBestCombo,
-target: 360,
-rewardType: "xp",
-rewardAmount: 600000,
-rewardLabel: "+600,000 XP"
-},
-{
-id: "m_score_50k",
-type: "MONTHLY",
-title: "HIGH SCORER",
-desc: "Score 50,000 points in one run",
-progress: state.monthlyBestScore,
-target: 50000,
-rewardType: "xp",
-rewardAmount: 300000,
-rewardLabel: "+300,000 XP"
-},
-{
-id: "m_total_500k",
-type: "MONTHLY",
-title: "POINT COLLECTOR",
-desc: "Accumulate 500,000 total score this month",
-progress: state.monthlyTotalScore,
-target: 500000,
-rewardType: "xp",
-rewardAmount: 400000,
-rewardLabel: "+400,000 XP"
-}
-];
-}
-function applyMaestroCosmetics(state) {
-const homeName = document.getElementById("homeProfileName");
-const homeTitle = document.getElementById("homeProfileTitle");
-const modalName = document.getElementById("profileModalUsername");
-const modalTitle = document.getElementById("equippedTitleLabel");
-const hasRainbowName = Boolean(state.claimedIds["m_200_games"]) || state.activeMaestroRank > 0;
+(function initTimeTapProgressionV2() {
+    const SUPABASE_URL ="https://jnhkktvtxbsfbrafsnig.supabase.co" ;
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaGtrdHZ0eGJzZmJyYWZzbmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NTMzNjAsImV4cCI6MjExMTAyOTM2MH0.xRde38jj8K1cBpbXIIDyc14OMSsjRVUMkqTEvwDq2Tw";
+    const STATE_KEY = "timeTapProgressionState_v2";
+    const ROMAN_NUMERALS = ["", "I", "II", "III", "IV", "V"];
+
+    const NAME_STYLES_CATALOG = [
+        { id: "default", name: "CLASSIC WHITE", category: "COLOR", rarity: "COMMON", cssClass: "", prefix: "", free: true },
+        { id: "col_gold", name: "ROYAL GOLD", category: "COLOR", rarity: "COMMON", cssClass: "name-style-gold", prefix: "", free: false },
+        { id: "col_cyan", name: "NEON CYAN", category: "COLOR", rarity: "RARE", cssClass: "name-style-cyan", prefix: "", free: false },
+        { id: "col_inferno", name: "INFERNO FLAME", category: "COLOR", rarity: "EPIC", cssClass: "name-style-inferno", prefix: "", free: false },
+        { id: "col_rainbow", name: "PRISM RAINBOW", category: "COLOR", rarity: "LEGENDARY", cssClass: "rainbow-master-text", prefix: "", free: false },
+        { id: "font_arcade", name: "TURBO ITALIC", category: "FONT", rarity: "RARE", cssClass: "name-font-arcade", prefix: "", free: false },
+        { id: "font_royal", name: "EMPEROR SERIF", category: "FONT", rarity: "EPIC", cssClass: "name-font-royal", prefix: "", free: false },
+        { id: "sym_star", name: "STAR BADGE", category: "SYMBOL", rarity: "COMMON", cssClass: "", prefix: "★ ", free: false },
+        { id: "sym_bolt", name: "THUNDER BOLT", category: "SYMBOL", rarity: "RARE", cssClass: "", prefix: "⚡ ", free: false },
+        { id: "sym_crown", name: "ROYAL CROWN", category: "SYMBOL", rarity: "LEGENDARY", cssClass: "", prefix: "♛ ", free: false }
+    ];
+
+    function getCurrentMonthKey() {
+        const d = new Date();
+        return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+    }
+
+    function getCurrentWeekKey() {
+        const d = new Date();
+        const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        const dayNum = date.getUTCDay() || 7;
+        date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+        const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+        return date.getUTCFullYear() + "-W" + String(weekNo).padStart(2, "0");
+    }
+
+    function getTodayDateKey() {
+        const d = new Date();
+        return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    }
+
+    function getPreviousMonthKey(monthKey) {
+        const [y, m] = monthKey.split("-").map(Number);
+        if (m === 1) return (y - 1) + "-12";
+        return y + "-" + String(m - 1).padStart(2, "0");
+    }
+
+    function loadState() {
+        const curMonth = getCurrentMonthKey();
+        const curWeek = getCurrentWeekKey();
+        let state = {
+            monthKey: curMonth,
+            weekKey: curWeek,
+            lastDailyClaimDate: "",
+            weeklyGames: 0,
+            monthlyGames: 0,
+            monthlyBestCombo: 0,
+            monthlyBestScore: 0,
+            monthlyTotalScore: 0,
+            claimedIds: {},
+            masterStreak: 0,
+            lastCompletedMonthKey: "",
+            activeMaestroRank: 0,
+            reviveTokens: 0,
+            xp15Tokens: 0,
+            xp2xTokens: 0,
+            luxuryChests: 0,
+            claimedLevelMilestones: {},
+            unlockedStyles: ["default"],
+            equippedColor: "default",
+            equippedFont: "",
+            equippedSymbol: ""
+        };
+
+        try {
+            const raw = localStorage.getItem(STATE_KEY);
+            if (raw) {
+                state = Object.assign(state, JSON.parse(raw));
+            }
+        } catch (e) {}
+
+        if (state.weekKey !== curWeek) {
+            state.weekKey = curWeek;
+            state.weeklyGames = 0;
+            delete state.claimedIds["w_40_games"];
+        }
+
+        if (state.monthKey !== curMonth) {
+            const prevMonth = getPreviousMonthKey(curMonth);
+            if (state.lastCompletedMonthKey !== prevMonth) {
+                state.masterStreak = 0;
+                state.activeMaestroRank = 0;
+            }
+            state.monthKey = curMonth;
+            state.monthlyGames = 0;
+            state.monthlyBestCombo = 0;
+            state.monthlyBestScore = 0;
+            state.monthlyTotalScore = 0;
+            state.claimedIds = {};
+        }
+
+        saveState(state);
+        return state;
+    }
+
+    function saveState(state) {
+        localStorage.setItem(STATE_KEY, JSON.stringify(state));
+    }
+
+    function showXpGainToast(text) {
+        const old = document.querySelector(".xp-claim-toast");
+        if (old) old.remove();
+        const toast = document.createElement("div");
+        toast.className = "xp-claim-toast";
+        toast.textContent = text;
+        document.body.appendChild(toast);
+        setTimeout(() => { if (toast.parentNode) toast.remove(); }, 2200);
+    }
+
+    function grantBonusXPAnimated(amount, labelText) {
+        const beforeXP = window.ttCoreBridge ? window.ttCoreBridge.getCurrentXP() : 0;
+        const cur = Number(localStorage.getItem("storedBonusXP")) || 0;
+        localStorage.setItem("storedBonusXP", cur + amount);
+        if (window.ttCoreBridge) {
+            window.ttCoreBridge.playXpSound();
+            window.ttCoreBridge.refreshXPBar(beforeXP);
+        }
+        showXpGainToast(labelText || ("+" + amount.toLocaleString("it-IT") + " XP!"));
+    }
+
+    function syncLevelMilestones(currentLevel) {
+        const state = loadState();
+        let changed = false;
+
+        for (let lv = 10; lv <= currentLevel; lv += 10) {
+            const key = "revive_" + lv;
+            if (!state.claimedLevelMilestones[key]) {
+                state.claimedLevelMilestones[key] = true;
+                state.reviveTokens += 2;
+                changed = true;
+            }
+        }
+
+        for (let lv = 25; lv <= currentLevel; lv += 25) {
+            const key = "xp15_" + lv;
+            if (!state.claimedLevelMilestones[key]) {
+                state.claimedLevelMilestones[key] = true;
+                state.xp15Tokens += 1;
+                changed = true;
+            }
+        }
+
+        for (let lv = 40; lv <= Math.min(80, currentLevel); lv += 40) {
+            const key = "chest_" + lv;
+            if (!state.claimedLevelMilestones[key]) {
+                state.claimedLevelMilestones[key] = true;
+                state.luxuryChests += 1;
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            saveState(state);
+            updateAllAlertDots();
+        }
+    }
+
+    function getMissionsCatalog(state) {
+        return [
+            {
+                id: "w_40_games",
+                type: "WEEKLY",
+                title: "MARATHON RUNNER",
+                desc: "Play 40 games this week",
+                progress: state.weeklyGames,
+                target: 40,
+                rewardType: "xp",
+                rewardAmount: 500000,
+                rewardLabel: "+500,000 XP"
+            },
+            {
+                id: "m_200_games",
+                type: "MONTHLY",
+                title: "TRUE DEDICATION",
+                desc: "Play 200 games this month",
+                progress: state.monthlyGames,
+                target: 200,
+                rewardType: "maestro_base",
+                rewardAmount: 0,
+                rewardLabel: "RAINBOW NAME + MAESTRO"
+            },
+            {
+                id: "m_combo_150",
+                type: "MONTHLY",
+                title: "COMBO OVERLORD",
+                desc: "Reach a 150 Combo in a single run",
+                progress: state.monthlyBestCombo,
+                target: 150,
+                rewardType: "xp",
+                rewardAmount: 250000,
+                rewardLabel: "+250,000 XP"
+            },
+            {
+                id: "m_combo_360",
+                type: "MONTHLY",
+                title: "EXPLOSIVE REFLEXES",
+                desc: "Reach a 360 Combo (2x Explosion!)",
+                progress: state.monthlyBestCombo,
+                target: 360,
+                rewardType: "xp",
+                rewardAmount: 600000,
+                rewardLabel: "+600,000 XP"
+            },
+            {
+                id: "m_score_50k",
+                type: "MONTHLY",
+                title: "HIGH SCORER",
+                desc: "Score 50,000 points in one run",
+                progress: state.monthlyBestScore,
+                target: 50000,
+                rewardType: "xp",
+                rewardAmount: 300000,
+                rewardLabel: "+300,000 XP"
+            },
+            {
+                id: "m_total_500k",
+                type: "MONTHLY",
+                title: "POINT COLLECTOR",
+                desc: "Accumulate 500,000 total score this month",
+                progress: state.monthlyTotalScore,
+                target: 500000,
+                rewardType: "xp",
+                rewardAmount: 400000,
+                rewardLabel: "+400,000 XP"
+            }
+        ];
+    }
+
+    function applyAllCosmetics() {
+        const state = loadState();
+        const rawUsername = localStorage.getItem("timeTapUsername") || "PLAYER";
+        const homeName = document.getElementById("homeProfileName");
+        const homeTitle = document.getElementById("homeProfileTitle");
+        const modalName = document.getElementById("profileModalUsername");
+        const modalTitle = document.getElementById("equippedTitleLabel");
+
+const symItem = NAME_STYLES_CATALOG.find(s => s.id === state.equippedSymbol);
+const colItem = NAME_STYLES_CATALOG.find(s => s.id === state.equippedColor);
+const fontItem = NAME_STYLES_CATALOG.find(s => s.id === state.equippedFont);
+const decoratedName = (symItem ? symItem.prefix : "") + rawUsername;
+const styleClasses = ["name-style-gold", "name-style-cyan", "name-style-inferno", "rainbow-master-text", "name-font-arcade", "name-font-royal"];
+[homeName, modalName].forEach(el => {
+if (!el) return;
+el.textContent = decoratedName;
+styleClasses.forEach(c => el.classList.remove(c));
+if (colItem && colItem.cssClass) el.classList.add(colItem.cssClass);
+if (fontItem && fontItem.cssClass) el.classList.add(fontItem.cssClass);
+});
 const rankNum = state.activeMaestroRank;
-if (homeName) homeName.classList.toggle("rainbow-master-text", hasRainbowName);
-if (modalName) modalName.classList.toggle("rainbow-master-text", hasRainbowName);
 if (rankNum > 0) {
 const label = "MAESTRO " + ROMAN_NUMERALS[Math.min(5, rankNum)];
-if (homeTitle) {
-homeTitle.textContent = label;
-homeTitle.classList.add("maestro-title-badge");
-}
-if (modalTitle) {
-modalTitle.textContent = label;
-modalTitle.classList.add("maestro-title-badge");
-}
+if (homeTitle) { homeTitle.textContent = label; homeTitle.classList.add("maestro-title-badge"); }
+if (modalTitle) { modalTitle.textContent = label; modalTitle.classList.add("maestro-title-badge"); }
 } else if (state.claimedIds["m_200_games"]) {
-if (homeTitle) {
-homeTitle.textContent = "MAESTRO";
-homeTitle.classList.add("maestro-title-badge");
-}
-if (modalTitle) {
-modalTitle.textContent = "MAESTRO";
-modalTitle.classList.add("maestro-title-badge");
-}
+if (homeTitle) { homeTitle.textContent = "MAESTRO"; homeTitle.classList.add("maestro-title-badge"); }
+if (modalTitle) { modalTitle.textContent = "MAESTRO"; modalTitle.classList.add("maestro-title-badge"); }
 }
 }
 function checkAllMonthlyCompleted(state) {
@@ -2225,20 +2236,25 @@ if (allClaimed && state.lastCompletedMonthKey !== curMonth) {
 state.lastCompletedMonthKey = curMonth;
 state.masterStreak = Math.min(5, (state.masterStreak || 0) + 1);
 state.activeMaestroRank = state.masterStreak;
-saveMissionsState(state);
-applyMaestroCosmetics(state);
+saveState(state);
+applyAllCosmetics();
 }
 }
-function updateMissionAlertDot() {
-const state = loadMissionsState();
-const dot = document.getElementById("missionsAlertDot");
-if (!dot) return;
+function updateAllAlertDots() {
+const state = loadState();
+const mDot = document.getElementById("missionsAlertDot");
+if (mDot) {
 const dailyReady = state.lastDailyClaimDate !== getTodayDateKey();
 const anyMissionReady = getMissionsCatalog(state).some(m => m.progress >= m.target && !state.claimedIds[m.id]);
-dot.style.display = (dailyReady || anyMissionReady) ? "flex" : "none";
+mDot.style.display = (dailyReady || anyMissionReady) ? "flex" : "none";
+}
+const iDot = document.getElementById("inventoryAlertDot");
+if (iDot) {
+iDot.style.display = state.luxuryChests > 0 ? "flex" : "none";
+}
 }
 function renderMissionsModal() {
-const state = loadMissionsState();
+const state = loadState();
 const listContainer = document.getElementById("missionsListContainer");
 const claimDailyBtn = document.getElementById("claimDailyXpBtn");
 const streakBadge = document.getElementById("masterStreakBadge");
@@ -2255,28 +2271,26 @@ claimDailyBtn.classList.remove("claimed-disabled");
 }
 }
 if (streakBadge) {
-const rankLabel = state.activeMaestroRank > 0
+streakBadge.textContent = state.activeMaestroRank > 0
 ? "MAESTRO " + ROMAN_NUMERALS[state.activeMaestroRank] + " (" + state.masterStreak + "/5)"
 : "MASTER STREAK: " + state.masterStreak + " / 5";
-streakBadge.textContent = rankLabel;
 }
 if (!listContainer) return;
 listContainer.innerHTML = "";
-const catalog = getMissionsCatalog(state);
-catalog.forEach(m => {
+getMissionsCatalog(state).forEach(m => {
 const isClaimed = Boolean(state.claimedIds[m.id]);
 const isDone = m.progress >= m.target;
 const pct = Math.min(100, Math.round((m.progress / m.target) * 100));
 const card = document.createElement("div");
 card.className = "mission-card" + (isClaimed ? " mission-claimed" : (isDone ? " mission-ready" : ""));
-const tag = document.createElement("span");
-tag.className = "mission-type-pill " + (m.type === "WEEKLY" ? "pill-weekly" : "pill-monthly");
-tag.textContent = m.type;
 const header = document.createElement("div");
 header.className = "mission-card-top";
 const titleEl = document.createElement("span");
 titleEl.className = "mission-title";
 titleEl.textContent = m.title;
+const tag = document.createElement("span");
+tag.className = "mission-type-pill " + (m.type === "WEEKLY" ? "pill-weekly" : "pill-monthly");
+tag.textContent = m.type;
 header.appendChild(titleEl);
 header.appendChild(tag);
 const descEl = document.createElement("div");
@@ -2309,21 +2323,24 @@ actionBtn.disabled = true;
 actionBtn.textContent = "CLAIM!";
 actionBtn.classList.add("ready-pulse");
 actionBtn.addEventListener("click", () => {
-const fresh = loadMissionsState();
+const fresh = loadState();
 if (fresh.claimedIds[m.id]) return;
 fresh.claimedIds[m.id] = true;
-saveMissionsState(fresh);
-checkAllMonthlyCompleted(fresh);
-applyMaestroCosmetics(fresh);
-updateMissionAlertDot();
-if (m.rewardType === "xp" && m.rewardAmount > 0) {
-const cur = Number(localStorage.getItem("storedBonusXP")) || 0;
-localStorage.setItem("storedBonusXP", cur + m.rewardAmount);
-alert("REWARD CLAIMED: +" + m.rewardAmount.toLocaleString("it-IT") + " XP!");
-location.reload();
-} else {
-renderMissionsModal();
+if (m.rewardType === "maestro_base" && !fresh.unlockedStyles.includes("col_rainbow")) {
+fresh.unlockedStyles.push("col_rainbow");
+fresh.equippedColor = "col_rainbow";
 }
+saveState(fresh);
+checkAllMonthlyCompleted(fresh);
+applyAllCosmetics();
+updateAllAlertDots();
+if (m.rewardType === "xp" && m.rewardAmount > 0) {
+grantBonusXPAnimated(m.rewardAmount, "+" + m.rewardAmount.toLocaleString("it-IT") + " XP!");
+} else if (window.ttCoreBridge) {
+window.ttCoreBridge.playXpSound();
+showXpGainToast("RAINBOW NAME & MAESTRO UNLOCKED!");
+}
+renderMissionsModal();
 });
 } else {
 actionBtn.textContent = pct + "%";
@@ -2336,6 +2353,222 @@ card.appendChild(descEl);
 card.appendChild(barWrap);
 card.appendChild(footer);
 listContainer.appendChild(card);
+});
+}
+function renderInventoryModal() {
+const state = loadState();
+const grid = document.getElementById("inventoryGridContainer");
+if (!grid) return;
+grid.innerHTML = "";
+const items = [
+{
+icon: "CHEST",
+name: "LUXURY CHEST",
+qty: state.luxuryChests,
+desc: "Contains up to 1,000 XP, Boosters, Revives or rare Name Styles!",
+isChest: true,
+btnLabel: state.luxuryChests > 0 ? "OPEN CHEST" : "LOCKED",
+disabled: state.luxuryChests <= 0,
+onAction: () => openLuxuryChestModal()
+},
+{
+icon: "+3.0s",
+name: "CONTINUE TOKEN",
+qty: state.reviveTokens,
+desc: "Use on Game Over to continue your run with +3.0s!",
+isChest: false,
+btnLabel: "USE IN GAME OVER",
+disabled: true
+},
+{
+icon: "+15%",
+name: "+15% XP BOOST",
+qty: state.xp15Tokens,
+desc: "Use at the end of a run to boost earned XP by +15%!",
+isChest: false,
+btnLabel: "USE IN GAME OVER",
+disabled: true
+},
+{
+icon: "2X XP",
+name: "2X XP DOUBLER",
+qty: state.xp2xTokens,
+desc: "Ultra-rare chest drop! Doubles all XP earned at Game Over!",
+isChest: false,
+btnLabel: "USE IN GAME OVER",
+disabled: true
+}
+];
+items.forEach(it => {
+const card = document.createElement("div");
+card.className = "item-card" + (it.isChest ? " luxury-item-card" : "");
+const badge = document.createElement("div");
+badge.className = "item-icon-badge";
+badge.textContent = it.icon;
+const nameEl = document.createElement("div");
+nameEl.className = "item-name";
+nameEl.textContent = it.name;
+const qtyPill = document.createElement("div");
+qtyPill.className = "item-qty-pill";
+qtyPill.textContent = "OWNED: " + it.qty;
+const descEl = document.createElement("div");
+descEl.className = "item-desc";
+descEl.textContent = it.desc;
+const btn = document.createElement("button");
+btn.className = "item-action-btn";
+btn.textContent = it.btnLabel;
+btn.disabled = it.disabled;
+if (!it.disabled && it.onAction) {
+btn.addEventListener("click", it.onAction);
+}
+card.appendChild(badge);
+card.appendChild(nameEl);
+card.appendChild(qtyPill);
+card.appendChild(descEl);
+card.appendChild(btn);
+grid.appendChild(card);
+});
+}
+function rollLuxuryChestReward(state) {
+const r = Math.random();
+if (r < 0.05) {
+state.xp2xTokens += 1;
+return { rarity: "LEGENDARY", rarityClass: "rarity-legendary", name: "2X XP DOUBLER!", desc: "Ultra-rare booster added to your Items!" };
+}
+if (r < 0.30) {
+const locked = NAME_STYLES_CATALOG.filter(s => !s.free && !state.unlockedStyles.includes(s.id));
+if (locked.length > 0) {
+const picked = locked[Math.floor(Math.random() * locked.length)];
+state.unlockedStyles.push(picked.id);
+return {
+rarity: picked.rarity,
+rarityClass: "rarity-" + picked.rarity.toLowerCase(),
+name: "STYLE: " + picked.name,
+desc: "Equip it in Profile -> Customize Name!"
+};
+}
+}
+if (r < 0.55) {
+if (Math.random() < 0.5) {
+state.xp15Tokens += 1;
+return { rarity: "RARE", rarityClass: "rarity-rare", name: "+15% XP BOOSTER", desc: "Added to your Items!" };
+} else {
+state.reviveTokens += 1;
+return { rarity: "RARE", rarityClass: "rarity-rare", name: "+1 CONTINUE TOKEN", desc: "Added to your Items!" };
+}
+}
+const xpWon = 250 + Math.floor(Math.random() * 751);
+return {
+rarity: "COMMON",
+rarityClass: "rarity-common",
+name: "+" + xpWon + " XP",
+desc: "Bonus XP added to your level!",
+xpAmount: xpWon
+};
+}
+function openLuxuryChestModal() {
+const modal = document.getElementById("chestOpenModal");
+const box = document.getElementById("chestVisualBox");
+const rewDisplay = document.getElementById("chestRewardDisplay");
+const openBtn = document.getElementById("openChestActionBtn");
+const closeBtn = document.getElementById("closeChestActionBtn");
+if (!modal) return;
+box.className = "luxury-chest-box";
+rewDisplay.style.display = "none";
+openBtn.style.display = "block";
+closeBtn.style.display = "none";
+modal.style.display = "flex";
+openBtn.onclick = () => {
+const state = loadState();
+if (state.luxuryChests <= 0) return;
+state.luxuryChests -= 1;
+const prize = rollLuxuryChestReward(state);
+saveState(state);
+openBtn.style.display = "none";
+box.classList.add("chest-shaking");
+if (window.ttCoreBridge) window.ttCoreBridge.playClick();
+setTimeout(() => {
+box.classList.remove("chest-shaking");
+box.classList.add("chest-opened");
+const rarEl = document.getElementById("chestRewardRarity");
+const nameEl = document.getElementById("chestRewardName");
+const descEl = document.getElementById("chestRewardDesc");
+if (rarEl) { rarEl.textContent = prize.rarity; rarEl.className = "rarity-badge " + prize.rarityClass; }
+if (nameEl) nameEl.textContent = prize.name;
+if (descEl) descEl.textContent = prize.desc;
+rewDisplay.style.display = "flex";
+closeBtn.style.display = "block";
+if (prize.xpAmount) {
+grantBonusXPAnimated(prize.xpAmount, "+" + prize.xpAmount + " XP!");
+} else if (window.ttCoreBridge) {
+window.ttCoreBridge.playNewRecord();
+}
+if (window.ttCoreBridge) {
+window.ttCoreBridge.fireworks(document.getElementById("chestFireworksContainer"));
+}
+updateAllAlertDots();
+renderInventoryModal();
+}, 700);
+};
+closeBtn.onclick = () => {
+modal.style.display = "none";
+};
+}
+function renderNameCustomModal() {
+const state = loadState();
+const rawUsername = localStorage.getItem("timeTapUsername") || "PLAYER";
+const preview = document.getElementById("nameCustomPreview");
+const container = document.getElementById("nameStylesContainer");
+if (preview) {
+const symItem = NAME_STYLES_CATALOG.find(s => s.id === state.equippedSymbol);
+const colItem = NAME_STYLES_CATALOG.find(s => s.id === state.equippedColor);
+const fontItem = NAME_STYLES_CATALOG.find(s => s.id === state.equippedFont);
+preview.textContent = (symItem ? symItem.prefix : "") + rawUsername;
+preview.className = "name-custom-preview";
+if (colItem && colItem.cssClass) preview.classList.add(colItem.cssClass);
+if (fontItem && fontItem.cssClass) preview.classList.add(fontItem.cssClass);
+}
+if (!container) return;
+container.innerHTML = "";
+NAME_STYLES_CATALOG.forEach(item => {
+const isUnlocked = item.free || state.unlockedStyles.includes(item.id);
+const isEquipped =
+(item.category === "COLOR" && state.equippedColor === item.id) ||
+(item.category === "FONT" && state.equippedFont === item.id) ||
+(item.category === "SYMBOL" && state.equippedSymbol === item.id);
+const card = document.createElement("div");
+card.className = "style-option-card" + (isEquipped ? " equipped-style" : (!isUnlocked ? " locked-style" : ""));
+const rar = document.createElement("span");
+rar.className = "rarity-badge rarity-" + item.rarity.toLowerCase();
+rar.textContent = item.rarity;
+const sample = document.createElement("div");
+sample.className = "style-sample-text " + (item.cssClass || "");
+sample.textContent = item.prefix ? (item.prefix + item.name) : item.name;
+const btn = document.createElement("button");
+btn.className = "item-action-btn";
+if (!isUnlocked) {
+btn.textContent = "IN CHESTS";
+btn.disabled = true;
+} else if (isEquipped) {
+btn.textContent = "EQUIPPED";
+btn.disabled = true;
+} else {
+btn.textContent = "EQUIP";
+btn.addEventListener("click", () => {
+const fresh = loadState();
+if (item.category === "COLOR") fresh.equippedColor = item.id;
+else if (item.category === "FONT") fresh.equippedFont = item.id;
+else if (item.category === "SYMBOL") fresh.equippedSymbol = item.id;
+saveState(fresh);
+applyAllCosmetics();
+if (window.ttCoreBridge) window.ttCoreBridge.playClick();
+renderNameCustomModal();
+});
+}
+card.appendChild(rar);
+card.appendChild(sample);
+card.appendChild(btn);
+container.appendChild(card);
 });
 }
 function triggerComboExplosion180(comboValue) {
@@ -2352,28 +2585,27 @@ gameEl.classList.add("mega-explosion-shake");
 setTimeout(() => gameEl.classList.remove("mega-explosion-shake"), 550);
 const banner = document.createElement("div");
 banner.className = "combo-explosion-banner";
-banner.textContent = "BOOM! " + comboValue + " COMBO x" + tier + "!";
+banner.textContent = "COMBO " + comboValue + " x" + tier + "!";
 gameEl.appendChild(banner);
 setTimeout(() => banner.remove(), 1400);
 const colors = ["#fde047", "#ef4444", "#fb923c", "#38bdf8", "#a855f7", "#ffffff"];
-const particleCount = Math.min(70, 32 + tier * 10);
+const particleCount = Math.min(60, 28 + tier * 8);
 for (let i = 0; i < particleCount; i++) {
 const p = document.createElement("span");
 p.className = "explosion-shard";
-const sz = (8 + Math.random() * 10).toFixed(0) + "px";
+const sz = (8 + Math.random() * 9).toFixed(0) + "px";
 const col = colors[Math.floor(Math.random() * colors.length)];
 p.style.width = sz;
 p.style.height = sz;
 p.style.background = col;
-p.style.boxShadow = "0 0 12px " + col;
 p.style.left = "50%";
 p.style.top = "50%";
 const angle = (Math.PI * 2 * i) / particleCount + (Math.random() * 0.2);
-const dist = 110 + Math.random() * 230;
+const dist = 110 + Math.random() * 220;
 p.style.setProperty("--dx", (Math.cos(angle) * dist) + "px");
 p.style.setProperty("--dy", (Math.sin(angle) * dist) + "px");
 gameEl.appendChild(p);
-setTimeout(() => p.remove(), 800);
+setTimeout(() => p.remove(), 750);
 }
 }
 let cachedTopRecordPlayers = [];
@@ -2401,7 +2633,7 @@ cachedTopComboPlayers = rows.filter(r => r.username && r.username !== myName && 
 }
 } catch (e) {}
 }
-function showRivalInGameToast(text) {
+function showRivalInGameToast(text, spokenPhrase) {
 const gameEl = document.getElementById("game");
 if (!gameEl) return;
 const existing = document.getElementById("rivalInGameAlert");
@@ -2411,23 +2643,24 @@ toast.id = "rivalInGameAlert";
 toast.className = "rival-ingame-toast";
 toast.textContent = text;
 gameEl.appendChild(toast);
+if (window.ttCoreBridge) {
+window.ttCoreBridge.playNewRecord();
+if (spokenPhrase) window.ttCoreBridge.speak(spokenPhrase);
+}
 setTimeout(() => { if (toast.parentNode) toast.remove(); }, 2600);
 }
 function findNextRivalAbove(list, field, currentVal) {
-let candidate = null;
 for (let i = list.length - 1; i >= 0; i--) {
 const val = Number(list[i][field] || 0);
 if (val > currentVal) {
-candidate = { username: list[i].username, value: val, diff: val - currentVal };
-break;
+return { username: list[i].username, value: val, diff: val - currentVal };
 }
 }
-return candidate;
+return null;
 }
-window.ttMissionEngine = {
-refreshCosmetics() {
-applyMaestroCosmetics(loadMissionsState());
-},
+window.ttProgressionEngine = {
+syncLevelMilestones,
+applyAllCosmetics,
 onRunStart() {
 nearRecordToastShown = false;
 nearComboToastShown = false;
@@ -2439,28 +2672,34 @@ triggerComboExplosion180(currentCombo);
 }
 if (!nearComboToastShown && cachedTopComboPlayers.length > 0) {
 const nextComboRival = findNextRivalAbove(cachedTopComboPlayers, "best_combo", currentCombo);
-if (nextComboRival && nextComboRival.diff <= 35) {
+if (nextComboRival && nextComboRival.diff <= 50) {
 nearComboToastShown = true;
-showRivalInGameToast("CLOSE TO " + nextComboRival.username + "! ONLY " + nextComboRival.diff + " COMBO LEFT!");
+showRivalInGameToast(
+"ONLY " + nextComboRival.diff + " COMBO TO PASS " + nextComboRival.username + "!",
+"Only " + nextComboRival.diff + " combo left to pass " + nextComboRival.username + "!"
+);
 }
 }
 if (!nearRecordToastShown && cachedTopRecordPlayers.length > 0) {
 const nextRecRival = findNextRivalAbove(cachedTopRecordPlayers, "record", currentScore);
 if (nextRecRival && nextRecRival.diff <= 1500) {
 nearRecordToastShown = true;
-showRivalInGameToast("ALMOST PASSED " + nextRecRival.username + "! -" + nextRecRival.diff.toLocaleString("it-IT") + " PTS!");
+showRivalInGameToast(
+"ONLY " + nextRecRival.diff.toLocaleString("it-IT") + " PTS TO PASS " + nextRecRival.username + "!",
+"Almost passed " + nextRecRival.username + "!"
+);
 }
 }
 },
-onRunEnd(runScore, runMaxCombo) {
-const state = loadMissionsState();
+onRunEnd(runScore, runMaxCombo, secondChanceAlreadyUsed) {
+const state = loadState();
 state.weeklyGames += 1;
 state.monthlyGames += 1;
 state.monthlyTotalScore += runScore;
 if (runMaxCombo > state.monthlyBestCombo) state.monthlyBestCombo = runMaxCombo;
 if (runScore > state.monthlyBestScore) state.monthlyBestScore = runScore;
-saveMissionsState(state);
-updateMissionAlertDot();
+saveState(state);
+updateAllAlertDots();
 const summaryBox = document.getElementById("rivalSummaryBox");
 if (summaryBox) {
 const bestRecEver = Math.max(Number(localStorage.getItem("record")) || 0, runScore);
@@ -2468,17 +2707,75 @@ const bestComEver = Math.max(Number(localStorage.getItem("bestCombo")) || 0, run
 const recRival = findNextRivalAbove(cachedTopRecordPlayers, "record", bestRecEver);
 const comRival = findNextRivalAbove(cachedTopComboPlayers, "best_combo", bestComEver);
 const lines = [];
-if (recRival) {
-lines.push("NEXT RECORD RIVAL (" + recRival.username + "): -" + recRival.diff.toLocaleString("it-IT") + " PTS");
-}
-if (comRival) {
-lines.push("NEXT COMBO RIVAL (" + comRival.username + "): -" + comRival.diff.toLocaleString("it-IT") + " COMBO");
-}
+if (recRival) lines.push("NEXT RECORD RIVAL (" + recRival.username + "): -" + recRival.diff.toLocaleString("it-IT") + " PTS");
+if (comRival) lines.push("NEXT COMBO RIVAL (" + comRival.username + "): -" + comRival.diff.toLocaleString("it-IT") + " COMBO");
 if (lines.length > 0) {
 summaryBox.innerText = lines.join("\n");
 summaryBox.style.display = "block";
 } else {
 summaryBox.style.display = "none";
+}
+}
+const revBtn = document.getElementById("useReviveTokenBtn");
+const xp15Btn = document.getElementById("useXp15TokenBtn");
+const xp2xBtn = document.getElementById("useXp2xTokenBtn");
+if (revBtn) {
+if (!secondChanceAlreadyUsed && runScore > 0 && state.reviveTokens > 0) {
+revBtn.style.display = "block";
+revBtn.textContent = "CONTINUE (" + state.reviveTokens + ")";
+revBtn.onclick = () => {
+const s = loadState();
+if (s.reviveTokens <= 0) return;
+s.reviveTokens -= 1;
+saveState(s);
+if (window.ttCoreBridge) window.ttCoreBridge.reviveRun();
+};
+} else {
+revBtn.style.display = "none";
+}
+}
+if (xp15Btn) {
+if (state.xp15Tokens > 0) {
+xp15Btn.style.display = "block";
+xp15Btn.disabled = false;
+xp15Btn.textContent = "+15% XP (" + state.xp15Tokens + ")";
+xp15Btn.onclick = () => {
+const s = loadState();
+if (s.xp15Tokens <= 0) return;
+s.xp15Tokens -= 1;
+saveState(s);
+if (window.ttCoreBridge) {
+const added = window.ttCoreBridge.applyRunXpMultiplier(1.15);
+window.ttCoreBridge.playXpSound();
+showXpGainToast("+" + added.toLocaleString("it-IT") + " BONUS XP!");
+}
+xp15Btn.style.display = "none";
+if (xp2xBtn) xp2xBtn.style.display = "none";
+};
+} else {
+xp15Btn.style.display = "none";
+}
+}
+if (xp2xBtn) {
+if (state.xp2xTokens > 0) {
+xp2xBtn.style.display = "block";
+xp2xBtn.disabled = false;
+xp2xBtn.textContent = "2X XP (" + state.xp2xTokens + ")";
+xp2xBtn.onclick = () => {
+const s = loadState();
+if (s.xp2xTokens <= 0) return;
+s.xp2xTokens -= 1;
+saveState(s);
+if (window.ttCoreBridge) {
+const added = window.ttCoreBridge.applyRunXpMultiplier(2.0);
+window.ttCoreBridge.playXpSound();
+showXpGainToast("2X XP! +" + added.toLocaleString("it-IT") + " XP!");
+}
+xp2xBtn.style.display = "none";
+if (xp15Btn) xp15Btn.style.display = "none";
+};
+} else {
+xp2xBtn.style.display = "none";
 }
 }
 }
@@ -2489,31 +2786,67 @@ const closeMissionsBtn = document.getElementById("closeMissionsBtn");
 const claimDailyXpBtn = document.getElementById("claimDailyXpBtn");
 if (missionsBtn && missionsModal) {
 missionsBtn.addEventListener("click", () => {
+if (window.ttCoreBridge) window.ttCoreBridge.playClick();
 renderMissionsModal();
 missionsModal.style.display = "flex";
 });
 }
 if (closeMissionsBtn && missionsModal) {
 closeMissionsBtn.addEventListener("click", () => {
+if (window.ttCoreBridge) window.ttCoreBridge.playClick();
 missionsModal.style.display = "none";
 });
 }
 if (claimDailyXpBtn) {
 claimDailyXpBtn.addEventListener("click", () => {
-const state = loadMissionsState();
+const state = loadState();
 const today = getTodayDateKey();
 if (state.lastDailyClaimDate === today) return;
 state.lastDailyClaimDate = today;
-saveMissionsState(state);
-const cur = Number(localStorage.getItem("storedBonusXP")) || 0;
-localStorage.setItem("storedBonusXP", cur + 10000);
-updateMissionAlertDot();
-alert("DAILY GIFT CLAIMED: +10,000 XP!");
-location.reload();
+saveState(state);
+updateAllAlertDots();
+grantBonusXPAnimated(10000, "+10,000 DAILY XP!");
+renderMissionsModal();
 });
 }
-const initialState = loadMissionsState();
-applyMaestroCosmetics(initialState);
-updateMissionAlertDot();
+const inventoryBtn = document.getElementById("inventoryBtn");
+const inventoryModal = document.getElementById("inventoryModal");
+const closeInventoryBtn = document.getElementById("closeInventoryBtn");
+if (inventoryBtn && inventoryModal) {
+inventoryBtn.addEventListener("click", () => {
+if (window.ttCoreBridge) window.ttCoreBridge.playClick();
+renderInventoryModal();
+inventoryModal.style.display = "flex";
+});
+}
+if (closeInventoryBtn && inventoryModal) {
+closeInventoryBtn.addEventListener("click", () => {
+if (window.ttCoreBridge) window.ttCoreBridge.playClick();
+inventoryModal.style.display = "none";
+});
+}
+const openNameCustomBtn = document.getElementById("openNameCustomBtn");
+const nameCustomModal = document.getElementById("nameCustomModal");
+const closeNameCustomBtn = document.getElementById("closeNameCustomBtn");
+if (openNameCustomBtn && nameCustomModal) {
+openNameCustomBtn.addEventListener("click", () => {
+if (window.ttCoreBridge) window.ttCoreBridge.playClick();
+renderNameCustomModal();
+nameCustomModal.style.display = "flex";
+});
+}
+if (closeNameCustomBtn && nameCustomModal) {
+closeNameCustomBtn.addEventListener("click", () => {
+if (window.ttCoreBridge) window.ttCoreBridge.playClick();
+nameCustomModal.style.display = "none";
+});
+}
+applyAllCosmetics();
+updateAllAlertDots();
 fetchRivalsLeaderboard();
 })();
+if (document.readyState === "loading") {
+document.addEventListener("DOMContentLoaded", initTimeTapGame);
+} else {
+initTimeTapGame();
+}
