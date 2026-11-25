@@ -2,7 +2,7 @@ function initTimeTapGame() {
     const SUPABASE_URL ="https://jnhkktvtxbsfbrafsnig.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaGtrdHZ0eGJzZmJyYWZzbmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NTMzNjAsImV4cCI6MjExMTAyOTM2MH0.xRde38jj8K1cBpbXIIDyc14OMSsjRVUMkqTEvwDq2Tw";
 
-    const onboardingScreen = document.getElementById("onboardingScreen");
+const onboardingScreen = document.getElementById("onboardingScreen");
     const usernameInput = document.getElementById("usernameInput");
     const onboardingErrorMsg = document.getElementById("onboardingErrorMsg");
     const saveProfileBtn = document.getElementById("saveProfileBtn");
@@ -125,6 +125,7 @@ function initTimeTapGame() {
     let isFrozen = false;
     let isSlowMo = false;
     let isAnimatingRecord = false;
+    let secondChanceUsed = false;
     let normalSpawnsSinceLastSpecial = 8;
 
     let freezeRemainingMs = 0;
@@ -302,26 +303,20 @@ return true;
 }
 }
 async function syncPlayerToCloud(usernameToSave, oldUsernameToRemove = "") {
-if (!usernameToSave) return;
+if (!usernameToSave || containsProfanity(usernameToSave)) return;
 const currentXP = calculateTotalXP();
 const { currentTier } = getCurrentAndNextTier(currentXP);
-const payload = {
-username: usernameToSave,
-record: record,
-best_combo: bestCombo,
-level: currentTier.level
-};
 try {
-if (oldUsernameToRemove && oldUsernameToRemove !== usernameToSave) {
-await fetch(SUPABASE_URL + "/rest/v1/players?username=eq." + encodeURIComponent(oldUsernameToRemove), {
-method: "DELETE",
-headers: sbHeaders()
-});
-}
-await fetch(SUPABASE_URL + "/rest/v1/players?on_conflict=username", {
+await fetch(SUPABASE_URL + "/rest/v1/rpc/submit_player_score", {
 method: "POST",
-headers: sbHeaders({ "Prefer": "resolution=merge-duplicates" }),
-body: JSON.stringify(payload)
+headers: sbHeaders(),
+body: JSON.stringify({
+p_username: usernameToSave,
+p_record: record,
+p_best_combo: bestCombo,
+p_level: currentTier.level,
+p_old_username: oldUsernameToRemove || ""
+})
 });
 } catch (e) {}
 }
@@ -402,9 +397,12 @@ try {
 const url = SUPABASE_URL + "/rest/v1/players?select=username," + field + "&order=" + field + ".desc";
 const res = await fetch(url, { headers: sbHeaders() });
 if (!res.ok) throw new Error("Fetch failed");
-const allPlayers = await res.json();
+const rawPlayers = await res.json();
+const allPlayers = Array.isArray(rawPlayers)
+? rawPlayers.filter(p => p && p.username && !containsProfanity(p.username))
+: [];
 leaderboardListContainer.innerHTML = "";
-if (!Array.isArray(allPlayers) || allPlayers.length === 0) {
+if (allPlayers.length === 0) {
 const emptyEl = document.createElement("div");
 emptyEl.className = "lb-loading";
 emptyEl.textContent = "NO PLAYERS YET!";
@@ -490,8 +488,8 @@ const xpFromScore = Math.floor(totalScoreAccumulated * 0.04);
 return Math.min(MAX_XP, xpFromGames + xpFromRecord + xpFromScore + storedBonusXP);
 }
 function getCurrentAndNextTier(currentXP) {
-let currentTier = LEVELS_CONFIG;
-let nextTier = LEVELS_CONFIG || null;
+let currentTier = LEVELS_CONFIG[0];
+let nextTier = LEVELS_CONFIG[1] || null;
 for (let i = 0; i < LEVELS_CONFIG.length; i++) {
 const item = LEVELS_CONFIG[i];
 if (currentXP >= item.xpRequired) {
@@ -578,6 +576,9 @@ if (profileBestCombo) profileBestCombo.textContent = fmtNum(bestCombo);
 if (profileCurrentRank) profileCurrentRank.textContent = currentTier.name;
 lastKnownXP = currentXP;
 updateHomePlayButtonState();
+if (window.ttMissionEngine && window.ttMissionEngine.refreshCosmetics) {
+window.ttMissionEngine.refreshCosmetics();
+}
 }
 if (profileCornerBtn && profileModal) {
 profileCornerBtn.addEventListener("click", () => {
@@ -1077,6 +1078,44 @@ pauseCooldownRemainingMs = PAUSE_COOLDOWN_MS;
 updatePauseButtonUI();
 });
 }
+function showRewardedAd(onRewardCallback) {
+if (window.CrazyGames && window.CrazyGames.SDK && window.CrazyGames.SDK.ad) {
+window.CrazyGames.SDK.ad.requestAd("rewarded", {
+adFinished: () => onRewardCallback(),
+adError: () => showMessage("AD NOT READY", "")
+});
+return;
+}
+if (window.PokiSDK && typeof window.PokiSDK.rewardedBreak === "function") {
+window.PokiSDK.rewardedBreak().then((success) => {
+if (success) onRewardCallback();
+});
+return;
+}
+if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) {
+window.Capacitor.Plugins.AdMob.showRewardVideoAd()
+.then(() => onRewardCallback())
+.catch(() => showMessage("AD NOT READY", ""));
+return;
+}
+onRewardCallback();
+}
+function reviveRunAfterAd() {
+if (gameOverScreen) gameOverScreen.style.display = "none";
+if (game) game.style.display = "block";
+secondChanceUsed = true;
+time = 3.0;
+isFrozen = false;
+isSlowMo = false;
+if (timerCircle) timerCircle.textContent = time.toFixed(1);
+updateTimerVisuals();
+running = true;
+isPaused = true;
+runResumeCountdown(() => {
+isPaused = false;
+startGame(true);
+});
+}
 function finalizeRunStatsAndShowSummary() {
 const xpBeforeRun = calculateTotalXP();
 const isNewBest = score > record && score > 0;
@@ -1122,6 +1161,9 @@ goXpProgressText.textContent = nextAfter
 ? fmtNum(xpAfterRun) + " / " + fmtNum(nextAfter.xpRequired) + " XP"
 : fmtNum(xpAfterRun) + " XP";
 }
+if (reviveBtn) {
+reviveBtn.style.display = (!secondChanceUsed && score > 0) ? "block" : "none";
+}
 if (menu) menu.style.display = "none";
 if (gameOverScreen) gameOverScreen.style.display = "flex";
 finalScore.textContent = fmtNum(score);
@@ -1151,6 +1193,7 @@ playSynthEffect("gameover");
 speakEnglish("Game over!", 0.95, 0.95);
 finalRecord.textContent = fmtNum(record);
 }
+if (window.ttMissionEngine) window.ttMissionEngine.onRunEnd(score, maxComboRun);
 refreshAllProfileAndRankUI(xpBeforeRun);
 syncPlayerToCloud(playerUsername);
 }
@@ -1169,6 +1212,7 @@ isSlowMo = false;
 doubleBonus = false;
 overdriveRemainingMs = 0;
 pauseCooldownRemainingMs = 0;
+secondChanceUsed = false;
 updatePauseButtonUI();
 clearInterval(gameLoopInterval);
 while (activeButtons.length > 0) {
@@ -1195,7 +1239,8 @@ timerCircle.classList.remove("timer-panic", "timer-frozen", "timer-slowmo", "tim
 if (scoreText) scoreText.textContent = "SCORE: 0";
 if (comboText) {
 comboText.textContent = "COMBO 0";
-comboText.classList.remove("combo-fire");
+comboText.
+classList.remove("combo-fire");
 }
 refreshAllProfileAndRankUI(xpAtEnter);
 checkAndTriggerRankUpCelebration();
@@ -1249,7 +1294,9 @@ isSlowMo = Boolean(saved.isSlowMo);
 slowMoRemainingMs = saved.slowMoRemainingMs || 0;
 overdriveRemainingMs = saved.overdriveRemainingMs || 0;
 pauseCooldownRemainingMs = 0;
+secondChanceUsed = false;
 stopHomeSymphony();
+if (window.ttMissionEngine) window.ttMissionEngine.onRunStart();
 if (menu) menu.style.display = "none";
 if (game) game.style.display = "block";
 timerCircle.textContent = time.toFixed(1);
@@ -1327,6 +1374,7 @@ comboCount = 0;
 maxComboRun = 0;
 overdriveRemainingMs = 0;
 pauseCooldownRemainingMs = 0;
+secondChanceUsed = false;
 updatePauseButtonUI();
 normalSpawnsSinceLastSpecial = 8;
 if (timerCircle) timerCircle.textContent = time.toFixed(1);
@@ -1390,6 +1438,8 @@ speakEnglish(spoken, 1.08, pitch);
 function startCountdown() {
 initAudio();
 stopHomeSymphony();
+if (window.ttMissionEngine) window.ttMissionEngine.onRunStart();
+secondChanceUsed = false;
 pauseCooldownRemainingMs = 0;
 updatePauseButtonUI();
 menu.style.display = "none";
@@ -1619,7 +1669,7 @@ btn.classList.add("button-circle");
 let valueText = "";
 if (type === "green") {
 btn.classList.add("green");
-const greenOptions = isDesktop ? [0.300, 0.320, 0.350, 0.380] : [0.250, 0.300, 0.350, 0.380];
+const greenOptions = isDesktop ? [0.400, 0.450, 0.500, 0.550] : [0.280, 0.300, 0.350, 0.380];
 const value = forcedConfig ? Number(valueStr) : greenOptions[Math.floor(Math.random() * greenOptions.length)];
 btn.dataset.value = value;
 valueText = "+" + value.toFixed(3);
@@ -1751,6 +1801,7 @@ comboCount++;
 if (comboCount > maxComboRun) maxComboRun = comboCount;
 const earnedPoints = 100 + comboCount * 20;
 score += earnedPoints;
+if (window.ttMissionEngine) window.ttMissionEngine.onGreenHit(score, comboCount);
 if (timerCircle) {
 timerCircle.classList.remove("timer-bounce");
 void timerCircle.offsetWidth;
@@ -1988,3 +2039,481 @@ document.addEventListener("DOMContentLoaded", initTimeTapGame);
 } else {
 initTimeTapGame();
 }
+/* ==========================================================================
+ESTENSIONE MISSIONI, PREMIO GIORNALIERO, MAESTRO I-V, ESPLOSIONI 180 & RIVALI
+========================================================================== */
+(function initTimeTapMissionsExtension() {
+const SUPABASE_URL = "https://jnhkktvtxbsfbrafsnig.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaGtrdHZ0eGJzZmJyYWZzbmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NTMzNjAsImV4cCI6MjExMTAyOTM2MH0.xRde38jj8K1cBpbXIIDyc14OMSsjRVUMkqTEvwDq2Tw";
+const MISSIONS_STORAGE_KEY = "timeTapMissionsState_v1";
+const ROMAN_NUMERALS = ["", "I", "II", "III", "IV", "V"];
+function getCurrentMonthKey() {
+const d = new Date();
+return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+}
+function getCurrentWeekKey() {
+const d = new Date();
+const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+const dayNum = date.getUTCDay() || 7;
+date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+return date.getUTCFullYear() + "-W" + String(weekNo).padStart(2, "0");
+}
+function getTodayDateKey() {
+const d = new Date();
+return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function getPreviousMonthKey(monthKey) {
+const [y, m] = monthKey.split("-").map(Number);
+if (m === 1) return (y - 1) + "-12";
+return y + "-" + String(m - 1).padStart(2, "0");
+}
+function loadMissionsState() {
+const curMonth = getCurrentMonthKey();
+const curWeek = getCurrentWeekKey();
+let state = {
+monthKey: curMonth,
+weekKey: curWeek,
+lastDailyClaimDate: "",
+weeklyGames: 0,
+monthlyGames: 0,
+monthlyBestCombo: 0,
+monthlyBestScore: 0,
+monthlyTotalScore: 0,
+claimedIds: {},
+masterStreak: 0,
+lastCompletedMonthKey: "",
+activeMaestroRank: 0
+};
+try {
+const raw = localStorage.getItem(MISSIONS_STORAGE_KEY);
+if (raw) {
+const parsed = JSON.parse(raw);
+state = Object.assign(state, parsed);
+}
+} catch (e) {}
+if (state.weekKey !== curWeek) {
+state.weekKey = curWeek;
+state.weeklyGames = 0;
+delete state.claimedIds["w_40_games"];
+}
+if (state.monthKey !== curMonth) {
+const prevMonth = getPreviousMonthKey(curMonth);
+if (state.lastCompletedMonthKey !== prevMonth) {
+state.masterStreak = 0;
+state.activeMaestroRank = 0;
+}
+state.monthKey = curMonth;
+state.monthlyGames = 0;
+state.monthlyBestCombo = 0;
+state.monthlyBestScore = 0;
+state.monthlyTotalScore = 0;
+state.claimedIds = {};
+}
+saveMissionsState(state);
+return state;
+}
+function saveMissionsState(state) {
+localStorage.setItem(MISSIONS_STORAGE_KEY, JSON.stringify(state));
+}
+function getMissionsCatalog(state) {
+return [
+{
+id: "w_40_games",
+type: "WEEKLY",
+title: "MARATHON RUNNER",
+desc: "Play 40 games this week",
+progress: state.weeklyGames,
+target: 40,
+rewardType: "xp",
+rewardAmount: 500000,
+rewardLabel: "+500,000 XP"
+},
+{
+id: "m_200_games",
+type: "MONTHLY",
+title: "TRUE DEDICATION",
+desc: "Play 200 games this month",
+progress: state.monthlyGames,
+target: 200,
+rewardType: "maestro_base",
+rewardAmount: 0,
+rewardLabel: "RAINBOW NAME + MAESTRO"
+},
+{
+id: "m_combo_150",
+type: "MONTHLY",
+title: "COMBO OVERLORD",
+desc: "Reach a 150 Combo in a single run",
+progress: state.monthlyBestCombo,
+target: 150,
+rewardType: "xp",
+rewardAmount: 250000,
+rewardLabel: "+250,000 XP"
+},
+{
+id: "m_combo_360",
+type: "MONTHLY",
+title: "EXPLOSIVE REFLEXES",
+desc: "Reach a 360 Combo (2x Explosion!)",
+progress: state.monthlyBestCombo,
+target: 360,
+rewardType: "xp",
+rewardAmount: 600000,
+rewardLabel: "+600,000 XP"
+},
+{
+id: "m_score_50k",
+type: "MONTHLY",
+title: "HIGH SCORER",
+desc: "Score 50,000 points in one run",
+progress: state.monthlyBestScore,
+target: 50000,
+rewardType: "xp",
+rewardAmount: 300000,
+rewardLabel: "+300,000 XP"
+},
+{
+id: "m_total_500k",
+type: "MONTHLY",
+title: "POINT COLLECTOR",
+desc: "Accumulate 500,000 total score this month",
+progress: state.monthlyTotalScore,
+target: 500000,
+rewardType: "xp",
+rewardAmount: 400000,
+rewardLabel: "+400,000 XP"
+}
+];
+}
+function applyMaestroCosmetics(state) {
+const homeName = document.getElementById("homeProfileName");
+const homeTitle = document.getElementById("homeProfileTitle");
+const modalName = document.getElementById("profileModalUsername");
+const modalTitle = document.getElementById("equippedTitleLabel");
+const hasRainbowName = Boolean(state.claimedIds["m_200_games"]) || state.activeMaestroRank > 0;
+const rankNum = state.activeMaestroRank;
+if (homeName) homeName.classList.toggle("rainbow-master-text", hasRainbowName);
+if (modalName) modalName.classList.toggle("rainbow-master-text", hasRainbowName);
+if (rankNum > 0) {
+const label = "MAESTRO " + ROMAN_NUMERALS[Math.min(5, rankNum)];
+if (homeTitle) {
+homeTitle.textContent = label;
+homeTitle.classList.add("maestro-title-badge");
+}
+if (modalTitle) {
+modalTitle.textContent = label;
+modalTitle.classList.add("maestro-title-badge");
+}
+} else if (state.claimedIds["m_200_games"]) {
+if (homeTitle) {
+homeTitle.textContent = "MAESTRO";
+homeTitle.classList.add("maestro-title-badge");
+}
+if (modalTitle) {
+modalTitle.textContent = "MAESTRO";
+modalTitle.classList.add("maestro-title-badge");
+}
+}
+}
+function checkAllMonthlyCompleted(state) {
+const catalog = getMissionsCatalog(state).filter(m => m.type === "MONTHLY");
+const allClaimed = catalog.every(m => Boolean(state.claimedIds[m.id]));
+const curMonth = getCurrentMonthKey();
+if (allClaimed && state.lastCompletedMonthKey !== curMonth) {
+state.lastCompletedMonthKey = curMonth;
+state.masterStreak = Math.min(5, (state.masterStreak || 0) + 1);
+state.activeMaestroRank = state.masterStreak;
+saveMissionsState(state);
+applyMaestroCosmetics(state);
+}
+}
+function updateMissionAlertDot() {
+const state = loadMissionsState();
+const dot = document.getElementById("missionsAlertDot");
+if (!dot) return;
+const dailyReady = state.lastDailyClaimDate !== getTodayDateKey();
+const anyMissionReady = getMissionsCatalog(state).some(m => m.progress >= m.target && !state.claimedIds[m.id]);
+dot.style.display = (dailyReady || anyMissionReady) ? "flex" : "none";
+}
+function renderMissionsModal() {
+const state = loadMissionsState();
+const listContainer = document.getElementById("missionsListContainer");
+const claimDailyBtn = document.getElementById("claimDailyXpBtn");
+const streakBadge = document.getElementById("masterStreakBadge");
+const today = getTodayDateKey();
+if (claimDailyBtn) {
+if (state.lastDailyClaimDate === today) {
+claimDailyBtn.textContent = "CLAIMED TODAY";
+claimDailyBtn.disabled = true;
+claimDailyBtn.classList.add("claimed-disabled");
+} else {
+claimDailyBtn.textContent = "CLAIM 10K XP";
+claimDailyBtn.disabled = false;
+claimDailyBtn.classList.remove("claimed-disabled");
+}
+}
+if (streakBadge) {
+const rankLabel = state.activeMaestroRank > 0
+? "MAESTRO " + ROMAN_NUMERALS[state.activeMaestroRank] + " (" + state.masterStreak + "/5)"
+: "MASTER STREAK: " + state.masterStreak + " / 5";
+streakBadge.textContent = rankLabel;
+}
+if (!listContainer) return;
+listContainer.innerHTML = "";
+const catalog = getMissionsCatalog(state);
+catalog.forEach(m => {
+const isClaimed = Boolean(state.claimedIds[m.id]);
+const isDone = m.progress >= m.target;
+const pct = Math.min(100, Math.round((m.progress / m.target) * 100));
+const card = document.createElement("div");
+card.className = "mission-card" + (isClaimed ? " mission-claimed" : (isDone ? " mission-ready" : ""));
+const tag = document.createElement("span");
+tag.className = "mission-type-pill " + (m.type === "WEEKLY" ? "pill-weekly" : "pill-monthly");
+tag.textContent = m.type;
+const header = document.createElement("div");
+header.className = "mission-card-top";
+const titleEl = document.createElement("span");
+titleEl.className = "mission-title";
+titleEl.textContent = m.title;
+header.appendChild(titleEl);
+header.appendChild(tag);
+const descEl = document.createElement("div");
+descEl.className = "mission-desc";
+descEl.textContent = m.desc;
+const barWrap = document.createElement("div");
+barWrap.className = "mission-bar-wrap";
+const barTrack = document.createElement("div");
+barTrack.className = "mission-bar-track";
+const barFill = document.createElement("div");
+barFill.className = "mission-bar-fill";
+barFill.style.width = pct + "%";
+barTrack.appendChild(barFill);
+const barText = document.createElement("span");
+barText.className = "mission-bar-text";
+barText.textContent = Math.min(m.progress, m.target).toLocaleString("it-IT") + " / " + m.target.toLocaleString("it-IT");
+barWrap.appendChild(barTrack);
+barWrap.appendChild(barText);
+const footer = document.createElement("div");
+footer.className = "mission-card-footer";
+const rewLabel = document.createElement("span");
+rewLabel.className = "mission-reward-label";
+rewLabel.textContent = m.rewardLabel;
+const actionBtn = document.createElement("button");
+actionBtn.className = "mission-claim-btn";
+if (isClaimed) {
+actionBtn.textContent = "CLAIMED";
+actionBtn.disabled = true;
+} else if (isDone) {
+actionBtn.textContent = "CLAIM!";
+actionBtn.classList.add("ready-pulse");
+actionBtn.addEventListener("click", () => {
+const fresh = loadMissionsState();
+if (fresh.claimedIds[m.id]) return;
+fresh.claimedIds[m.id] = true;
+saveMissionsState(fresh);
+checkAllMonthlyCompleted(fresh);
+applyMaestroCosmetics(fresh);
+updateMissionAlertDot();
+if (m.rewardType === "xp" && m.rewardAmount > 0) {
+const cur = Number(localStorage.getItem("storedBonusXP")) || 0;
+localStorage.setItem("storedBonusXP", cur + m.rewardAmount);
+alert("REWARD CLAIMED: +" + m.rewardAmount.toLocaleString("it-IT") + " XP!");
+location.reload();
+} else {
+renderMissionsModal();
+}
+});
+} else {
+actionBtn.textContent = pct + "%";
+actionBtn.disabled = true;
+}
+footer.appendChild(rewLabel);
+footer.appendChild(actionBtn);
+card.appendChild(header);
+card.appendChild(descEl);
+card.appendChild(barWrap);
+card.appendChild(footer);
+listContainer.appendChild(card);
+});
+}
+function triggerComboExplosion180(comboValue) {
+const gameEl = document.getElementById("game");
+if (!gameEl) return;
+const tier = Math.floor(comboValue / 180);
+const flash = document.createElement("div");
+flash.className = "combo-explosion-flash";
+gameEl.appendChild(flash);
+setTimeout(() => flash.remove(), 650);
+gameEl.classList.remove("mega-explosion-shake");
+void gameEl.offsetWidth;
+gameEl.classList.add("mega-explosion-shake");
+setTimeout(() => gameEl.classList.remove("mega-explosion-shake"), 550);
+const banner = document.createElement("div");
+banner.className = "combo-explosion-banner";
+banner.textContent = "BOOM! " + comboValue + " COMBO x" + tier + "!";
+gameEl.appendChild(banner);
+setTimeout(() => banner.remove(), 1400);
+const colors = ["#fde047", "#ef4444", "#fb923c", "#38bdf8", "#a855f7", "#ffffff"];
+const particleCount = Math.min(70, 32 + tier * 10);
+for (let i = 0; i < particleCount; i++) {
+const p = document.createElement("span");
+p.className = "explosion-shard";
+const sz = (8 + Math.random() * 10).toFixed(0) + "px";
+const col = colors[Math.floor(Math.random() * colors.length)];
+p.style.width = sz;
+p.style.height = sz;
+p.style.background = col;
+p.style.boxShadow = "0 0 12px " + col;
+p.style.left = "50%";
+p.style.top = "50%";
+const angle = (Math.PI * 2 * i) / particleCount + (Math.random() * 0.2);
+const dist = 110 + Math.random() * 230;
+p.style.setProperty("--dx", (Math.cos(angle) * dist) + "px");
+p.style.setProperty("--dy", (Math.sin(angle) * dist) + "px");
+gameEl.appendChild(p);
+setTimeout(() => p.remove(), 800);
+}
+}
+let cachedTopRecordPlayers = [];
+let cachedTopComboPlayers = [];
+let nearRecordToastShown = false;
+let nearComboToastShown = false;
+async function fetchRivalsLeaderboard() {
+const myName = localStorage.getItem("timeTapUsername") || "";
+try {
+const [resRec, resCom] = await Promise.all([
+fetch(SUPABASE_URL + "/rest/v1/players?select=username,record&order=record.desc&limit=60", {
+headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+}),
+fetch(SUPABASE_URL + "/rest/v1/players?select=username,best_combo&order=best_combo.desc&limit=60", {
+headers: { "apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY }
+})
+]);
+if (resRec.ok) {
+const rows = await resRec.json();
+cachedTopRecordPlayers = rows.filter(r => r.username && r.username !== myName && Number(r.record) > 0);
+}
+if (resCom.ok) {
+const rows = await resCom.json();
+cachedTopComboPlayers = rows.filter(r => r.username && r.username !== myName && Number(r.best_combo) > 0);
+}
+} catch (e) {}
+}
+function showRivalInGameToast(text) {
+const gameEl = document.getElementById("game");
+if (!gameEl) return;
+const existing = document.getElementById("rivalInGameAlert");
+if (existing) existing.remove();
+const toast = document.createElement("div");
+toast.id = "rivalInGameAlert";
+toast.className = "rival-ingame-toast";
+toast.textContent = text;
+gameEl.appendChild(toast);
+setTimeout(() => { if (toast.parentNode) toast.remove(); }, 2600);
+}
+function findNextRivalAbove(list, field, currentVal) {
+let candidate = null;
+for (let i = list.length - 1; i >= 0; i--) {
+const val = Number(list[i][field] || 0);
+if (val > currentVal) {
+candidate = { username: list[i].username, value: val, diff: val - currentVal };
+break;
+}
+}
+return candidate;
+}
+window.ttMissionEngine = {
+refreshCosmetics() {
+applyMaestroCosmetics(loadMissionsState());
+},
+onRunStart() {
+nearRecordToastShown = false;
+nearComboToastShown = false;
+fetchRivalsLeaderboard();
+},
+onGreenHit(currentScore, currentCombo) {
+if (currentCombo > 0 && currentCombo % 180 === 0) {
+triggerComboExplosion180(currentCombo);
+}
+if (!nearComboToastShown && cachedTopComboPlayers.length > 0) {
+const nextComboRival = findNextRivalAbove(cachedTopComboPlayers, "best_combo", currentCombo);
+if (nextComboRival && nextComboRival.diff <= 35) {
+nearComboToastShown = true;
+showRivalInGameToast("CLOSE TO " + nextComboRival.username + "! ONLY " + nextComboRival.diff + " COMBO LEFT!");
+}
+}
+if (!nearRecordToastShown && cachedTopRecordPlayers.length > 0) {
+const nextRecRival = findNextRivalAbove(cachedTopRecordPlayers, "record", currentScore);
+if (nextRecRival && nextRecRival.diff <= 1500) {
+nearRecordToastShown = true;
+showRivalInGameToast("ALMOST PASSED " + nextRecRival.username + "! -" + nextRecRival.diff.toLocaleString("it-IT") + " PTS!");
+}
+}
+},
+onRunEnd(runScore, runMaxCombo) {
+const state = loadMissionsState();
+state.weeklyGames += 1;
+state.monthlyGames += 1;
+state.monthlyTotalScore += runScore;
+if (runMaxCombo > state.monthlyBestCombo) state.monthlyBestCombo = runMaxCombo;
+if (runScore > state.monthlyBestScore) state.monthlyBestScore = runScore;
+saveMissionsState(state);
+updateMissionAlertDot();
+const summaryBox = document.getElementById("rivalSummaryBox");
+if (summaryBox) {
+const bestRecEver = Math.max(Number(localStorage.getItem("record")) || 0, runScore);
+const bestComEver = Math.max(Number(localStorage.getItem("bestCombo")) || 0, runMaxCombo);
+const recRival = findNextRivalAbove(cachedTopRecordPlayers, "record", bestRecEver);
+const comRival = findNextRivalAbove(cachedTopComboPlayers, "best_combo", bestComEver);
+const lines = [];
+if (recRival) {
+lines.push("NEXT RECORD RIVAL (" + recRival.username + "): -" + recRival.diff.toLocaleString("it-IT") + " PTS");
+}
+if (comRival) {
+lines.push("NEXT COMBO RIVAL (" + comRival.username + "): -" + comRival.diff.toLocaleString("it-IT") + " COMBO");
+}
+if (lines.length > 0) {
+summaryBox.innerText = lines.join("\n");
+summaryBox.style.display = "block";
+} else {
+summaryBox.style.display = "none";
+}
+}
+}
+};
+const missionsBtn = document.getElementById("missionsBtn");
+const missionsModal = document.getElementById("missionsModal");
+const closeMissionsBtn = document.getElementById("closeMissionsBtn");
+const claimDailyXpBtn = document.getElementById("claimDailyXpBtn");
+if (missionsBtn && missionsModal) {
+missionsBtn.addEventListener("click", () => {
+renderMissionsModal();
+missionsModal.style.display = "flex";
+});
+}
+if (closeMissionsBtn && missionsModal) {
+closeMissionsBtn.addEventListener("click", () => {
+missionsModal.style.display = "none";
+});
+}
+if (claimDailyXpBtn) {
+claimDailyXpBtn.addEventListener("click", () => {
+const state = loadMissionsState();
+const today = getTodayDateKey();
+if (state.lastDailyClaimDate === today) return;
+state.lastDailyClaimDate = today;
+saveMissionsState(state);
+const cur = Number(localStorage.getItem("storedBonusXP")) || 0;
+localStorage.setItem("storedBonusXP", cur + 10000);
+updateMissionAlertDot();
+alert("DAILY GIFT CLAIMED: +10,000 XP!");
+location.reload();
+});
+}
+const initialState = loadMissionsState();
+applyMaestroCosmetics(initialState);
+updateMissionAlertDot();
+fetchRivalsLeaderboard();
+})();

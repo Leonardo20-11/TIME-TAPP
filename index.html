@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script src="https://crazygames.com"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TIME TAP</title>
@@ -179,6 +180,7 @@
         <div class="right-top-stack">
             <button id="settingsBtn" class="top-icon-btn" aria-label="Settings"><span class="gear-css-icon"></span></button>
             <button id="leaderboardBtn" class="top-icon-btn leaderboard-trigger" aria-label="Leaderboard"><span class="trophy-css-icon"></span></button>
+        <button id="missionsBtn" class="top-icon-btn missions-trigger" aria-label="Missions"><span class="mission-css-icon"></span><span id="missionsAlertDot" class="missions-alert-dot" style="display: none;">!</span></button>
         </div>
 
         <div class="logo-wrapper">
@@ -305,6 +307,34 @@
             </div>
         </div>
     </div>
+    <div id="missionsModal" class="fullscreen-modal">
+        <div class="fullscreen-header">
+            <div class="header-title-group">
+                <span class="mission-css-icon"></span>
+                <h2>MISSIONS</h2>
+            </div>
+            <button id="closeMissionsBtn" class="close-fullscreen-btn">X</button>
+        </div>
+        <div class="missions-body">
+            <div class="daily-reward-card">
+                <div class="daily-reward-info">
+                    <span class="daily-reward-title">DAILY GIFT</span>
+                    <span class="daily-reward-sub">+10,000 XP (Resets daily, does not stack)</span>
+                </div>
+                <button id="claimDailyXpBtn" class="action-green-btn claim-daily-btn">CLAIM 10K XP</button>
+            </div>
+
+            <div class="monthly-master-banner">
+                <div class="master-banner-top">
+                    <span id="masterStreakBadge" class="master-streak-pill">MASTER STREAK: 0 / 5</span>
+                    <span id="monthlyResetTimer" class="monthly-reset-tag">MONTHLY RESET</span>
+                </div>
+                <p id="masterBannerDesc" class="master-banner-desc">Complete all monthly missions to unlock MAESTRO I - V &amp; Rainbow Name!</p>
+            </div>
+
+            <div id="missionsListContainer" class="missions-list-container"></div>
+        </div>
+    </div>
 
     <div id="rankUpCelebration" class="fullscreen-modal celebration-overlay">
         <div id="fireworksContainer" class="fireworks-container"></div>
@@ -321,6 +351,7 @@
             <h2>GAME OVER</h2>
             <div id="newRecordMessage">NEW BEST!</div>
             <div id="xpEarnedBadge" class="xp-earned-badge">+0 XP</div>
+            <div id="rivalSummaryBox" class="rival-summary-box" style="display: none;"></div>
             <div class="go-xp-progress-box">
                 <div class="go-xp-labels">
                     <span id="goRankFrom">LEVEL 1</span>
