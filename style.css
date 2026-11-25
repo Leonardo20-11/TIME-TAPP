@@ -2587,3 +2587,756 @@ body, button, input, .name-font-arcade, .name-font-royal {
 #chestOpenModal, #nameCustomModal, #rankUpCelebration {
     z-index: 1500 !important;
 }
+.logo-wrapper {
+    margin-top: clamp(54px, 11vh, 76px) !important;
+    margin-bottom: 14px !important;
+}
+
+.top-icon-btn {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 16px !important;
+}
+
+/* Riga simmetrica con i pulsanti MISSIONS e ITEMS sopra PLAY */
+.home-quick-actions {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    max-width: 340px;
+    margin-bottom: 14px;
+    z-index: 35;
+}
+
+.quick-action-btn {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.8);
+    color: #ffffff;
+    font-size: clamp(16px, 4.2vw, 19px);
+    cursor: pointer;
+    -webkit-text-stroke: 1.5px #0f172a;
+    paint-order: stroke fill;
+    text-shadow: 0 3px 0 #0f172a;
+    transition: transform 0.1s ease;
+}
+
+.quick-action-btn:active {
+    transform: translateY(4px);
+}
+.top-left-cluster {
+    flex-direction: row !important;
+    align-items: center !important;
+    top: 12px !important;
+    left: 12px !important;
+    z-index: 60 !important;
+}
+
+.right-top-stack {
+    position: absolute !important;
+    top: 12px !important;
+    right: 12px !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, 46px) !important;
+    gap: 8px !important;
+    z-index: 60 !important;
+}
+
+@media (min-width: 600px) {
+    .right-top-stack {
+        grid-template-columns: repeat(4, 52px) !important;
+        gap: 10px !important;
+    }
+}
+
+.top-icon-btn {
+    width: 46px !important;
+    height: 46px !important;
+    border-radius: 16px !important;
+    padding: 0 !important;
+}
+
+@media (min-width: 600px) {
+    .top-icon-btn {
+        width: 52px !important;
+        height: 52px !important;
+        border-radius: 18px !important;
+    }
+}
+
+.logo-wrapper {
+    margin-top: clamp(95px, 16vh, 115px) !important;
+    margin-bottom: 16px !important;
+}
+.top-left-cluster {
+    flex-direction: row !important;
+    align-items: center !important;
+    top: 12px !important;
+    left: 12px !important;
+    z-index: 60 !important;
+}
+.right-top-stack {
+    position: absolute !important;
+    top: 12px !important;
+    right: 12px !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, 46px) !important;
+    gap: 8px !important;
+    z-index: 60 !important;
+}
+@media (min-width: 600px) {
+    .right-top-stack {
+        grid-template-columns: repeat(4, 52px) !important;
+        gap: 10px !important;
+    }
+}
+.logo-wrapper {
+    margin-top: clamp(95px, 16vh, 115px) !important;
+    margin-bottom: 16px !important;
+}
+.star-css-icon {
+    width: 22px;
+    height: 22px;
+    background: #ffffff;
+    display: inline-block;
+    clip-path: polygon(50% 0%, 63% 35%, 100% 38%, 71% 61%, 80% 96%, 50% 76%, 20% 96%, 29% 61%, 0% 38%, 37% 35%);
+}
+
+.rewards-trigger {
+    background: linear-gradient(180deg, #f472b6 0%, #db2777 100%) !important;
+    box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.45), 0 6px 0 #831843, 0 10px 18px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Griglia a 3 colonne su telefono e 5 su PC per i 5 tasti in alto */
+.right-top-stack {
+    position: fixed !important;
+    top: 12px !important;
+    right: 12px !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, 44px) !important;
+    gap: 7px !important;
+    z-index: 200 !important;
+}
+
+@media (min-width: 650px) {
+    .right-top-stack {
+        grid-template-columns: repeat(5, 50px) !important;
+        gap: 9px !important;
+    }
+}
+
+.reward-milestone-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 13px 16px;
+    border-radius: 22px;
+    border: 3px solid rgba(255, 255, 255, 0.65);
+    background: linear-gradient(180deg, #1e3a8a 0%, #0f172a 100%);
+}
+
+.reward-milestone-card.unlocked-milestone {
+    border-color: #4ade80;
+    background: linear-gradient(180deg, #166534 0%, #052e16 100%);
+}
+
+.reward-lv-pill {
+    font-size: 16px;
+    color: #fde047;
+    background: rgba(15, 23, 42, 0.75);
+    border: 2px solid #fde047;
+    padding: 5px 12px;
+    border-radius: 14px;
+    white-space: nowrap;
+}
+
+.reward-prize-text {
+    flex: 1;
+    font-size: 16px;
+    color: #ffffff;
+}
+
+.reward-status-tag {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    background: #334155;
+    color: #cbd5e1;
+}
+
+.unlocked-milestone .reward-status-tag {
+    background: #4ade80;
+    color: #052e16;
+}
+.level-rewards-trigger {
+    position: relative;
+    background: linear-gradient(180deg, #fde047 0%, #f59e0b 55%, #b45309 100%) !important;
+    border: 3px solid #ffffff !important;
+    box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.65), 0 6px 0 #78350f, 0 10px 18px rgba(0, 0, 0, 0.45) !important;
+}
+
+.level-rewards-trigger .star-css-icon {
+    background: #ffffff;
+    filter: drop-shadow(0 2px 0 #78350f);
+}
+
+/* Badge limite massimo 10/10 nell'inventario */
+.item-qty-pill.max-cap-reached {
+    background: linear-gradient(180deg, #ef4444 0%, #991b1b 100%) !important;
+    border-color: #fde047 !important;
+    color: #ffffff !important;
+}
+
+/* 2. Tabella / Lista Ricompense per Livello */
+.level-rewards-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+}
+
+.level-reward-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 15px;
+    border-radius: 22px;
+    border: 3px solid rgba(255, 255, 255, 0.55);
+    background: linear-gradient(180deg, #1e3a8a 0%, #0f172a 100%);
+    box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.2), 0 5px 0 #020617;
+    transition: transform 0.15s ease;
+}
+
+.level-reward-row.lv-unlocked {
+    border-color: #4ade80;
+    background: linear-gradient(180deg, #15803d 0%, #052e16 100%);
+    box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.35), 0 5px 0 #022c22, 0 0 16px rgba(74, 222, 128, 0.4);
+}
+
+.level-reward-row.lv-next-target {
+    border-color: #fde047;
+    box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.35), 0 5px 0 #78350f, 0 0 18px rgba(253, 224, 71, 0.45);
+}
+
+.lv-badge-box {
+    min-width: 78px;
+    padding: 6px 10px;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #fde047 0%, #d97706 100%);
+    border: 2.5px solid #ffffff;
+    color: #ffffff;
+    font-size: 16px;
+    text-align: center;
+    -webkit-text-stroke: 1.4px #78350f;
+    paint-order: stroke fill;
+    box-shadow: 0 3px 0 #78350f;
+}
+
+.lv-reward-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.lv-reward-main {
+    font-size: 16px;
+    color: #ffffff;
+    -webkit-text-stroke: 1.2px #0f172a;
+    paint-order: stroke fill;
+}
+
+.lv-reward-sub {
+    font-size: 12px;
+    color: #bae6fd;
+}
+
+.lv-status-badge {
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.8);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: #94a3b8;
+    white-space: nowrap;
+}
+
+.lv-unlocked .lv-status-badge {
+    background: #4ade80;
+    border-color: #ffffff;
+    color: #052e16;
+}
+
+/* 3. CASSA ULTRA-REALISTICA 3D (MOGANO, ORO MASSICCIO, GEMMA E RAGGI DI LUCE) */
+.realistic-chest-stage {
+    position: relative;
+    width: 210px;
+    height: 185px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 6px auto;
+    perspective: 700px;
+}
+
+/* Aura / Raggi di luce dietro la cassa */
+.chest-light-rays {
+    position: absolute;
+    width: 240px;
+    height: 240px;
+    border-radius: 50%;
+    background: repeating-conic-gradient(
+        from 0deg,
+        rgba(253, 224, 71, 0.32) 0deg 15deg,
+        transparent 15deg 30deg
+    );
+    mask-image: radial-gradient(circle, rgba(0,0,0,1) 20%, rgba(0,0,0,0) 70%);
+    -webkit-mask-image: radial-gradient(circle, rgba(0,0,0,1) 20%, rgba(0,0,0,0) 70%);
+    animation: chestRaysSpin 12s linear infinite;
+    pointer-events: none;
+    z-index: 1;
+}
+
+@keyframes chestRaysSpin {
+    0% { transform: rotate(0deg) scale(0.95); }
+    50% { transform: rotate(180deg) scale(1.08); }
+    100% { transform: rotate(360deg) scale(0.95); }
+}
+
+/* Corpo principale della cassa */
+.luxury-chest-box {
+    position: relative;
+    z-index: 3;
+    width: 176px !important;
+    height: 142px !important;
+    border-radius: 22px 22px 26px 26px !important;
+    background:
+        repeating-linear-gradient(
+            90deg,
+            rgba(0, 0, 0, 0.14) 0px,
+            rgba(0, 0, 0, 0.14) 3px,
+            transparent 3px,
+            transparent 26px
+        ),
+        linear-gradient(180deg, #9a3412 0%, #7c2d12 45%, #431407 100%) !important;
+    border: 5px solid #fbbf24 !important;
+    box-shadow:
+        inset 0 -14px 20px rgba(0, 0, 0, 0.65),
+        inset 0 6px 10px rgba(254, 240, 138, 0.45),
+        0 14px 0 #290d04,
+        0 24px 38px rgba(0, 0, 0, 0.75),
+        0 0 38px rgba(251, 191, 36, 0.65) !important;
+    overflow: visible !important;
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Fasce verticali in oro massiccio ai lati della cassa */
+.luxury-chest-box::before,
+.luxury-chest-box::after {
+    content: "";
+    position: absolute;
+    top: -4px;
+    bottom: -4px;
+    width: 22px;
+    background: linear-gradient(90deg, #b45309 0%, #fef08a 35%, #f59e0b 65%, #78350f 100%);
+    border: 2px solid #78350f;
+    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.8), 0 3px 6px rgba(0, 0, 0, 0.5);
+    z-index: 4;
+    pointer-events: none;
+}
+
+.luxury-chest-box::before {
+    left: 14px;
+    border-radius: 6px;
+}
+
+.luxury-chest-box::after {
+    right: 14px;
+    border-radius: 6px;
+}
+
+/* Coperchio bombato 3D */
+.chest-lid {
+    position: absolute !important;
+    top: -6px !important;
+    left: -5px !important;
+    right: -5px !important;
+    height: 54% !important;
+    background:
+        repeating-linear-gradient(
+            90deg,
+            rgba(0, 0, 0, 0.12) 0px,
+            rgba(0, 0, 0, 0.12) 3px,
+            transparent 3px,
+            transparent 26px
+        ),
+        linear-gradient(180deg, #ea580c 0%, #9a3412 60%, #7c2d12 100%) !important;
+    border: 5px solid #fde047 !important;
+    border-bottom: 6px solid #f59e0b !important;
+    border-radius: 26px 26px 10px 10px !important;
+    box-shadow:
+        inset 0 8px 12px rgba(255, 255, 255, 0.42),
+        0 6px 12px rgba(0, 0, 0, 0.65) !important;
+    z-index: 5;
+    transform-origin: top center;
+    transition: transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.35s ease;
+}
+
+/* Serratura centrale con Gemma Smeraldo/Zaffiro incastonata */
+.chest-lock {
+    position: relative !important;
+    width: 46px !important;
+    height: 52px !important;
+    margin-top: 8px;
+    background: linear-gradient(135deg, #fef9c3 0%, #facc15 40%, #b45309 100%) !important;
+    border: 3.5px solid #ffffff !important;
+    border-radius: 12px 12px 18px 18px !important;
+    box-shadow:
+        inset 0 3px 6px rgba(255, 255, 255, 0.9),
+        0 6px 0 #78350f,
+        0 10px 16px rgba(0, 0, 0, 0.65) !important;
+    z-index: 7 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chest-lock::after {
+    content: "";
+    width: 18px;
+    height: 22px;
+    background: radial-gradient(circle at 35% 30%, #ffffff 0%, #38bdf8 45%, #1d4ed8 100%);
+    border: 2px solid #fef08a;
+    border-radius: 50% 50% 45% 45%;
+    box-shadow: 0 0 12px #38bdf8, inset 0 2px 3px #ffffff;
+}
+
+/* Bagliore interno quando si apre la cassa */
+.chest-inner-glow {
+    position: absolute;
+    top: 24%;
+    left: 10%;
+    right: 10%;
+    height: 45%;
+    background: radial-gradient(ellipse at center, #ffffff 0%, #fde047 55%, transparent 80%);
+    opacity: 0;
+    z-index: 2;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.4s ease;
+}
+
+.luxury-chest-box.chest-shaking {
+    animation: realisticChestShake 0.65s ease-in-out infinite !important;
+}
+
+@keyframes realisticChestShake {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    15% { transform: scale(1.06) rotate(-5deg) translateY(-4px); }
+    30% { transform: scale(1.08) rotate(5deg) translateY(-6px); }
+    45% { transform: scale(1.09) rotate(-4deg) translateY(-4px); }
+    60% { transform: scale(1.1) rotate(4deg) translateY(-7px); }
+    75% { transform: scale(1.06) rotate(-2deg); }
+}
+
+.luxury-chest-box.chest-opened .chest-lid {
+    transform: translateY(-34px) rotateX(68deg) scaleY(0.75);
+    filter: brightness(1.25);
+}
+
+.luxury-chest-box.chest-opened .chest-lock {
+    transform: translateY(10px) scale(0.9);
+    opacity: 0.85;
+}
+
+.luxury-chest-box.chest-opened .chest-inner-glow {
+    opacity: 1;
+    transform: scale(1.35);
+}
+
+/* Miniature realistiche cassa dentro Inventario e Missioni */
+.mini-chest-icon {
+    width: 46px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #d97706 0%, #7c2d12 55%, #431407 100%);
+    border: 3px solid #fde047;
+    box-shadow: inset 0 3px 4px rgba(255, 255, 255, 0.5), 0 4px 0 #451a03, 0 0 12px rgba(253, 224, 71, 0.7);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mini-chest-icon::before {
+    content: "";
+    position: absolute;
+    top: 38%;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #fde047;
+}
+
+.mini-chest-icon::after {
+    content: "";
+    width: 11px;
+    height: 13px;
+    border-radius: 4px;
+    background: radial-gradient(circle, #ffffff 10%, #38bdf8 60%, #1e40af 100%);
+    border: 1.5px solid #fef08a;
+    z-index: 2;
+}
+
+/* 4. POPUP FINE PARTITA ("VUOI USARE UN OGGETTO? SÌ / NO") */
+.postgame-item-prompt-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 6, 23, 0.82);
+    backdrop-filter: blur(4px);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    z-index: 450;
+}
+
+.postgame-prompt-card {
+    width: 100%;
+    max-width: 375px;
+    background: linear-gradient(180deg, #2563eb 0%, #1e1b4b 100%);
+    border: 4px solid #fde047;
+    border-radius: 32px;
+    padding: 22px 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 14px;
+box-shadow: inset 0 5px 0 rgba(255, 255, 255, 0.35), 0 12px 0 #0f172a, 0 0 40px rgba(253, 224, 71, 0.5);
+animation: panelPop 0.32s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.postgame-prompt-title {
+font-size: 26px;
+color: #fde047;
+-webkit-text-stroke: 2px #0f172a;
+paint-order: stroke fill;
+line-height: 1.15;
+}
+.postgame-prompt-sub {
+font-size: 15px;
+color: #e0f2fe;
+line-height: 1.3;
+}
+.postgame-prompt-items-list {
+width: 100%;
+display: flex;
+flex-direction: column;
+gap: 8px;
+}
+.postgame-choice-item-btn {
+width: 100%;
+font-family: 'Lilita One', sans-serif;
+padding: 12px 14px;
+border-radius: 20px;
+border: 3px solid #ffffff;
+color: #ffffff;
+font-size: 18px;
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: space-between;
+-webkit-text-stroke: 1.3px #0f172a;
+paint-order: stroke fill;
+transition: transform 0.1s ease;
+}
+.postgame-choice-item-btn:active {
+transform: translateY(3px);
+}
+.postgame-prompt-no-btn {
+width: 100%;
+font-family: 'Lilita One', sans-serif;
+padding: 12px;
+border-radius: 20px;
+border: 3px solid rgba(255, 255, 255, 0.75);
+background: linear-gradient(180deg, #f87171 0%, #b91c1c 100%);
+color: #ffffff;
+font-size: 20px;
+cursor: pointer;
+-webkit-text-stroke: 1.6px #450a0a;
+paint-order: stroke fill;
+box-shadow: 0 5px 0 #7f1d1d;
+}
+/* 5. NUOVI FONT, COLORI E GRAFIE SBLOCCABILI PER IL NOME */
+.name-style-emerald {
+color: #4ade80 !important;
+text-shadow: 0 2px 0 #064e3b, 0 0 12px rgba(74, 222, 128, 0.9);
+}
+.name-style-amethyst {
+background: linear-gradient(90deg, #f0abfc, #c084fc, #7e22ce);
+-webkit-background-clip: text;
+background-clip: text;
+color: transparent !important;
+-webkit-text-stroke: 0px transparent !important;
+filter: drop-shadow(0 2px 0 #3b0764) drop-shadow(0 0 10px rgba(192, 132, 252, 0.9));
+}
+.name-style-diamond {
+background: linear-gradient(90deg, #ffffff, #bae6fd, #38bdf8, #ffffff);
+background-size: 200% auto;
+-webkit-background-clip: text;
+background-clip: text;
+color: transparent !important;
+-webkit-text-stroke: 0px transparent !important;
+filter: drop-shadow(0 2px 0 #0c4a6e) drop-shadow(0 0 12px rgba(186, 230, 253, 1));
+animation: rainbowShift 2.4s linear infinite;
+}
+.name-font-wide {
+letter-spacing: 3.5px !important;
+text-transform: uppercase;
+}
+.name-font-serif {
+font-family: Georgia, 'Times New Roman', serif !important;
+font-weight: 900 !important;
+letter-spacing: 1.2px;
+}
+.name-font-mono {
+font-family: 'Courier New', monospace !important;
+font-weight: 900 !important;
+letter-spacing: 1.5px;
+}
+.name-font-italic-script {
+font-family: 'Trebuchet MS', sans-serif !important;
+font-style: italic !important;
+font-weight: 900 !important;
+letter-spacing: 1px;
+}
+#inventoryModal .fullscreen-header h2 {
+    font-size: clamp(20px, 4.8vw, 30px) !important;
+    white-space: nowrap;
+}
+
+.inventory-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+    width: 100% !important;
+}
+
+.item-card {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 14px !important;
+    padding: 14px 16px !important;
+    border-radius: 26px !important;
+    background: linear-gradient(180deg, #1d4ed8 0%, #0f172a 100%) !important;
+    border: 3.5px solid rgba(255, 255, 255, 0.78) !important;
+    box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.3), 0 6px 0 #020617 !important;
+    text-align: left !important;
+    animation: none !important;
+}
+
+.item-card.luxury-item-card {
+    background: linear-gradient(180deg, #b45309 0%, #451a03 100%) !important;
+    border-color: #fde047 !important;
+    box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.4), 0 6px 0 #290d04, 0 0 22px rgba(253, 224, 71, 0.45) !important;
+}
+
+.item-visual-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 92px;
+    flex-shrink: 0;
+}
+
+.drawn-item-art {
+    width: 68px;
+    height: 68px;
+    border-radius: 20px;
+    background: rgba(15, 23, 42, 0.75);
+    border: 3px solid #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-shadow: inset 0 4px 8px rgba(255, 255, 255, 0.25), 0 4px 0 #020617;
+}
+
+.art-revive-heart {
+    width: 34px;
+    height: 30px;
+    background: linear-gradient(180deg, #f472b6 0%, #e11d48 100%);
+    clip-path: polygon(50% 18%, 78% 0%, 100% 24%, 100% 54%, 50% 100%, 0% 54%, 0% 24%, 22% 0%);
+    filter: drop-shadow(0 0 6px rgba(244, 114, 182, 0.9));
+}
+
+.art-xp-bolt {
+    width: 30px;
+    height: 40px;
+    background: linear-gradient(180deg, #7dd3fc 0%, #0284c7 100%);
+    clip-path: polygon(62% 0%, 10% 56%, 46% 56%, 32% 100%, 90% 42%, 52% 42%);
+    filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.95));
+}
+
+.art-xp-star {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(180deg, #fef08a 0%, #f59e0b 100%);
+    clip-path: polygon(50% 0%, 63% 35%, 100% 38%, 71% 61%, 80% 96%, 50% 76%, 20% 96%, 29% 61%, 0% 38%, 37% 35%);
+    filter: drop-shadow(0 0 8px rgba(250, 204, 21, 0.95));
+}
+
+.item-qty-pill {
+    font-size: 14px !important;
+    padding: 3px 10px !important;
+    border-radius: 12px !important;
+    white-space: nowrap;
+}
+
+.item-info-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.item-name {
+    font-size: 20px !important;
+    color: #ffffff !important;
+    -webkit-text-stroke: 1.5px #0f172a !important;
+    paint-order: stroke fill;
+}
+
+.item-yellow-desc-box {
+    background: linear-gradient(180deg, #fef08a 0%, #facc15 100%);
+    border: 3px solid #ffffff;
+    border-radius: 16px;
+    padding: 9px 12px;
+    color: #451a03;
+    font-size: 14px;
+    line-height: 1.3;
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.7), 0 4px 0 #92400e;
+}
+
+.item-action-btn {
+    width: auto !important;
+    align-self: flex-start;
+    padding: 8px 18px !important;
+    font-size: 15px !important;
+    border-radius: 14px !important;
+}

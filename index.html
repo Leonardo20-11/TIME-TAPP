@@ -6,12 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TIME TAP</title>
     <link rel="preconnect" href="https://googleapis.com">
-<link rel="preconnect" href="https://gstatic.com" crossorigin>
-<link href="https://googleapis.com/css2?family=Fredoka:wght@600;700&family=Lilita+One&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://gstatic.com" crossorigin>
+    <link href="https://googleapis.com" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <style>
-@import url('https://googleapis.com');
-
 .leaderboard-trigger {
     background: linear-gradient(180deg, #fde047 0%, #d97706 100%) !important;
     box-shadow: inset 0 4px 0 rgba(255, 255, 255, 0.55), 0 6px 0 #92400e, 0 10px 18px rgba(0, 0, 0, 0.45) !important;
@@ -79,7 +77,6 @@
     border-color: #ffffff !important;
     box-shadow: inset 0 6px 0 rgba(255, 255, 255, 0.65), 0 8px 0 #92400e, 0 0 28px rgba(253, 224, 71, 0.85) !important;
 }
-
 .lb-row.top-2 {
     background: linear-gradient(180deg, #f1f5f9 0%, #94a3b8 100%) !important;
     border-color: #ffffff !important;
@@ -152,15 +149,14 @@
     border-radius: 16px !important;
     border: 2px solid rgba(255, 255, 255, 0.3) !important;
 }
-</style>
+    </style>
 </head>
 <body>
     <div class="bg-blocks">
         <div class="b-tile t1"></div><div class="b-tile t2"></div><div class="b-tile t3"></div>
         <div class="b-tile t4"></div><div class="b-tile t5"></div><div class="b-tile t6"></div>
     </div>
-
-    <div id="onboardingScreen" class="fullscreen-screen" style="display: none;">
+     <div id="onboardingScreen" class="fullscreen-screen" style="display: none;">
         <div class="onboarding-card">
             <h1 class="onboarding-title">CREATE PROFILE</h1>
             <p class="onboarding-sub">Choose your unique username. You can change it anytime from your Player Profile!</p>
@@ -181,11 +177,24 @@
         </div>
 
         <div class="right-top-stack">
-            <button id="settingsBtn" class="top-icon-btn" aria-label="Settings"><span class="gear-css-icon"></span></button>
-            <button id="leaderboardBtn" class="top-icon-btn leaderboard-trigger" aria-label="Leaderboard"><span class="trophy-css-icon"></span></button>
-        <button id="missionsBtn" class="top-icon-btn missions-trigger" aria-label="Missions"><span class="mission-css-icon"></span><span id="missionsAlertDot" class="missions-alert-dot" style="display: none;">!</span></button>
-       <button id="inventoryBtn" class="top-icon-btn inventory-trigger" aria-label="Items"><span class="chest-css-icon"></span><span id="inventoryAlertDot" class="missions-alert-dot" style="display: none;">!</span></button>
-    </div>
+            <button id="missionsBtn" class="top-icon-btn missions-trigger" aria-label="Missions">
+                <span class="mission-css-icon"></span>
+                <span id="missionsAlertDot" class="missions-alert-dot" style="display: none;">!</span>
+            </button>
+            <button id="levelRewardsBtn" class="top-icon-btn level-rewards-trigger" aria-label="Level Rewards">
+                <span class="star-css-icon"></span>
+            </button>
+            <button id="inventoryBtn" class="top-icon-btn inventory-trigger" aria-label="Items">
+                <span class="chest-css-icon"></span>
+                <span id="inventoryAlertDot" class="missions-alert-dot" style="display: none;">!</span>
+            </button>
+            <button id="leaderboardBtn" class="top-icon-btn leaderboard-trigger" aria-label="Leaderboard">
+                <span class="trophy-css-icon"></span>
+            </button>
+            <button id="settingsBtn" class="top-icon-btn" aria-label="Settings">
+                <span class="gear-css-icon"></span>
+            </button>
+        </div>
 
         <div class="logo-wrapper">
             <div class="logo-row row-top">
@@ -216,8 +225,7 @@
             <button id="discardSavedBtn" class="discard-saved-btn" style="display: none;">NEW RUN</button>
         </div>
     </div>
-
-    <div id="countdown">3</div>
+     <div id="countdown">3</div>
 
     <div id="game">
         <div class="hud-top">
@@ -244,6 +252,7 @@
             </div>
         </div>
     </div>
+
     <div id="confirmNewRunModal" class="modal-overlay">
         <div class="modal-card">
             <div class="modal-header"><h3>NEW RUN?</h3></div>
@@ -284,17 +293,20 @@
 
     <div id="profileModal" class="fullscreen-modal">
         <div class="fullscreen-header">
-            <div class="header-title-group"><h2>PLAYER PROFILE</h2></div>
+            <div class="header-title-group">
+                <span class="shield-css-icon"></span>
+                <h2>PLAYER PROFILE</h2>
+            </div>
             <button id="closeProfileBtn" class="close-fullscreen-btn">X</button>
         </div>
         <div class="profile-detail-body">
             <div class="profile-hero-card">
                 <div class="username-display-row">
-                    <span id="profileModalUsername" class="profile-hero-name">PLAYER</span>
+                    <div id="profileModalUsername" class="profile-hero-name">PLAYER</div>
                     <button id="editUsernameBtn" class="edit-name-btn">EDIT</button>
                 </div>
                 <div id="editUsernameBox" class="edit-username-box" style="display: none;">
-                    <input type="text" id="newUsernameInput" class="profile-input small-profile-input" maxlength="14">
+                    <input type="text" id="newUsernameInput" class="profile-input small-profile-input" maxlength="14" placeholder="NEW USERNAME">
                     <div id="editUsernameErrorMsg" class="username-error-msg"></div>
                     <div class="edit-username-actions">
                         <button id="confirmUsernameChangeBtn" class="action-green-btn mini-action-btn">SAVE</button>
@@ -312,6 +324,7 @@
             </div>
         </div>
     </div>
+
     <div id="missionsModal" class="fullscreen-modal">
         <div class="fullscreen-header">
             <div class="header-title-group">
@@ -328,7 +341,6 @@
                 </div>
                 <button id="claimDailyXpBtn" class="action-green-btn claim-daily-btn">CLAIM 10K XP</button>
             </div>
-
             <div class="monthly-master-banner">
                 <div class="master-banner-top">
                     <span id="masterStreakBadge" class="master-streak-pill">MASTER STREAK: 0 / 5</span>
@@ -336,10 +348,31 @@
                 </div>
                 <p id="masterBannerDesc" class="master-banner-desc">Complete all monthly missions to unlock MAESTRO I - V &amp; Rainbow Name!</p>
             </div>
-
             <div id="missionsListContainer" class="missions-list-container"></div>
         </div>
     </div>
+
+    <div id="levelRewardsModal" class="fullscreen-modal">
+        <div class="fullscreen-header">
+            <div class="header-title-group">
+                <span class="star-css-icon"></span>
+                <h2>LEVEL REWARDS</h2>
+            </div>
+            <button id="closeLevelRewardsBtn" class="close-fullscreen-btn">X</button>
+        </div>
+        <div class="missions-body">
+            <div class="level-rewards-guide">
+                <div class="guide-title">MILESTONE REWARDS (MAX 10 / ITEM)</div>
+                <div class="guide-pills-row">
+                    <span class="guide-pill">EVERY 10 LV: +2 CONTINUE</span>
+                    <span class="guide-pill">EVERY 25 LV: +15% XP BOOST</span>
+                    <span class="guide-pill gold-guide">EVERY 20 LV: LUXURY CHEST</span>
+                </div>
+            </div>
+            <div id="levelRewardsListContainer" class="level-rewards-list"></div>
+        </div>
+    </div>
+
     <div id="inventoryModal" class="fullscreen-modal">
         <div class="fullscreen-header">
             <div class="header-title-group">
@@ -350,25 +383,28 @@
         </div>
         <div class="missions-body">
             <div class="level-rewards-guide">
-                <div class="guide-title">LEVEL MILESTONE REWARDS</div>
+                <div class="guide-title">YOUR BAG (MAX 10 PER ITEM)</div>
                 <div class="guide-pills-row">
-                    <span class="guide-pill">EVERY 10 LV: +2 REVIVES</span>
-                    <span class="guide-pill">EVERY 25 LV: +15% XP BOOST</span>
-                    <span class="guide-pill gold-guide">EVERY 40 LV: LUXURY CHEST</span>
+                    <span class="guide-pill">CONTINUE: RESUME FROM SCORE</span>
+                    <span class="guide-pill">+15% / 2X XP: END OF MATCH</span>
+                    <span class="guide-pill gold-guide">CHESTS: UP TO 5,000 XP &amp; STYLES</span>
                 </div>
             </div>
             <div id="inventoryGridContainer" class="inventory-grid"></div>
         </div>
     </div>
 
-    <!-- MODALE APERTURA CASSA SFARZOSA -->
     <div id="chestOpenModal" class="fullscreen-modal celebration-overlay">
         <div id="chestFireworksContainer" class="fireworks-container"></div>
         <div class="luxury-chest-card">
             <div class="luxury-chest-tag">LUXURY CHEST</div>
-            <div id="chestVisualBox" class="luxury-chest-box">
-                <div class="chest-lid"></div>
-                <div class="chest-lock"></div>
+            <div class="realistic-chest-stage">
+                <div class="chest-light-rays"></div>
+                <div id="chestVisualBox" class="luxury-chest-box">
+                    <div class="chest-inner-glow"></div>
+                    <div class="chest-lid"></div>
+                    <div class="chest-lock"></div>
+                </div>
             </div>
             <div id="chestRewardDisplay" class="chest-reward-display" style="display: none;">
                 <span id="chestRewardRarity" class="rarity-badge">RARE</span>
@@ -380,7 +416,6 @@
         </div>
     </div>
 
-    <!-- SCHERMATA PERSONALIZZAZIONE NOME -->
     <div id="nameCustomModal" class="fullscreen-modal">
         <div class="fullscreen-header">
             <div class="header-title-group">
@@ -407,6 +442,14 @@
             <button id="claimRankBtn" class="action-green-btn full-width-btn">AWESOME!</button>
         </div>
     </div>
+    <div id="postGameItemPromptModal" class="postgame-item-prompt-overlay">
+        <div class="postgame-prompt-card">
+            <div class="postgame-prompt-title">USE AN ITEM?</div>
+            <p class="postgame-prompt-sub">You have special items in your bag! Do you want to use one right now?</p>
+            <div id="postGamePromptItemsList" class="postgame-prompt-items-list"></div>
+            <button id="postGamePromptNoBtn" class="postgame-prompt-no-btn">NO, THANKS</button>
+        </div>
+    </div>
 
     <div id="gameOverScreen">
         <div class="gameover-panel">
@@ -431,10 +474,10 @@
                 <div class="mini-card fire-card"><span class="mini-label">MAX COMBO</span><span id="finalCombo" class="mini-value">0</span></div>
             </div>
             <div id="goConsumablesRow" class="go-consumables-row">
-    <button id="useReviveTokenBtn" class="consumable-use-btn revive-btn-style" style="display: none;">CONTINUE (0)</button>
-    <button id="useXp15TokenBtn" class="consumable-use-btn xp15-btn-style" style="display: none;">+15% XP (0)</button>
-    <button id="useXp2xTokenBtn" class="consumable-use-btn xp2x-btn-style" style="display: none;">2X XP (0)</button>
-</div>
+                <button id="useReviveTokenBtn" class="consumable-use-btn revive-btn-style" style="display: none;">CONTINUE (0)</button>
+                <button id="useXp15TokenBtn" class="consumable-use-btn xp15-btn-style" style="display: none;">+15% XP (0)</button>
+                <button id="useXp2xTokenBtn" class="consumable-use-btn xp2x-btn-style" style="display: none;">2X XP (0)</button>
+            </div>
             <div class="gameover-buttons">
                 <button id="playAgainBtn">PLAY</button>
                 <button id="homeBtn">HOME</button>
@@ -446,4 +489,4 @@
 </body>
 </html>
 
-    
+               
