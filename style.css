@@ -2465,9 +2465,8 @@ font-size: 42px !important;
     pointer-events: none;
     animation: popMessage 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
-body, button, input, .name-font-arcade, .name-font-royal {
-    font-family: 'Lilita One', 'Fredoka', 'Arial Rounded MT Bold', sans-serif !important;
-    font-style: normal !important;
+body, button, input {
+    font-family: 'Lilita One', 'Fredoka', 'Arial Rounded MT Bold', sans-serif;
 }
 
 .name-font-arcade {

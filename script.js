@@ -216,21 +216,35 @@ const onboardingScreen = document.getElementById("onboardingScreen");
         return name.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "");
     }
 
-    function generateWeirdUsername() {
-        const adj = [
-            "TURBO", "MEGA", "CRAZY", "NINJA", "COSMIC", "HYPER", "PIXEL", "SHADOW",
-            "TOXIC", "GIGA", "SUPER", "CYBER", "EPIC", "NEON", "WILD", "ZOMBIE",
-            "FUNKY", "ULTRA", "LASER", "GLITCH", "MAGIC", "SPEEDY", "DIZZY", "ATOMIC"
+    function generateProBaseUsername() {
+        const prefixes = [
+            "APEX", "NOVA", "SHADOW", "TITAN", "CYBER", "VORTEX", "HYPER", "STORM",
+            "ALPHA", "OMEGA", "FROST", "BLAZE", "CHRONO", "ZENITH", "PHANTOM", "ECLIPSE",
+            "SONIC", "COBALT", "KRYPTON", "NEXUS", "ONYX", "SOLAR", "VECTOR", "AERO"
         ];
-        const noun = [
-            "PANDA", "PIZZA", "LLAMA", "TACO", "DRAGON", "BANANA", "SHARK", "ROBOT",
-            "CAT", "MONKEY", "WIZARD", "POTATO", "GHOST", "TIGER", "ALIEN", "DUCK",
-"DONUT", "KOALA", "NINJA", "FROG", "UNICORN", "CACTUS", "WAFFLE", "SLOTH"
+        const suffixes = [
+            "VIPER", "STRIKER", "HUNTER", "BLADE", "FALCON", "WOLF", "KNIGHT", "PULSE",
+"GHOST", "HAWK", "RANGER", "SPARK", "DRIFT", "CORE", "REAPER", "RAVEN",
+"SPECTRE", "SHIELD", "LANCE", "SURGE", "SNIPER", "PILOT", "SHARD", "BOLT"
 ];
-const a = adj[Math.floor(Math.random() * adj.length)];
-const n = noun[Math.floor(Math.random() * noun.length)];
-const num = Math.floor(10 + Math.random() * 90);
-return a + "_" + n + num;
+const p = prefixes[Math.floor(Math.random() * prefixes.length)];
+const s = suffixes[Math.floor(Math.random() * suffixes.length)];
+return p + "_" + s;
+}
+async function generateUniqueProUsername() {
+const baseName = generateProBaseUsername();
+if (await checkUsernameAvailable(baseName)) {
+return baseName;
+}
+let counter = 2;
+while (counter <= 9999) {
+const candidate = baseName + counter;
+if (await checkUsernameAvailable(candidate)) {
+return candidate;
+}
+counter++;
+}
+return baseName + "_" + Date.now().toString().slice(-4);
 }
 function containsProfanity(rawName) {
 if (!rawName) return false;
@@ -258,12 +272,6 @@ const bannedWords = [
 "SCHEISSE", "ARSCHLOCH", "HURE", "SCHLAMPE", "FICK", "WICHSER", "HUSO", "MISSGEBURT"
 ];
 return bannedWords.some(word => normalized.includes(word) || reversed.includes(word));
-}
-function forceRenameIfProfane() {
-if (!playerUsername || !containsProfanity(playerUsername)) return false;
-playerUsername = generateWeirdUsername();
-localStorage.setItem("timeTapUsername", playerUsername);
-return false;
 }
 function showErrorBox(el, msg) {
 if (!el) return;
@@ -1308,6 +1316,10 @@ function finalizeRunStatsAndShowSummary() {
             if (Array.isArray(saved.buttons)) {
                 saved.buttons.forEach(bData => createButton(bData));
             }
+            const gCount = activeButtons.filter(b => ["green", "gold", "ice", "clock"].includes(b.dataset.action)).length;
+            const rCount = activeButtons.filter(b => ["red", "bomb"].includes(b.dataset.action)).length;
+            for (let i = gCount; i < 3; i++) createButton("green");
+            for (let i = rCount; i < 2; i++) createButton("red");
             running = true;
             isPaused = true;
             runResumeCountdown(() => {
@@ -1338,14 +1350,14 @@ function finalizeRunStatsAndShowSummary() {
     }
     if (confirmNewRunNoBtn) {
         confirmNewRunNoBtn.addEventListener("click", () => {
-            playSynthEffect("click");
-            if (confirmNewRunModal) confirmNewRunModal.style.display = "none";
-        });
-    }
-    if (confirmNewRunYesBtn) {
-        confirmNewRunYesBtn.addEventListener("click", () => {
-            playSynthEffect("click");
-            if (confirmNewRunModal) confirmNewRunModal.style.display = "none";
+playSynthEffect("click");
+if (confirmNewRunModal) confirmNewRunModal.style.display = "none";
+});
+}
+if (confirmNewRunYesBtn) {
+confirmNewRunYesBtn.addEventListener("click", () => {
+playSynthEffect("click");
+if (confirmNewRunModal) confirmNewRunModal.style.display = "none";
 const raw = localStorage.getItem(PAUSE_STATE_KEY);
 clearSavedPausedState();
 if (raw) {
@@ -1489,8 +1501,11 @@ running = true;
 if (!isRestored) {
 pauseCooldownRemainingMs = 0;
 normalSpawnsSinceLastSpecial = 8;
-createButton();
-createButton();
+createButton("green");
+createButton("green");
+createButton("green");
+createButton("red");
+createButton("red");
 }
 updatePauseButtonUI();
 updateTimerVisuals();
@@ -1553,11 +1568,10 @@ ringCircle.style.strokeDashoffset = (BTN_RING_CIRCUMFERENCE * (1 - frac)).toFixe
 }
 if (rem <= 0) removeButton(btn);
 }
-spawnAccumulatorMs += TICK_MS * speedFactor;
-if (spawnAccumulatorMs >= baseSpawnDelay) {
-spawnAccumulatorMs = 0;
-if (activeButtons.length < 6) createButton();
-}
+const greenCount = activeButtons.filter(b => ["green", "gold", "ice", "clock"].includes(b.dataset.action)).length;
+const redCount = activeButtons.filter(b => ["red", "bomb"].includes(b.dataset.action)).length;
+if (greenCount < 3) createButton("green");
+if (redCount < 2) createButton("red");
 }, TICK_MS);
 }
 function renderButtonInner(btn, type, valueText) {
@@ -1569,14 +1583,15 @@ else if (type === "gold") contentHtml = SPECIAL_SVGS.gold + "2X TIME";
 else contentHtml = valueText;
 btn.innerHTML = contentHtml;
 }
-function createButton(forcedConfig = null) {
+function createButton(forcedCategoryOrConfig = null) {
 let type = "green";
 let key = "";
 let valueStr = "";
-if (forcedConfig) {
-type = forcedConfig.action;
-key = forcedConfig.key;
-valueStr = forcedConfig.value;
+const isSavedObject = forcedCategoryOrConfig && typeof forcedCategoryOrConfig === "object";
+if (isSavedObject) {
+type = forcedCategoryOrConfig.action;
+key = forcedCategoryOrConfig.key;
+valueStr = forcedCategoryOrConfig.value;
 } else {
 const greenSlotsCount = activeButtons.filter(b =>
 ["green", "gold", "ice", "clock"].includes(b.dataset.action)
@@ -1584,21 +1599,20 @@ const greenSlotsCount = activeButtons.filter(b =>
 const redSlotsCount = activeButtons.filter(b =>
 ["red", "bomb"].includes(b.dataset.action)
 ).length;
-if (greenSlotsCount >= 4 && redSlotsCount >= 2) return;
+if (forcedCategoryOrConfig === "green") {
+if (greenSlotsCount >= 3) return;
+type = "green";
+} else if (forcedCategoryOrConfig === "red") {
+if (redSlotsCount >= 2) return;
+type = "red";
+} else {
+if (greenSlotsCount < 3) type = "green";
+else if (redSlotsCount < 2) type = "red";
+else return;
+}
 const hasSpecialOnScreen = activeButtons.some(b =>
 ["gold", "ice", "bomb", "clock"].includes(b.dataset.action)
 );
-if (greenSlotsCount >= 4) {
-type = "red";
-} else if (redSlotsCount >= 2) {
-type = "green";
-} else if (greenSlotsCount >= 2 && redSlotsCount === 0) {
-type = "red";
-} else if (redSlotsCount >= 1 && greenSlotsCount === 0) {
-type = "green";
-} else {
-type = Math.random() < 0.65 ? "green" : "red";
-}
 const canSpawnPowerup = !hasSpecialOnScreen && normalSpawnsSinceLastSpecial >= 8 && time < 3.0;
 const canSpawnBomb = !hasSpecialOnScreen && normalSpawnsSinceLastSpecial >= 8;
 if (type === "green" && canSpawnPowerup) {
@@ -1622,13 +1636,13 @@ let valueText = "";
 if (type === "green") {
 btn.classList.add("green");
 const greenOptions = isDesktop ? [0.420, 0.450, 0.500, 0.550] : [0.290, 0.310, 0.330, 0.360];
-const value = forcedConfig ? Number(valueStr) : greenOptions[Math.floor(Math.random() * greenOptions.length)];
+const value = isSavedObject ? Number(valueStr) : greenOptions[Math.floor(Math.random() * greenOptions.length)];
 btn.dataset.value = value;
 valueText = "+" + value.toFixed(3);
 } else if (type === "red") {
 btn.classList.add("red");
 const redOptions = [0.4, 0.5, 0.6, 0.7];
-const value = forcedConfig ? Number(valueStr) : redOptions[Math.floor(Math.random() * redOptions.length)];
+const value = isSavedObject ? Number(valueStr) : redOptions[Math.floor(Math.random() * redOptions.length)];
 btn.dataset.value = value;
 valueText = "-" + value.toFixed(1);
 } else if (type === "ice") {
@@ -1647,14 +1661,14 @@ durationMs = Math.round(baseButtonDuration * 0.80);
 }
 btn.dataset.key = key;
 btn.dataset.action = type;
-btn.dataset.totalMs = forcedConfig ? (forcedConfig.totalMs || durationMs) : durationMs;
-btn.dataset.remainingMs = forcedConfig ? forcedConfig.remainingMs : durationMs;
+btn.dataset.totalMs = isSavedObject ? (forcedCategoryOrConfig.totalMs || durationMs) : durationMs;
+btn.dataset.remainingMs = isSavedObject ? forcedCategoryOrConfig.remainingMs : durationMs;
 renderButtonInner(btn, type, valueText);
 let x = 0;
 let y = 0;
-if (forcedConfig) {
-x = forcedConfig.left;
-y = forcedConfig.top;
+if (isSavedObject) {
+x = forcedCategoryOrConfig.left;
+y = forcedCategoryOrConfig.top;
 } else {
 const btnSize = isDesktop ? 165 : 108;
 const minCenterDist = isDesktop ? 245 : 150;
@@ -1864,189 +1878,202 @@ specialMessage.style.display = "none";
 }
 function removeButton(btn) {
 if (!btn) return;
+const wasAction = btn.dataset.action;
 const index = activeButtons.indexOf(btn);
 if (index > -1) activeButtons.splice(index, 1);
 if (btn.parentNode) btn.remove();
+if (running && wasAction) {
+const isPositive = ["green", "gold", "ice", "clock"].includes(wasAction);
+createButton(isPositive ? "green" : "red");
+}
 }
 function animateScoreCounter(element, targetValue, onComplete) {
-let current = 0;
-const steps = 35;
-const increment = targetValue / steps;
-const counter = setInterval(() => {
-current += increment;
-if (current >= targetValue) {
-current = targetValue;
-clearInterval(counter);
-element.textContent = fmtNum(Math.round(current));
-if (onComplete) onComplete();
-} else {
-element.textContent = fmtNum(Math.round(current));
+        let current = 0;
+        const steps = 35;
+        const increment = targetValue / steps;
+        const counter = setInterval(() => {
+            current += increment;
+            if (current >= targetValue) {
+                current = targetValue;
+                clearInterval(counter);
+                element.textContent = fmtNum(Math.round(current));
+                if (onComplete) onComplete();
+            } else {
+                element.textContent = fmtNum(Math.round(current));
+            }
+        }, 25);
+    }
+
+    function gameOver() {
+        if (!running) return;
+        running = false;
+        isPaused = false;
+        isResumingCountdown = false;
+        isFrozen = false;
+        isSlowMo = false;
+        doubleBonus = false;
+        overdriveRemainingMs = 0;
+        pauseCooldownRemainingMs = 0;
+        updatePauseButtonUI();
+        clearSavedPausedState();
+        clearInterval(gameLoopInterval);
+        timerCircle.classList.remove("timer-panic", "timer-frozen", "timer-slowmo", "timer-max-cap");
+        game.classList.remove("slowmo-active", "overdrive-active");
+        while (activeButtons.length > 0) {
+            const firstBtn = activeButtons.shift();
+            if (firstBtn && firstBtn.parentNode) firstBtn.remove();
+        }
+        finalizeRunStatsAndShowSummary();
+    }
+
+    document.addEventListener("keydown", (event) => {
+        if (!running || isResumingCountdown) return;
+        const k = event.key.toLowerCase();
+        if (k === "d") {
+            event.preventDefault();
+            if (isPaused) { playSynthEffect("click"); resumeGame(); }
+            else if (pauseCooldownRemainingMs <= 0) { playSynthEffect("click"); pauseGame(); }
+        }
+    });
+
+    window.ttCoreBridge = {
+        playXpSound: () => playSynthEffect("xpclaim"),
+        playClick: () => playSynthEffect("click"),
+        playNewRecord: () => playSynthEffect("newrecord"),
+        speak: (txt) => speakEnglish(txt, 1.08, 1.15),
+        fireworks: (container) => launchFireworksShow(container),
+        syncCloudNow: () => syncPlayerToCloud(playerUsername),
+        refreshXPBar: (fromXP) => {
+            storedBonusXP = Number(localStorage.getItem("storedBonusXP")) || 0;
+            refreshAllProfileAndRankUI(fromXP);
+            checkAndTriggerRankUpCelebration();
+        },
+        getCurrentXP: () => calculateTotalXP(),
+        reviveRun: () => reviveRunWithInventoryToken(),
+        applyRunXpMultiplier: (mult) => {
+            if (runXpBoostApplied || lastRunBaseEarnedXP <= 0) return 0;
+            runXpBoostApplied = true;
+            const before = calculateTotalXP();
+            const extraXP = Math.round(lastRunBaseEarnedXP * (mult - 1));
+            storedBonusXP += extraXP;
+            localStorage.setItem("storedBonusXP", storedBonusXP);
+            const after = calculateTotalXP();
+            if (xpEarnedBadge) {
+                xpEarnedBadge.textContent = "+" + fmtNum(lastRunBaseEarnedXP + extraXP) + " XP (BOOSTED!)";
+            }
+            const { currentTier: tAfter, nextTier: nAfter } = getCurrentAndNextTier(after);
+            if (goXpProgressText) {
+                goXpProgressText.textContent = nAfter
+                    ? fmtNum(after) + " / " + fmtNum(nAfter.xpRequired) + " XP"
+                    : fmtNum(after) + " XP";
+            }
+            if (goXpBarFill) {
+                goXpBarFill.style.width = computeSegmentPercent(after).toFixed(1) + "%";
+            }
+            refreshAllProfileAndRankUI(before);
+            return extraXP;
+        }
+    };
+
+    function enterHomeScreen() {
+        refreshAllProfileAndRankUI();
+        if (menu) menu.style.display = "flex";
+        syncPlayerToCloud(playerUsername);
+        checkAndTriggerRankUpCelebration();
+        startHomeSymphony();
+    }
+
+    async function runStartupSequence() {
+        if (onboardingScreen) onboardingScreen.style.display = "none";
+        if (!playerUsername || containsProfanity(playerUsername)) {
+            playerUsername = await generateUniqueProUsername();
+            localStorage.setItem("timeTapUsername", playerUsername);
+        }
+        enterHomeScreen();
+    }
+
+    if (saveProfileBtn && usernameInput) {
+        saveProfileBtn.addEventListener("click", async () => {
+            if (playerUsername) return;
+            const chosen = sanitizeUsernameKey(usernameInput.value);
+            if (chosen.length < 2) {
+                showErrorBox(onboardingErrorMsg, "USE AT LEAST 2 LETTERS/NUMBERS!");
+                usernameInput.focus();
+                return;
+            }
+            if (containsProfanity(chosen)) {
+                playSynthEffect("red");
+                showErrorBox(onboardingErrorMsg, "OFFENSIVE USERNAME NOT ALLOWED!");
+                usernameInput.focus();
+                return;
+            }
+            saveProfileBtn.disabled = true;
+            saveProfileBtn.textContent = "CHECKING...";
+            const isFree = await checkUsernameAvailable(chosen);
+            saveProfileBtn.disabled = false;
+            saveProfileBtn.textContent = "START PLAYING";
+            if (!isFree) {
+                playSynthEffect("red");
+                showErrorBox(onboardingErrorMsg, "USERNAME ALREADY IN USE!");
+                usernameInput.focus();
+                return;
+            }
+            hideErrorBox(onboardingErrorMsg);
+            playerUsername = chosen;
+            localStorage.setItem("timeTapUsername", playerUsername);
+            initAudio();
+            playSynthEffect("newrecord");
+            await syncPlayerToCloud(playerUsername);
+            if (onboardingScreen) onboardingScreen.style.display = "none";
+            enterHomeScreen();
+        });
+    }
+
+    runStartupSequence();
 }
-}, 25);
-}
-function gameOver() {
-if (!running) return;
-running = false;
-isPaused = false;
-isResumingCountdown = false;
-isFrozen = false;
-isSlowMo = false;
-doubleBonus = false;
-overdriveRemainingMs = 0;
-pauseCooldownRemainingMs = 0;
-updatePauseButtonUI();
-clearSavedPausedState();
-clearInterval(gameLoopInterval);
-timerCircle.classList.remove("timer-panic", "timer-frozen", "timer-slowmo", "timer-max-cap");
-game.classList.remove("slowmo-active", "overdrive-active");
-while (activeButtons.length > 0) {
-const firstBtn = activeButtons.shift();
-if (firstBtn && firstBtn.parentNode) firstBtn.remove();
-}
-finalizeRunStatsAndShowSummary();
-}
-document.addEventListener("keydown", (event) => {
-if (!running || isResumingCountdown) return;
-const k = event.key.toLowerCase();
-if (k === "d") {
-event.preventDefault();
-if (isPaused) { playSynthEffect("click"); resumeGame(); }
-else if (pauseCooldownRemainingMs <= 0) { playSynthEffect("click"); pauseGame(); }
-}
-});
-window.ttCoreBridge = {
-playXpSound: () => playSynthEffect("xpclaim"),
-playClick: () => playSynthEffect("click"),
-playNewRecord: () => playSynthEffect("newrecord"),
-speak: (txt) => speakEnglish(txt, 1.08, 1.15),
-fireworks: (container) => launchFireworksShow(container),
-syncCloudNow: () => syncPlayerToCloud(playerUsername),
-refreshXPBar: (fromXP) => {
-storedBonusXP = Number(localStorage.getItem("storedBonusXP")) || 0;
-refreshAllProfileAndRankUI(fromXP);
-checkAndTriggerRankUpCelebration();
-},
-getCurrentXP: () => calculateTotalXP(),
-reviveRun: () => reviveRunWithInventoryToken(),
-applyRunXpMultiplier: (mult) => {
-if (runXpBoostApplied || lastRunBaseEarnedXP <= 0) return 0;
-runXpBoostApplied = true;
-const before = calculateTotalXP();
-const extraXP = Math.round(lastRunBaseEarnedXP * (mult - 1));
-storedBonusXP += extraXP;
-localStorage.setItem("storedBonusXP", storedBonusXP);
-const after = calculateTotalXP();
-if (xpEarnedBadge) {
-xpEarnedBadge.textContent = "+" + fmtNum(lastRunBaseEarnedXP + extraXP) + " XP (BOOSTED!)";
-}
-const { currentTier: tAfter, nextTier: nAfter } = getCurrentAndNextTier(after);
-if (goXpProgressText) {
-goXpProgressText.textContent = nAfter
-? fmtNum(after) + " / " + fmtNum(nAfter.xpRequired) + " XP"
-: fmtNum(after) + " XP";
-}
-if (goXpBarFill) {
-goXpBarFill.style.width = computeSegmentPercent(after).toFixed(1) + "%";
-}
-refreshAllProfileAndRankUI(before);
-return extraXP;
-}
-};
-function enterHomeScreen() {
-refreshAllProfileAndRankUI();
-if (menu) menu.style.display = "flex";
-syncPlayerToCloud(playerUsername);
-checkAndTriggerRankUpCelebration();
-startHomeSymphony();
-}
-function runStartupSequence() {
-if (onboardingScreen) onboardingScreen.style.display = "none";
-if (!playerUsername || containsProfanity(playerUsername)) {
-playerUsername = generateWeirdUsername();
-localStorage.setItem("timeTapUsername", playerUsername);
-}
-enterHomeScreen();
-}
-if (saveProfileBtn && usernameInput) {
-saveProfileBtn.addEventListener("click", async () => {
-if (playerUsername) return;
-const chosen = sanitizeUsernameKey(usernameInput.value);
-if (chosen.length < 2) {
-showErrorBox(onboardingErrorMsg, "USE AT LEAST 2 LETTERS/NUMBERS!");
-usernameInput.focus();
-return;
-}
-if (containsProfanity(chosen)) {
-playSynthEffect("red");
-showErrorBox(onboardingErrorMsg, "OFFENSIVE USERNAME NOT ALLOWED!");
-usernameInput.focus();
-return;
-}
-saveProfileBtn.disabled = true;
-saveProfileBtn.textContent = "CHECKING...";
-const isFree = await checkUsernameAvailable(chosen);
-saveProfileBtn.disabled = false;
-saveProfileBtn.textContent = "START PLAYING";
-if (!isFree) {
-playSynthEffect("red");
-showErrorBox(onboardingErrorMsg, "USERNAME ALREADY IN USE!");
-usernameInput.focus();
-return;
-}
-hideErrorBox(onboardingErrorMsg);
-playerUsername = chosen;
-localStorage.setItem("timeTapUsername", playerUsername);
-initAudio();
-playSynthEffect("newrecord");
-await syncPlayerToCloud(playerUsername);
-if (onboardingScreen) onboardingScreen.style.display = "none";
-enterHomeScreen();
-});
-}
-runStartupSequence();
-}
+
 (function initTimeTapProgressionV2() {
-const SUPABASE_URL = "supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaGtrdHZ0eGJzZmJyYWZzbmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NTMzNjAsImV4cCI6MjExMTAyOTM2MH0.xRde38jj8K1cBpbXIIDyc14OMSsjRVUMkqTEvwDq2Tw";
-const STATE_KEY = "timeTapProgressionState_v3";
-const MAX_ITEM_STACK = 10;
-const ROMAN_NUMERALS = ["", "I", "II", "III", "IV", "V"];
-const userLang = (navigator.language || navigator.userLanguage || "").toLowerCase();
-const userTz = (Intl.DateTimeFormat().resolvedOptions().timeZone || "").toLowerCase();
-const USE_ITALIAN = userLang.startsWith("it") || userTz.includes("rome");
-function t(itText, enText) {
-return USE_ITALIAN ? itText : enText;
-}
-function clampItemStack(val) {
-return Math.min(MAX_ITEM_STACK, Math.max(0, Number(val) || 0));
-}
-const NAME_STYLES_CATALOG = [
-// COLORI
-{ id: "default", name: "CLASSIC WHITE", category: "COLOR", rarity: "COMMON", cssClass: "", prefix: "", free: true },
-{ id: "col_gold", name: "ROYAL GOLD", category: "COLOR", rarity: "COMMON", cssClass: "name-style-gold", prefix: "", free: false },
-{ id: "col_emerald", name: "EMERALD NEON", category: "COLOR", rarity: "COMMON", cssClass: "name-style-emerald", prefix: "", free: false },
-{ id: "col_cyan", name: "CYBER CYAN", category: "COLOR", rarity: "RARE", cssClass: "name-style-cyan", prefix: "", free: false },
-{ id: "col_amethyst", name: "AMETHYST GLOW", category: "COLOR", rarity: "RARE", cssClass: "name-style-amethyst", prefix: "", free: false },
-{ id: "col_inferno", name: "INFERNO FLAME", category: "COLOR", rarity: "EPIC", cssClass: "name-style-inferno", prefix: "", free: false },
-{ id: "col_diamond", name: "DIAMOND SHINE", category: "COLOR", rarity: "EPIC", cssClass: "name-style-diamond", prefix: "", free: false },
-{ id: "col_rainbow", name: "PRISM RAINBOW", category: "COLOR", rarity: "LEGENDARY", cssClass: "rainbow-master-text", prefix: "", free: false },
-// GRAFIE / FONT (Inclusi cicciotti e vari stili!)
-{ id: "font_chubby", name: "CHUBBY TITAN", category: "FONT", rarity: "COMMON", cssClass: "name-font-chubby", prefix: "", free: false },
-{ id: "font_bubble", name: "BUBBLE POP", category: "FONT", rarity: "RARE", cssClass: "name-font-bubble", prefix: "", free: false },
-{ id: "font_arcade", name: "BOUNCE POP", category: "FONT", rarity: "RARE", cssClass: "name-font-arcade", prefix: "", free: false },
-{ id: "font_wide", name: "WIDE BLOCK", category: "FONT", rarity: "RARE", cssClass: "name-font-wide", prefix: "", free: false },
-{ id: "font_pixel", name: "RETRO PIXEL", category: "FONT", rarity: "EPIC", cssClass: "name-font-pixel", prefix: "", free: false },
-{ id: "font_mono", name: "HACKER CODE", category: "FONT", rarity: "EPIC", cssClass: "name-font-mono", prefix: "", free: false },
-{ id: "font_italic", name: "SPEED SLANT", category: "FONT", rarity: "EPIC", cssClass: "name-font-italic-script", prefix: "", free: false },
-{ id: "font_serif", name: "IMPERIAL SERIF", category: "FONT", rarity: "LEGENDARY", cssClass: "name-font-serif", prefix: "", free: false },
-{ id: "font_gothic", name: "ROYAL GOTHIC", category: "FONT", rarity: "LEGENDARY", cssClass: "name-font-gothic", prefix: "", free: false },
-// SIMBOLI
-{ id: "sym_star", name: "STAR BADGE", category: "SYMBOL", rarity: "COMMON", cssClass: "", prefix: "★ ", free: false },
-{ id: "sym_bolt", name: "THUNDER BOLT", category: "SYMBOL", rarity: "RARE", cssClass: "", prefix: "⚡ ", free: false },
-{ id: "sym_fire", name: "FIRE FACE", category: "SYMBOL", rarity: "RARE", cssClass: "", prefix: "🔥 ", free: false },
-{ id: "sym_cool", name: "COOL SHADES", category: "SYMBOL", rarity: "RARE", cssClass: "", prefix: "😎 ", free: false },
-{ id: "sym_devil", name: "DEVIL GRIN", category: "SYMBOL", rarity: "EPIC", cssClass: "", prefix: "😈 ", free: false },
-{ id: "sym_alien", name: "ALIEN PRO", category: "SYMBOL", rarity: "EPIC", cssClass: "", prefix: "👾 ", free: false },
+    const SUPABASE_URL = "https://jnhkktvtxbsfbrafsnig.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaGtrdHZ0eGJzZmJyYWZzbmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NTMzNjAsImV4cCI6MjExMTAyOTM2MH0.xRde38jj8K1cBpbXIIDyc14OMSsjRVUMkqTEvwDq2Tw";
+    const STATE_KEY = "timeTapProgressionState_v3";
+    const MAX_ITEM_STACK = 10;
+    const ROMAN_NUMERALS = ["", "I", "II", "III", "IV", "V"];
+    const userLang = (navigator.language || navigator.userLanguage || "").toLowerCase();
+    const userTz = (Intl.DateTimeFormat().resolvedOptions().timeZone || "").toLowerCase();
+    const USE_ITALIAN = userLang.startsWith("it") || userTz.includes("rome");
+
+    function t(itText, enText) {
+        return USE_ITALIAN ? itText : enText;
+    }
+
+    function clampItemStack(val) {
+        return Math.min(MAX_ITEM_STACK, Math.max(0, Number(val) || 0));
+    }
+
+    const NAME_STYLES_CATALOG = [
+        { id: "default", name: "CLASSIC WHITE", category: "COLOR", rarity: "COMMON", cssClass: "", prefix: "", free: true },
+        { id: "col_gold", name: "ROYAL GOLD", category: "COLOR", rarity: "COMMON", cssClass: "name-style-gold", prefix: "", free: false },
+        { id: "col_emerald", name: "EMERALD NEON", category: "COLOR", rarity: "COMMON", cssClass: "name-style-emerald", prefix: "", free: false },
+        { id: "col_cyan", name: "CYBER CYAN", category: "COLOR", rarity: "RARE", cssClass: "name-style-cyan", prefix: "", free: false },
+        { id: "col_amethyst", name: "AMETHYST GLOW", category: "COLOR", rarity: "RARE", cssClass: "name-style-amethyst", prefix: "", free: false },
+        { id: "col_inferno", name: "INFERNO FLAME", category: "COLOR", rarity: "EPIC", cssClass: "name-style-inferno", prefix: "", free: false },
+        { id: "col_diamond", name: "DIAMOND SHINE", category: "COLOR", rarity: "EPIC", cssClass: "name-style-diamond", prefix: "", free: false },
+        { id: "col_rainbow", name: "PRISM RAINBOW", category: "COLOR", rarity: "LEGENDARY", cssClass: "rainbow-master-text", prefix: "", free: false },
+        { id: "font_chubby", name: "CHUBBY TITAN", category: "FONT", rarity: "COMMON", cssClass: "name-font-chubby", prefix: "", free: false },
+        { id: "font_bubble", name: "BUBBLE POP", category: "FONT", rarity: "RARE", cssClass: "name-font-bubble", prefix: "", free: false },
+        { id: "font_arcade", name: "BOUNCE POP", category: "FONT", rarity: "RARE", cssClass: "name-font-arcade", prefix: "", free: false },
+        { id: "font_wide", name: "WIDE BLOCK", category: "FONT", rarity: "RARE", cssClass: "name-font-wide", prefix: "", free: false },
+        { id: "font_pixel", name: "RETRO PIXEL", category: "FONT", rarity: "EPIC", cssClass: "name-font-pixel", prefix: "", free: false },
+        { id: "font_mono", name: "HACKER CODE", category: "FONT", rarity: "EPIC", cssClass: "name-font-mono", prefix: "", free: false },
+        { id: "font_italic", name: "SPEED SLANT", category: "FONT", rarity: "EPIC", cssClass: "name-font-italic-script", prefix: "", free: false },
+        { id: "font_serif", name: "IMPERIAL SERIF", category: "FONT", rarity: "LEGENDARY", cssClass: "name-font-serif", prefix: "", free: false },
+        { id: "font_gothic", name: "ROYAL GOTHIC", category: "FONT", rarity: "LEGENDARY", cssClass: "name-font-gothic", prefix: "", free: false },
+        { id: "sym_star", name: "STAR BADGE", category: "SYMBOL", rarity: "COMMON", cssClass: "", prefix: "★ ", free: false },
+        { id: "sym_bolt", name: "THUNDER BOLT", category: "SYMBOL", rarity: "RARE", cssClass: "", prefix: "⚡ ", free: false },
+        { id: "sym_fire", name: "FIRE FACE", category: "SYMBOL", rarity: "RARE", cssClass: "", prefix: "🔥 ", free: false },
+        { id: "sym_cool", name: "COOL SHADES", category: "SYMBOL", rarity: "RARE", cssClass: "", prefix: "😎 ", free: false },
+        { id: "sym_devil", name: "DEVIL GRIN", category: "SYMBOL", rarity: "EPIC", cssClass: "", prefix: "😈 ", free: false },
+        { id: "sym_alien", name: "ALIEN PRO", category: "SYMBOL", rarity: "EPIC", cssClass: "", prefix: "👾 ", free: false },
 { id: "sym_skull", name: "SKULL BOSS", category: "SYMBOL", rarity: "EPIC", cssClass: "", prefix: "💀 ", free: false },
 { id: "sym_crown", name: "ROYAL CROWN", category: "SYMBOL", rarity: "LEGENDARY", cssClass: "", prefix: "👑 ", free: false }
 ];
@@ -2132,250 +2159,238 @@ saveState(state);
 return state;
 }
 function saveState(state) {
-        state.reviveTokens = clampItemStack(state.reviveTokens);
-        state.xp15Tokens = clampItemStack(state.xp15Tokens);
-        state.xp2xTokens = clampItemStack(state.xp2xTokens);
-        state.luxuryChests = clampItemStack(state.luxuryChests);
-        localStorage.setItem(STATE_KEY, JSON.stringify(state));
-    }
-
-    function showXpGainToast(text) {
-        const old = document.querySelector(".xp-claim-toast");
-        if (old) old.remove();
-        const toast = document.createElement("div");
-        toast.className = "xp-claim-toast";
-        toast.textContent = text;
-        document.body.appendChild(toast);
-        setTimeout(() => { if (toast.parentNode) toast.remove(); }, 2200);
-    }
-
-    function grantBonusXPAnimated(amount, labelText) {
-        const beforeXP = window.ttCoreBridge ? window.ttCoreBridge.getCurrentXP() : 0;
-        const cur = Number(localStorage.getItem("storedBonusXP")) || 0;
-        localStorage.setItem("storedBonusXP", cur + amount);
-        if (window.ttCoreBridge) {
-            window.ttCoreBridge.playXpSound();
-            window.ttCoreBridge.refreshXPBar(beforeXP);
-        }
-        showXpGainToast(labelText || ("+" + amount.toLocaleString("it-IT") + " XP!"));
-    }
-
-    function syncLevelMilestones(currentLevel) {
-        const state = loadState();
-        let changed = false;
-        for (let lv = 20; lv <= currentLevel; lv += 20) {
-            const key = "revive20_" + lv;
-            if (!state.claimedLevelMilestones[key]) {
-                state.claimedLevelMilestones[key] = true;
-                state.reviveTokens = clampItemStack(state.reviveTokens + 2);
-                changed = true;
-            }
-        }
-        for (let lv = 25; lv <= currentLevel; lv += 25) {
-            const key = "xp15_" + lv;
-            if (!state.claimedLevelMilestones[key]) {
-                state.claimedLevelMilestones[key] = true;
-                state.xp15Tokens = clampItemStack(state.xp15Tokens + 1);
-                changed = true;
-            }
-        }
-        for (let lv = 20; lv <= currentLevel; lv += 20) {
-            const key = "chest_" + lv;
-            if (!state.claimedLevelMilestones[key]) {
-                state.claimedLevelMilestones[key] = true;
-                state.luxuryChests = clampItemStack(state.luxuryChests + 1);
-                changed = true;
-            }
-        }
-        if (changed) {
-            saveState(state);
-            updateAllAlertDots();
-        }
-    }
-
-    function getMissionsCatalog(state) {
-        return [
-            // --- MISSIONE SETTIMANALE ---
-            {
-                id: "w_40_games",
-                type: "WEEKLY",
-                title: t("CAMPIONE SETTIMANALE", "WEEKLY CHAMPION"),
-                desc: t("Gioca 40 partite ognuna da almeno 800K punti", "Play 40 games with at least 800K points each"),
-                progress: state.weekly800kGames || 0,
-                target: 40,
-                rewardType: "xp_and_chest",
-                rewardAmount: 500000,
-                chestCount: 1,
-                rewardLabel: t("+500K XP & 1 CASSA", "+500K XP & 1 CHEST")
-            },
-
-            // --- 20 MISSIONI MENSILI (MEDIE -> DIFFICILI -> MOLTO DIFFICILI) ---
-            // 1-6: MEDIE (Solo XP)
-            {
-                id: "m_games_50",
-                type: "MONTHLY",
-                title: t("RISCALDAMENTO", "WARM UP"),
-                desc: t("Gioca 50 partite questo mese", "Play 50 games this month"),
-                progress: state.monthlyGames,
-                target: 50,
-                rewardType: "xp",
-                rewardAmount: 75000,
-                chestCount: 0,
-                rewardLabel: "+75.000 XP"
-            },
-            {
-                id: "m_combo_150",
-                type: "MONTHLY",
-                title: t("MANO FERMA", "STEADY HAND"),
-                desc: t("Raggiungi Combo 150 in una partita", "Reach 150 Combo in one run"),
-                progress: state.monthlyBestCombo,
-                target: 150,
-                rewardType: "xp",
-                rewardAmount: 100000,
-                chestCount: 0,
-                rewardLabel: "+100.000 XP"
-            },
-            {
-                id: "m_score_250k",
-                type: "MONTHLY",
-                title: t("SCALATORE", "CLIMBER"),
-                desc: t("Fai 250.000 punti in una partita", "Score 250,000 points in one run"),
-                progress: state.monthlyBestScore,
-                target: 250000,
-                rewardType: "xp",
-                rewardAmount: 120000,
-                chestCount: 0,
-                rewardLabel: "+120.000 XP"
-            },
-            {
-                id: "m_total_3m",
-                type: "MONTHLY",
-                title: t("ACCUMULATORE", "ACCUMULATOR"),
-                desc: t("Accumula 3.000.000 punti nel mese", "Accumulate 3,000,000 score this month"),
-                progress: state.monthlyTotalScore,
-                target: 3000000,
-                rewardType: "xp",
-                rewardAmount: 150000,
-                chestCount: 0,
-                rewardLabel: "+150.000 XP"
-            },
-            {
-                id: "m_games_150",
-                type: "MONTHLY",
-                title: t("GIOCATORE ASSIDUO", "DEDICATED PLAYER"),
-                desc: t("Gioca 150 partite questo mese", "Play 150 games this month"),
-                progress: state.monthlyGames,
-                target: 150,
-                rewardType: "xp",
-                rewardAmount: 200000,
-                chestCount: 0,
-                rewardLabel: "+200.000 XP"
-            },
-            {
-                id: "m_combo_250",
-                type: "MONTHLY",
-                title: t("RITMO PERFETTO", "PERFECT RHYTHM"),
-                desc: t("Raggiungi Combo 250 in una partita", "Reach 250 Combo in one run"),
-                progress: state.monthlyBestCombo,
-                target: 250,
-                rewardType: "xp",
-                rewardAmount: 250000,
-                chestCount: 0,
-                rewardLabel: "+250.000 XP"
-            },
-
-            // 7-13: DIFFICILI (XP alti + prime Casse rare)
-            {
-                id: "m_score_600k",
-                type: "MONTHLY",
-                title: t("CECCHINO VELOCE", "SPEED SNIPER"),
-                desc: t("Fai 600.000 punti in una partita", "Score 600,000 points in one run"),
-                progress: state.monthlyBestScore,
-                target: 600000,
-                rewardType: "xp",
-                rewardAmount: 300000,
-                chestCount: 0,
-                rewardLabel: "+300.000 XP"
-            },
-            {
-                id: "m_total_10m",
-                type: "MONTHLY",
-                title: t("BANCHIERE D'ORO", "GOLD BANKER"),
-                desc: t("Accumula 10.000.000 punti nel mese", "Accumulate 10,000,000 score this month"),
-                progress: state.monthlyTotalScore,
-                target: 10000000,
-                rewardType: "xp",
-                rewardAmount: 400000,
-                chestCount: 0,
-                rewardLabel: "+400.000 XP"
-            },
-            {
-                id: "m_games_300",
-                type: "MONTHLY",
-                title: t("INSTANCABILE", "RELENTLESS"),
-                desc: t("Gioca 300 partite questo mese", "Play 300 games this month"),
-                progress: state.monthlyGames,
-                target: 300,
-                rewardType: "chest",
-                rewardAmount: 0,
-                chestCount: 1,
-                rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
-            },
-            {
-                id: "m_combo_360",
-                type: "MONTHLY",
-                title: t("DOPPIA ESPLOSIONE", "DOUBLE EXPLOSION"),
-                desc: t("Raggiungi Combo 360 in una partita", "Reach 360 Combo in one run"),
-                progress: state.monthlyBestCombo,
-                target: 360,
-                rewardType: "xp",
-                rewardAmount: 500000,
-                chestCount: 0,
-                rewardLabel: "+500.000 XP"
-            },
-            {
-                id: "m_score_1m",
-                type: "MONTHLY",
-                title: t("MILIONARIO SINGOLO", "SINGLE MILLIONAIRE"),
-                desc: t("Fai 1.000.000 punti in una partita", "Score 1,000,000 points in one run"),
-                progress: state.monthlyBestScore,
-                target: 1000000,
-                rewardType: "chest",
-                rewardAmount: 0,
-                chestCount: 1,
-                rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
-            },
-            {
-                id: "m_total_25m",
-                type: "MONTHLY",
-                title: t("IMPERO DI PUNTI", "SCORE EMPIRE"),
-                desc: t("Accumula 25.000.000 punti nel mese", "Accumulate 25,000,000 score this month"),
-                progress: state.monthlyTotalScore,
-                target: 25000000,
-                rewardType: "xp",
-                rewardAmount: 700000,
-                chestCount: 0,
-                rewardLabel: "+700.000 XP"
-            },
-            {
-                id: "m_combo_540",
-                type: "MONTHLY",
-                title: t("RIFLESSI SUPERNOVA", "SUPERNOVA REFLEXES"),
-                desc: t("Raggiungi Combo 540 (3x Esplosione!)", "Reach 540 Combo (3x Explosion!)"),
-                progress: state.monthlyBestCombo,
-                target: 540,
-                rewardType: "chest",
-                rewardAmount: 0,
-                chestCount: 1,
-                rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
-            },
-
-            // 14-20: MOLTO DIFFICILI / ESTREME (Grandi XP + Casse rare + Nome Arcobaleno)
-            {
-                id: "m_games_500",
-                type: "MONTHLY",
-                title: t("MARATONA D'ACCIAIO", "STEEL MARATHON"),
-                desc: t("Gioca 500 partite questo mese", "Play 500 games this month"),
+state.reviveTokens = clampItemStack(state.reviveTokens);
+state.xp15Tokens = clampItemStack(state.xp15Tokens);
+state.xp2xTokens = clampItemStack(state.xp2xTokens);
+state.luxuryChests = clampItemStack(state.luxuryChests);
+localStorage.setItem(STATE_KEY, JSON.stringify(state));
+}
+function showXpGainToast(text) {
+const old = document.querySelector(".xp-claim-toast");
+if (old) old.remove();
+const toast = document.createElement("div");
+toast.className = "xp-claim-toast";
+toast.textContent = text;
+document.body.appendChild(toast);
+setTimeout(() => { if (toast.parentNode) toast.remove(); }, 2200);
+}
+function grantBonusXPAnimated(amount, labelText) {
+const beforeXP = window.ttCoreBridge ? window.ttCoreBridge.getCurrentXP() : 0;
+const cur = Number(localStorage.getItem("storedBonusXP")) || 0;
+localStorage.setItem("storedBonusXP", cur + amount);
+if (window.ttCoreBridge) {
+window.ttCoreBridge.playXpSound();
+window.ttCoreBridge.refreshXPBar(beforeXP);
+}
+showXpGainToast(labelText || ("+" + amount.toLocaleString("it-IT") + " XP!"));
+}
+function syncLevelMilestones(currentLevel) {
+const state = loadState();
+let changed = false;
+for (let lv = 20; lv <= currentLevel; lv += 20) {
+const key = "revive20_" + lv;
+if (!state.claimedLevelMilestones[key]) {
+state.claimedLevelMilestones[key] = true;
+state.reviveTokens = clampItemStack(state.reviveTokens + 2);
+changed = true;
+}
+}
+for (let lv = 25; lv <= currentLevel; lv += 25) {
+const key = "xp15_" + lv;
+if (!state.claimedLevelMilestones[key]) {
+state.claimedLevelMilestones[key] = true;
+state.xp15Tokens = clampItemStack(state.xp15Tokens + 1);
+changed = true;
+}
+}
+for (let lv = 20; lv <= currentLevel; lv += 20) {
+const key = "chest_" + lv;
+if (!state.claimedLevelMilestones[key]) {
+state.claimedLevelMilestones[key] = true;
+state.luxuryChests = clampItemStack(state.luxuryChests + 1);
+changed = true;
+}
+}
+if (changed) {
+saveState(state);
+updateAllAlertDots();
+}
+}
+function getMissionsCatalog(state) {
+return [
+{
+id: "w_40_games",
+type: "WEEKLY",
+title: t("CAMPIONE SETTIMANALE", "WEEKLY CHAMPION"),
+desc: t("Gioca 40 partite ognuna da almeno 800K punti", "Play 40 games with at least 800K points each"),
+progress: state.weekly800kGames || 0,
+target: 40,
+rewardType: "xp_and_chest",
+rewardAmount: 500000,
+chestCount: 1,
+rewardLabel: t("+500K XP & 1 CASSA", "+500K XP & 1 CHEST")
+},
+{
+id: "m_games_50",
+type: "MONTHLY",
+title: t("RISCALDAMENTO", "WARM UP"),
+desc: t("Gioca 50 partite questo mese", "Play 50 games this month"),
+progress: state.monthlyGames,
+target: 50,
+rewardType: "xp",
+rewardAmount: 75000,
+chestCount: 0,
+rewardLabel: "+75.000 XP"
+},
+{
+id: "m_combo_150",
+type: "MONTHLY",
+title: t("MANO FERMA", "STEADY HAND"),
+desc: t("Raggiungi Combo 150 in una partita", "Reach 150 Combo in one run"),
+progress: state.monthlyBestCombo,
+target: 150,
+rewardType: "xp",
+rewardAmount: 100000,
+chestCount: 0,
+rewardLabel: "+100.000 XP"
+},
+{
+id: "m_score_250k",
+type: "MONTHLY",
+title: t("SCALATORE", "CLIMBER"),
+desc: t("Fai 250.000 punti in una partita", "Score 250,000 points in one run"),
+progress: state.monthlyBestScore,
+target: 250000,
+rewardType: "xp",
+rewardAmount: 120000,
+chestCount: 0,
+rewardLabel: "+120.000 XP"
+},
+{
+id: "m_total_3m",
+type: "MONTHLY",
+title: t("ACCUMULATORE", "ACCUMULATOR"),
+desc: t("Accumula 3.000.000 punti nel mese", "Accumulate 3,000,000 score this month"),
+progress: state.monthlyTotalScore,
+target: 3000000,
+rewardType: "xp",
+rewardAmount: 150000,
+chestCount: 0,
+rewardLabel: "+150.000 XP"
+},
+{
+id: "m_games_150",
+type: "MONTHLY",
+title: t("GIOCATORE ASSIDUO", "DEDICATED PLAYER"),
+desc: t("Gioca 150 partite questo mese", "Play 150 games this month"),
+progress: state.monthlyGames,
+target: 150,
+rewardType: "xp",
+rewardAmount: 200000,
+chestCount: 0,
+rewardLabel: "+200.000 XP"
+},
+{
+id: "m_combo_250",
+type: "MONTHLY",
+title: t("RITMO PERFETTO", "PERFECT RHYTHM"),
+desc: t("Raggiungi Combo 250 in una partita", "Reach 250 Combo in one run"),
+progress: state.monthlyBestCombo,
+target: 250,
+rewardType: "xp",
+rewardAmount: 250000,
+chestCount: 0,
+rewardLabel: "+250.000 XP"
+},
+{
+id: "m_score_600k",
+type: "MONTHLY",
+title: t("CECCHINO VELOCE", "SPEED SNIPER"),
+desc: t("Fai 600.000 punti in una partita", "Score 600,000 points in one run"),
+progress: state.monthlyBestScore,
+target: 600000,
+rewardType: "xp",
+rewardAmount: 300000,
+chestCount: 0,
+rewardLabel: "+300.000 XP"
+},
+{
+id: "m_total_10m",
+type: "MONTHLY",
+title: t("BANCHIERE D'ORO", "GOLD BANKER"),
+desc: t("Accumula 10.000.000 punti nel mese", "Accumulate 10,000,000 score this month"),
+progress: state.monthlyTotalScore,
+target: 10000000,
+rewardType: "xp",
+rewardAmount: 400000,
+chestCount: 0,
+rewardLabel: "+400.000 XP"
+},
+{
+id: "m_games_300",
+type: "MONTHLY",
+title: t("INSTANCABILE", "RELENTLESS"),
+desc: t("Gioca 300 partite questo mese", "Play 300 games this month"),
+progress: state.monthlyGames,
+target: 300,
+rewardType: "chest",
+rewardAmount: 0,
+chestCount: 1,
+rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
+},
+{
+id: "m_combo_360",
+type: "MONTHLY",
+title: t("DOPPIA ESPLOSIONE", "DOUBLE EXPLOSION"),
+desc: t("Raggiungi Combo 360 in una partita", "Reach 360 Combo in one run"),
+progress: state.monthlyBestCombo,
+target: 360,
+rewardType: "xp",
+rewardAmount: 500000,
+chestCount: 0,
+rewardLabel: "+500.000 XP"
+},
+{
+id: "m_score_1m",
+type: "MONTHLY",
+title: t("MILIONARIO SINGOLO", "SINGLE MILLIONAIRE"),
+desc: t("Fai 1.000.000 punti in una partita", "Score 1,000,000 points in one run"),
+progress: state.monthlyBestScore,
+target: 1000000,
+rewardType: "chest",
+rewardAmount: 0,
+chestCount: 1,
+rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
+},
+{
+id: "m_total_25m",
+type: "MONTHLY",
+title: t("IMPERO DI PUNTI", "SCORE EMPIRE"),
+desc: t("Accumula 25.000.000 punti nel mese", "Accumulate 25,000,000 score this month"),
+progress: state.monthlyTotalScore,
+target: 25000000,
+rewardType: "xp",
+rewardAmount: 700000,
+chestCount: 0,
+rewardLabel: "+700.000 XP"
+},
+{
+id: "m_combo_540",
+type: "MONTHLY",
+title: t("RIFLESSI SUPERNOVA", "SUPERNOVA REFLEXES"),
+desc: t("Raggiungi Combo 540 (3x Esplosione!)", "Reach 540 Combo (3x Explosion!)"),
+progress: state.monthlyBestCombo,
+target: 540,
+rewardType: "chest",
+rewardAmount: 0,
+chestCount: 1,
+rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
+},
+{
+id: "m_games_500",
+type: "MONTHLY",
+title: t("MARATONA D'ACCIAIO", "STEEL MARATHON"),
+desc: t("Gioca 500 partite questo mese", "Play 500 games this month"),
 progress: state.monthlyGames,
 target: 500,
 rewardType: "xp",
@@ -2465,10 +2480,10 @@ const textMap = {
 "#saveProfileBtn": "INIZIA A GIOCARE",
 "#discardSavedBtn": "NUOVA PARTITA",
 "#pauseOverlay h2": "PAUSA",
-"#pauseOverlay .pause-info": "Progressi salvati automaticamente.<br>Tocca HOME per continuare dopo.",
-"#resumeBtn": "RIPRENDI",
-"#quitToHomeBtn": "HOME",
-"#confirmNewRunModal h3": "NUOVA PARTITA?",
+ "#pauseOverlay .pause-info": "Progressi salvati automaticamente.<br>Tocca HOME per continuare dopo.",
+ "#resumeBtn": "RIPRENDI",
+  "#quitToHomeBtn": "HOME",
+  "#confirmNewRunModal h3": "NUOVA PARTITA?",
 "#confirmNewRunModal .pause-info": "La partita in pausa verrà conclusa e i punti salvati!",
 "#confirmNewRunYesBtn": "SÌ",
 "#confirmNewRunNoBtn": "NO",
@@ -3230,4 +3245,5 @@ document.addEventListener("DOMContentLoaded", initTimeTapGame);
 } else {
 initTimeTapGame();
 }
+
    
