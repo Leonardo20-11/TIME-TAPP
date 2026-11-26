@@ -3340,3 +3340,10 @@ letter-spacing: 1px;
     font-size: 15px !important;
     border-radius: 14px !important;
 }
+.lb-username.rainbow-master-text,
+.lb-username.name-style-inferno,
+.lb-username.name-style-amethyst,
+.lb-username.name-style-diamond {
+    -webkit-text-stroke: 0px transparent !important;
+    text-shadow: none !important;
+}

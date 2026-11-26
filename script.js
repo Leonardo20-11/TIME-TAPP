@@ -170,6 +170,32 @@ function initTimeTapGame() {
         });
     }
 
+    const LB_STYLE_MAP = {
+        col_gold: "name-style-gold",
+        col_emerald: "name-style-emerald",
+        col_cyan: "name-style-cyan",
+        col_amethyst: "name-style-amethyst",
+        col_inferno: "name-style-inferno",
+        col_diamond: "name-style-diamond",
+        col_rainbow: "rainbow-master-text",
+        font_arcade: "name-font-arcade",
+        font_wide: "name-font-wide",
+        font_mono: "name-font-mono",
+        font_italic: "name-font-italic-script",
+        font_serif: "name-font-serif"
+    };
+
+    const LB_SYMBOL_MAP = {
+        sym_star: "★ ",
+        sym_bolt: "⚡ ",
+        sym_fire: "🔥 ",
+        sym_cool: "😎 ",
+        sym_devil: "😈 ",
+        sym_alien: "👾 ",
+        sym_skull: "💀 ",
+        sym_crown: "👑 "
+    };
+
     function fmtNum(n) {
         return Number(n || 0).toLocaleString(LOCALE);
     }
@@ -186,99 +212,54 @@ function initTimeTapGame() {
         return name.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "");
     }
 
-    function containsProfanity(rawName) {
-        if (!rawName) return false;
-        const normalized = rawName
-            .toUpperCase()
-            .replace(/0/g, "O")
-            .replace(/1/g, "I")
-            .replace(/3/g, "E")
-            .replace(/4/g, "A")
-            .replace(/5/g, "S")
-            .replace(/7/g, "T")
-            .replace(/8/g, "B")
-            .replace(/[^A-Z]/g, "");
-
-        const reversed = normalized.split("").reverse().join("");
-        const bannedWords = [
-            "CAZZ", "MERD", "STRONZ", "PUTTAN", "TROIA", "TROIE", "VAFANC", "VAFFANC",
-            "COGLION", "MINCHI", "FICA", "FIGA", "PORCOD", "PORCAM", "DIOCAN", "DIOPORC",
-            "MADONNAP", "BASTARD", "BOCCIN", "POMPIN", "SBORR", "CULATTON", "FROC", "NEGR",
-            "HANDICAPP", "MONGOLOID", "RITARDAT", "ZOCCOL", "BALDRACC", "PUTTANI",
-            "FUCK", "SHIT", "BITCH", "ASSHOLE", "DICK", "COCK", "PUSSY", "CUNT",
-            "NIGGA", "NIGGER", "FAGGOT", "WHORE", "SLUT", "MOTHERFUCK", "RETARD", "WANKER",
-            "PUTA", "PUTO", "MIERDA", "CABRON", "PENDEJO", "GILIPOLLAS", "JODER", "COJONES",
-            "MARICON", "VERGA", "CHINGA", "CARALHO", "FODASE", "BUCETA", "PORRA", "MERDA",
-            "PUTAIN", "MERDE", "CONNARD", "SALOPE", "ENCULE", "BITE", "COUILLE", "FOUTRE", "NIQUE", "BATARD",
-            "SCHEISSE", "ARSCHLOCH", "HURE", "SCHLAMPE", "FICK", "WICHSER", "HUSO", "MISSGEBURT"
+    function generateWeirdUsername() {
+        const adj = [
+            "TURBO", "MEGA", "CRAZY", "NINJA", "COSMIC", "HYPER", "PIXEL", "SHADOW",
+            "TOXIC", "GIGA", "SUPER", "CYBER", "EPIC", "NEON", "WILD", "ZOMBIE",
+            "FUNKY", "ULTRA", "LASER", "GLITCH", "MAGIC", "SPEEDY", "DIZZY", "ATOMIC"
         ];
+        const noun = [
+            "PANDA", "PIZZA", "LLAMA", "TACO", "DRAGON", "BANANA", "SHARK", "ROBOT",
+            "CAT", "MONKEY", "WIZARD", "POTATO", "GHOST", "TIGER", "ALIEN", "DUCK",
+            "DONUT", "KOALA", "NINJA", "FROG", "UNICORN", "CACTUS", "WAFFLE", "SLOTH"
+        ];
+        const a = adj[Math.floor(Math.random() * adj.length)];
+const n = noun[Math.floor(Math.random() * noun.length)];
+const num = Math.floor(10 + Math.random() * 90);
+return a + "_" + n + num;
+}
+function containsProfanity(rawName) {
+if (!rawName) return false;
+const normalized = rawName
+.toUpperCase()
+.replace(/0/g, "O")
+.replace(/1/g, "I")
+.replace(/3/g, "E")
+.replace(/4/g, "A")
+.replace(/5/g, "S")
+.replace(/7/g, "T")
+.replace(/8/g, "B")
+.replace(/[^A-Z]/g, "");
+const reversed = normalized.split("").reverse().join("");
+const bannedWords = [
+"CAZZ", "MERD", "STRONZ", "PUTTAN", "TROIA", "TROIE", "VAFANC", "VAFFANC",
+"COGLION", "MINCHI", "FICA", "FIGA", "PORCOD", "PORCAM", "DIOCAN", "DIOPORC",
+"MADONNAP", "BASTARD", "BOCCIN", "POMPIN", "SBORR", "CULATTON", "FROC", "NEGR",
+"HANDICAPP", "MONGOLOID", "RITARDAT", "ZOCCOL", "BALDRACC", "PUTTANI",
+"FUCK", "SHIT", "BITCH", "ASSHOLE", "DICK", "COCK", "PUSSY", "CUNT",
+"NIGGA", "NIGGER", "FAGGOT", "WHORE", "SLUT", "MOTHERFUCK", "RETARD", "WANKER",
+"PUTA", "PUTO", "MIERDA", "CABRON", "PENDEJO", "GILIPOLLAS", "JODER", "COJONES",
+"MARICON", "VERGA", "CHINGA", "CARALHO", "FODASE", "BUCETA", "PORRA", "MERDA",
+"PUTAIN", "MERDE", "CONNARD", "SALOPE", "ENCULE", "BITE", "COUILLE", "FOUTRE", "NIQUE", "BATARD",
+"SCHEISSE", "ARSCHLOCH", "HURE", "SCHLAMPE", "FICK", "WICHSER", "HUSO", "MISSGEBURT"
+];
 return bannedWords.some(word => normalized.includes(word) || reversed.includes(word));
 }
 function forceRenameIfProfane() {
 if (!playerUsername || !containsProfanity(playerUsername)) return false;
-const overlay = document.createElement("div");
-overlay.className = "fullscreen-screen";
-overlay.style.zIndex = "9999";
-const card = document.createElement("div");
-card.className = "modal-card onboarding-card";
-const title = document.createElement("h2");
-title.className = "onboarding-title";
-title.textContent = "CHANGE USERNAME";
-const sub = document.createElement("p");
-sub.className = "onboarding-sub";
-sub.textContent = "YOUR CURRENT USERNAME IS NOT ALLOWED. CHOOSE A NEW CLEAN NAME TO CONTINUE:";
-const inputEl = document.createElement("input");
-inputEl.className = "profile-input";
-inputEl.type = "text";
-inputEl.maxLength = 16;
-inputEl.placeholder = "NEW USERNAME";
-inputEl.autocomplete = "off";
-const errEl = document.createElement("div");
-errEl.className = "username-error-msg";
-const saveBtn = document.createElement("button");
-saveBtn.className = "action-green-btn full-width-btn";
-saveBtn.textContent = "SAVE & CONTINUE";
-card.appendChild(title);
-card.appendChild(sub);
-card.appendChild(inputEl);
-card.appendChild(errEl);
-card.appendChild(saveBtn);
-overlay.appendChild(card);
-document.body.appendChild(overlay);
-inputEl.focus();
-saveBtn.addEventListener("click", async () => {
-const chosen = sanitizeUsernameKey(inputEl.value);
-if (chosen.length < 2) {
-showErrorBox(errEl, "USE AT LEAST 2 LETTERS/NUMBERS!");
-inputEl.focus();
-return;
-}
-if (containsProfanity(chosen)) {
-playSynthEffect("red");
-showErrorBox(errEl, "OFFENSIVE USERNAME NOT ALLOWED!");
-inputEl.focus();
-return;
-}
-saveBtn.disabled = true;
-saveBtn.textContent = "CHECKING...";
-const isFree = await checkUsernameAvailable(chosen);
-saveBtn.disabled = false;
-saveBtn.textContent = "SAVE & CONTINUE";
-if (!isFree) {
-playSynthEffect("red");
-showErrorBox(errEl, "USERNAME ALREADY IN USE!");
-inputEl.focus();
-return;
-}
-const oldName = playerUsername;
-playerUsername = chosen;
+playerUsername = generateWeirdUsername();
 localStorage.setItem("timeTapUsername", playerUsername);
-playSynthEffect("gold");
-await syncPlayerToCloud(playerUsername, oldName);
-overlay.remove();
-enterHomeScreen();
-});
-return true;
+return false;
 }
 function showErrorBox(el, msg) {
 if (!el) return;
@@ -301,10 +282,24 @@ return Array.isArray(rows) && rows.length === 0;
 return true;
 }
 }
+function getCurrentEquippedCosmetics() {
+let styles = { color: "default", font: "", symbol: "" };
+try {
+const rawProg = localStorage.getItem("timeTapProgressionState_v3") || localStorage.getItem("timeTapProgressionState_v2");
+if (rawProg) {
+const parsed = JSON.parse(rawProg);
+styles.color = parsed.equippedColor || "default";
+styles.font = parsed.equippedFont || "";
+styles.symbol = parsed.equippedSymbol || "";
+}
+} catch (e) {}
+return styles;
+}
 async function syncPlayerToCloud(usernameToSave, oldUsernameToRemove = "") {
 if (!usernameToSave || containsProfanity(usernameToSave)) return;
 const currentXP = calculateTotalXP();
 const { currentTier } = getCurrentAndNextTier(currentXP);
+const styles = getCurrentEquippedCosmetics();
 try {
 await fetch(SUPABASE_URL + "/rest/v1/rpc/submit_player_score", {
 method: "POST",
@@ -314,7 +309,10 @@ p_username: usernameToSave,
 p_record: record,
 p_best_combo: bestCombo,
 p_level: currentTier.level,
-p_old_username: oldUsernameToRemove || ""
+p_old_username: oldUsernameToRemove || "",
+p_color: styles.color,
+p_font: styles.font,
+p_symbol: styles.symbol
 })
 });
 } catch (e) {}
@@ -393,7 +391,7 @@ yourRankBanner.removeAttribute("style");
 yourRankBanner.textContent = "CHECKING YOUR RANK...";
 }
 try {
-const url = SUPABASE_URL + "/rest/v1/players?select=username," + field + "&order=" + field + ".desc";
+const url = SUPABASE_URL + "/rest/v1/players?select=username,equipped_color,equipped_font,equipped_symbol," + field + "&order=" + field + ".desc";
 const res = await fetch(url, { headers: sbHeaders() });
 if (!res.ok) throw new Error("Fetch failed");
 const rawPlayers = await res.json();
@@ -417,6 +415,7 @@ yourRankBanner.textContent = "YOUR " + (isCombo ? "COMBO" : "RECORD") + " RANK: 
 yourRankBanner.textContent = "PLAY A RUN TO ENTER THE RANKING!";
 }
 }
+const myLocalCosmetics = getCurrentEquippedCosmetics();
 const top50 = allPlayers.slice(0, 50);
 top50.forEach((p, idx) => {
 const pos = idx + 1;
@@ -436,7 +435,17 @@ const userInfo = document.createElement("div");
 userInfo.className = "lb-user-info";
 const nameSpan = document.createElement("span");
 nameSpan.className = "lb-username";
-nameSpan.textContent = p.username;
+const appliedColor = isMe ? myLocalCosmetics.color : (p.equipped_color || "default");
+const appliedFont = isMe ? myLocalCosmetics.font : (p.equipped_font || "");
+const appliedSymbol = isMe ? myLocalCosmetics.symbol : (p.equipped_symbol || "");
+const prefix = LB_SYMBOL_MAP[appliedSymbol] || "";
+nameSpan.textContent = prefix + p.username;
+if (LB_STYLE_MAP[appliedColor]) {
+nameSpan.classList.add(LB_STYLE_MAP[appliedColor]);
+}
+if (LB_STYLE_MAP[appliedFont]) {
+nameSpan.classList.add(LB_STYLE_MAP[appliedFont]);
+}
 userInfo.appendChild(nameSpan);
 if (isMe) {
 const youPill = document.createElement("span");
@@ -825,22 +834,22 @@ if (menu && menu.style.display === "none") return;
 const ctx = ensureAudioContext();
 if (!ctx) return;
 const melody = [
-523.25, 659.25, 783.99, 1046.50,  987.77, 783.99, 659.25, 0,
-587.33, 698.46, 880.00, 987.77,   783.99, 0,      659.25, 0,
-523.25, 659.25, 783.99, 1046.50,  1174.66, 1046.50, 880.00, 698.46,
-783.99, 659.25, 587.33, 493.88,   523.25, 0,      523.25, 0
+523.25, 659.25, 783.99, 1046.50, 987.77, 783.99, 659.25, 0,
+587.33, 698.46, 880.00, 987.77, 783.99, 0, 659.25, 0,
+523.25, 659.25, 783.99, 1046.50, 1174.66, 1046.50, 880.00, 698.46,
+783.99, 659.25, 587.33, 493.88, 523.25, 0, 523.25, 0
 ];
 const harmony = [
-261.63, 329.63, 392.00, 329.63,   293.66, 392.00, 493.88, 392.00,
-349.23, 440.00, 523.25, 440.00,   392.00, 493.88, 587.33, 493.88,
-261.63, 329.63, 392.00, 329.63,   349.23, 440.00, 523.25, 440.00,
-392.00, 329.63, 293.66, 246.94,   261.63, 196.00, 261.63, 0
+261.63, 329.63, 392.00, 329.63, 293.66, 392.00, 493.88, 392.00,
+349.23, 440.00, 523.25, 440.00, 392.00, 493.88, 587.33, 493.88,
+261.63, 329.63, 392.00, 329.63, 349.23, 440.00, 523.25, 440.00,
+392.00, 329.63, 293.66, 246.94, 261.63, 196.00, 261.63, 0
 ];
 const bass = [
-130.81, 0, 196.00, 0,   146.83, 0, 196.00, 0,
-174.61, 0, 130.81, 0,   196.00, 0, 146.83, 0,
-130.81, 0, 196.00, 0,   174.61, 0, 220.00, 0,
-196.00, 0, 196.00, 0,   130.81, 0, 130.81, 0
+130.81, 0, 196.00, 0, 146.83, 0, 196.00, 0,
+174.61, 0, 130.81, 0, 196.00, 0, 146.83, 0,
+130.81, 0, 196.00, 0, 174.61, 0, 220.00, 0,
+196.00, 0, 196.00, 0, 130.81, 0, 130.81, 0
 ];
 symphonyStep = 0;
 const STEP_MS = 230;
@@ -1248,8 +1257,7 @@ startHomeSymphony();
 });
 window.addEventListener("pagehide", () => {
 stopHomeSymphony();
-if (audioCtx && audioCtx.
-state === "running") {
+if (audioCtx && audioCtx.state === "running") {
 audioCtx.suspend().catch(() => {});
 }
 });
@@ -1602,7 +1610,7 @@ btn.classList.add("button-circle");
 let valueText = "";
 if (type === "green") {
 btn.classList.add("green");
-const greenOptions = isDesktop ? [0.400, 0.450, 0.500, 0.550] : [0.250, 0.300, 0.350, 0.380];
+const greenOptions = isDesktop ? [0.400, 0.450, 0.500, 0.550] : [0.300, 0.350, 0.380, 0.400];
 const value = forcedConfig ? Number(valueStr) : greenOptions[Math.floor(Math.random() * greenOptions.length)];
 btn.dataset.value = value;
 valueText = "+" + value.toFixed(3);
@@ -1901,6 +1909,7 @@ playClick: () => playSynthEffect("click"),
 playNewRecord: () => playSynthEffect("newrecord"),
 speak: (txt) => speakEnglish(txt, 1.08, 1.15),
 fireworks: (container) => launchFireworksShow(container),
+syncCloudNow: () => syncPlayerToCloud(playerUsername),
 refreshXPBar: (fromXP) => {
 storedBonusXP = Number(localStorage.getItem("storedBonusXP")) || 0;
 refreshAllProfileAndRankUI(fromXP);
@@ -1940,12 +1949,12 @@ checkAndTriggerRankUpCelebration();
 startHomeSymphony();
 }
 function runStartupSequence() {
-if (!playerUsername) {
-if (onboardingScreen) onboardingScreen.style.display = "flex";
-} else {
-if (forceRenameIfProfane()) return;
-enterHomeScreen();
+if (onboardingScreen) onboardingScreen.style.display = "none";
+if (!playerUsername || containsProfanity(playerUsername)) {
+playerUsername = generateWeirdUsername();
+localStorage.setItem("timeTapUsername", playerUsername);
 }
+enterHomeScreen();
 }
 if (saveProfileBtn && usernameInput) {
 saveProfileBtn.addEventListener("click", async () => {
@@ -2347,316 +2356,304 @@ const iDot = document.getElementById("inventoryAlertDot");
 if (iDot) iDot.style.display = state.luxuryChests > 0 ? "flex" : "none";
 }
 function renderMissionsModal() {
-const state = loadState();
-const listContainer = document.getElementById("missionsListContainer");
-const claimDailyBtn = document.getElementById("claimDailyXpBtn");
-const streakBadge = document.getElementById("masterStreakBadge");
-const today = getTodayDateKey();
-if (claimDailyBtn) {
-if (state.lastDailyClaimDate === today) {
-claimDailyBtn.textContent = t("RISCATTATO OGGI", "CLAIMED TODAY");
-claimDailyBtn.disabled = true;
-claimDailyBtn.classList.add("claimed-disabled");
-} else {
-claimDailyBtn.textContent = t("RISCATTA 10K XP", "CLAIM 10K XP");
-claimDailyBtn.disabled = false;
-claimDailyBtn.classList.remove("claimed-disabled");
+    const state = loadState();
+    const listContainer = document.getElementById("missionsListContainer");
+    const claimDailyBtn = document.getElementById("claimDailyXpBtn");
+    const streakBadge = document.getElementById("masterStreakBadge");
+    const today = getTodayDateKey();
+    if (claimDailyBtn) {
+        if (state.lastDailyClaimDate === today) {
+            claimDailyBtn.textContent = t("RISCATTATO OGGI", "CLAIMED TODAY");
+            claimDailyBtn.disabled = true;
+            claimDailyBtn.classList.add("claimed-disabled");
+        } else {
+            claimDailyBtn.textContent = t("RISCATTA 10K XP", "CLAIM 10K XP");
+            claimDailyBtn.disabled = false;
+            claimDailyBtn.classList.remove("claimed-disabled");
+        }
+    }
+    if (streakBadge) {
+        streakBadge.textContent = state.activeMaestroRank > 0
+            ? "MAESTRO " + ROMAN_NUMERALS[state.activeMaestroRank] + " (" + state.masterStreak + "/5)"
+            : "MASTER STREAK: " + state.masterStreak + " / 5";
+    }
+    if (!listContainer) return;
+    listContainer.innerHTML = "";
+    getMissionsCatalog(state).forEach(m => {
+        const isClaimed = Boolean(state.claimedIds[m.id]);
+        const isDone = m.progress >= m.target;
+        const pct = Math.min(100, Math.round((m.progress / m.target) * 100));
+        const card = document.createElement("div");
+        card.className = "mission-card" + (isClaimed ? " mission-claimed" : (isDone ? " mission-ready" : ""));
+        const header = document.createElement("div");
+        header.className = "mission-card-top";
+        const titleEl = document.createElement("span");
+        titleEl.className = "mission-title";
+        titleEl.textContent = m.title;
+        const tag = document.createElement("span");
+        tag.className = "mission-type-pill " + (m.type === "WEEKLY" ? "pill-weekly" : "pill-monthly");
+        tag.textContent = m.type === "WEEKLY" ? t("SETTIMANALE", "WEEKLY") : t("MENSILE", "MONTHLY");
+        header.appendChild(titleEl);
+        header.appendChild(tag);
+        const descEl = document.createElement("div");
+        descEl.className = "mission-desc";
+        descEl.textContent = m.desc;
+        const barWrap = document.createElement("div");
+        barWrap.className = "mission-bar-wrap";
+        const barTrack = document.createElement("div");
+        barTrack.className = "mission-bar-track";
+        const barFill = document.createElement("div");
+        barFill.className = "mission-bar-fill";
+        barFill.style.width = pct + "%";
+        barTrack.appendChild(barFill);
+        const barText = document.createElement("span");
+        barText.className = "mission-bar-text";
+        barText.textContent = Math.min(m.progress, m.target).toLocaleString("it-IT") + " / " + m.target.toLocaleString("it-IT");
+        barWrap.appendChild(barTrack);
+        barWrap.appendChild(barText);
+        const footer = document.createElement("div");
+        footer.className = "mission-card-footer";
+        const rewLabel = document.createElement("span");
+        rewLabel.className = "mission-reward-label";
+        rewLabel.textContent = m.rewardLabel;
+        const actionBtn = document.createElement("button");
+        actionBtn.className = "mission-claim-btn";
+        if (isClaimed) {
+            actionBtn.textContent = t("RISCATTATO", "CLAIMED");
+            actionBtn.disabled = true;
+        } else if (isDone) {
+            actionBtn.textContent = t("RISCATTA!", "CLAIM!");
+            actionBtn.classList.add("ready-pulse");
+            actionBtn.addEventListener("click", () => {
+                const fresh = loadState();
+                if (fresh.claimedIds[m.id]) return;
+                fresh.claimedIds[m.id] = true;
+                if (m.chestCount && m.chestCount > 0) fresh.luxuryChests = clampItemStack(fresh.luxuryChests + m.chestCount);
+                if (m.rewardType === "maestro_chest" && !fresh.unlockedStyles.includes("col_rainbow")) {
+                    fresh.unlockedStyles.push("col_rainbow");
+                    fresh.equippedColor = "col_rainbow";
+                }
+                saveState(fresh);
+                checkAllMonthlyCompleted(fresh);
+                applyAllCosmetics();
+                updateAllAlertDots();
+                if (window.ttCoreBridge && window.ttCoreBridge.syncCloudNow) {
+                    window.ttCoreBridge.syncCloudNow();
+                }
+                if (m.rewardType === "xp_and_chest" && m.rewardAmount > 0) {
+                    grantBonusXPAnimated(m.rewardAmount, "+" + m.rewardAmount.toLocaleString("it-IT") + t(" XP & +1 CASSA!", " XP & +1 CHEST!"));
+                } else if (m.rewardType === "chest") {
+                    if (window.ttCoreBridge) window.ttCoreBridge.playXpSound();
+                    showXpGainToast("+" + m.chestCount + t(" CASSA AGGIUNTA!", " CHEST ADDED!"));
+                } else if (m.rewardType === "maestro_chest") {
+                    if (window.ttCoreBridge) window.ttCoreBridge.playXpSound();
+                    showXpGainToast(t("NOME ARCOBALENO & +2 CASSE!", "RAINBOW NAME & +2 CHESTS!"));
+                }
+                renderMissionsModal();
+            });
+        } else {
+            actionBtn.textContent = pct + "%";
+            actionBtn.disabled = true;
+        }
+        footer.appendChild(rewLabel);
+        footer.appendChild(actionBtn);
+        card.appendChild(header);
+        card.appendChild(descEl);
+        card.appendChild(barWrap);
+        card.appendChild(footer);
+        listContainer.appendChild(card);
+    });
 }
-}
-if (streakBadge) {
-streakBadge.textContent = state.activeMaestroRank > 0
-? "MAESTRO " + ROMAN_NUMERALS[state.activeMaestroRank] + " (" + state.masterStreak + "/5)"
-: "MASTER STREAK: " + state.masterStreak + " / 5";
-}
-if (!listContainer) return;
-listContainer.innerHTML = "";
-getMissionsCatalog(state).forEach(m => {
-const isClaimed = Boolean(state.claimedIds[m.id]);
-const isDone = m.progress >= m.target;
-const pct = Math.min(100, Math.round((m.progress / m.target) * 100));
-const card = document.createElement("div");
-card.className = "mission-card" + (isClaimed ? " mission-claimed" : (isDone ? " mission-ready" : ""));
-const header = document.createElement("div");
-header.className = "mission-card-top";
-const titleEl = document.createElement("span");
-titleEl.className = "mission-title";
-titleEl.textContent = m.title;
-const tag = document.createElement("span");
-tag.className = "mission-type-pill " + (m.type === "WEEKLY" ? "pill-weekly" : "pill-monthly");
-tag.textContent = m.type === "WEEKLY" ? t("SETTIMANALE", "WEEKLY") : t("MENSILE", "MONTHLY");
-header.appendChild(titleEl);
-header.appendChild(tag);
-const descEl = document.createElement("div");
-descEl.className = "mission-desc";
-descEl.textContent = m.desc;
-const barWrap = document.createElement("div");
-barWrap.className = "mission-bar-wrap";
-const barTrack = document.createElement("div");
-barTrack.className = "mission-bar-track";
-const barFill = document.createElement("div");
-barFill.className = "mission-bar-fill";
-barFill.style.width = pct + "%";
-barTrack.appendChild(barFill);
-const barText = document.createElement("span");
-barText.className = "mission-bar-text";
-barText.textContent = Math.min(m.progress, m.target).toLocaleString("it-IT") + " / " + m.target.toLocaleString("it-IT");
-barWrap.appendChild(barTrack);
-barWrap.appendChild(barText);
-const footer = document.createElement("div");
-footer.className = "mission-card-footer";
-const rewLabel = document.createElement("span");
-rewLabel.className = "mission-reward-label";
-rewLabel.textContent = m.rewardLabel;
-const actionBtn = document.createElement("button");
-actionBtn.className = "mission-claim-btn";
-if (isClaimed) {
-actionBtn.textContent = t("RISCATTATO", "CLAIMED");
-actionBtn.disabled = true;
-} else if (isDone) {
-actionBtn.textContent = t("RISCATTA!", "CLAIM!");
-actionBtn.classList.add("ready-pulse");
-actionBtn.addEventListener("click", () => {
-const fresh = loadState();
-if (fresh.claimedIds[m.id]) return;
-fresh.claimedIds[m.id] = true;
-if (m.chestCount && m.chestCount > 0) fresh.luxuryChests = clampItemStack(fresh.luxuryChests + m.chestCount);
-if (m.rewardType === "maestro_chest" && !fresh.unlockedStyles.includes("col_rainbow")) {
-fresh.unlockedStyles.push("col_rainbow");
-fresh.equippedColor = "col_rainbow";
-}
-saveState(fresh);
-checkAllMonthlyCompleted(fresh);
-applyAllCosmetics();
-updateAllAlertDots();
-if (m.rewardType === "xp_and_chest" && m.rewardAmount > 0) {
-grantBonusXPAnimated(m.rewardAmount, "+" + m.rewardAmount.toLocaleString("it-IT") + t(" XP & +1 CASSA!", " XP & +1 CHEST!"));
-} else if (m.rewardType === "chest") {
-if (window.ttCoreBridge) window.ttCoreBridge.playXpSound();
-showXpGainToast("+" + m.chestCount + t(" CASSA AGGIUNTA!", " CHEST ADDED!"));
-} else if (m.rewardType === "maestro_chest") {
-if (window.ttCoreBridge) window.ttCoreBridge.playXpSound();
-showXpGainToast(t("NOME ARCOBALENO & +2 CASSE!", "RAINBOW NAME & +2 CHESTS!"));
-}
-renderMissionsModal();
-});
-} else {
-actionBtn.textContent = pct + "%";
-actionBtn.disabled = true;
-}
-footer.appendChild(rewLabel);
-footer.appendChild(actionBtn);
-card.appendChild(header);
-card.appendChild(descEl);
-card.appendChild(barWrap);
-card.appendChild(footer);
-listContainer.appendChild(card);
-});
-}
+
 function renderLevelRewardsModal() {
-        const listEl = document.getElementById("levelRewardsListContainer");
-        if (!listEl) return;
-        const currentXP = window.ttCoreBridge ? window.ttCoreBridge.getCurrentXP() : 0;
-        let currentLevel = 1;
-        for (let lv = 1; lv <= 100; lv++) {
-            const req = lv === 1 ? 0 : (lv === 100 ? 100000000 : Math.round(100000000 * Math.pow((lv - 1) / 99, 3.2)));
-            if (currentXP >= req) currentLevel = lv;
-            else break;
-        }
-        const milestones = [];
-        for (let lv = 20; lv <= 100; lv += 5) {
-            const rewards = [];
-            if (lv % 20 === 0) rewards.push(t("+2 CONTINUA PARTITA & +1 CASSA", "+2 CONTINUE & +1 CHEST"));
-            if (lv % 25 === 0) rewards.push(t("+1 BOOST +15% XP", "+1 (+15% XP BOOST)"));
-            if (rewards.length > 0) {
-                milestones.push({
-                    level: lv,
-                    title: rewards.join(" + "),
-                    sub: lv === 100 ? t("PREMIO FINALE LIVELLO 100!", "MAX LEVEL GRAND PRIZE!") : t("Aggiunto nello Zaino (Max 10)", "Auto-added to Bag (Max 10)")
-                });
-            }
-        }
-        listEl.innerHTML = "";
-        let nextFound = false;
-        milestones.forEach(m => {
-            const isUnlocked = currentLevel >= m.level;
-            const isNext = !isUnlocked && !nextFound;
-            if (isNext) nextFound = true;
-            const row = document.createElement("div");
-            row.className = "level-reward-row" + (isUnlocked ? " lv-unlocked" : (isNext ? " lv-next-target" : ""));
-            const lvBadge = document.createElement("div");
-            lvBadge.className = "lv-badge-box";
-            lvBadge.textContent = "LV " + m.level;
-            const details = document.createElement("div");
-            details.className = "lv-reward-details";
-            const mainTxt = document.createElement("div");
-            mainTxt.className = "lv-reward-main";
-            mainTxt.textContent = m.title;
-            const subTxt = document.createElement("div");
-            subTxt.className = "lv-reward-sub";
-            subTxt.textContent = m.sub;
-            details.appendChild(mainTxt);
-            details.appendChild(subTxt);
-            const status = document.createElement("div");
-            status.className = "lv-status-badge";
-            status.textContent = isUnlocked ? t("SBLOCCATO", "UNLOCKED") : (isNext ? t("PROSSIMO", "NEXT") : t("BLOCCATO", "LOCKED"));
-            row.appendChild(lvBadge);
-            row.appendChild(details);
-            row.appendChild(status);
-            listEl.appendChild(row);
-        });
+    const listEl = document.getElementById("levelRewardsListContainer");
+    if (!listEl) return;
+    const currentXP = window.ttCoreBridge ? window.ttCoreBridge.getCurrentXP() : 0;
+    let currentLevel = 1;
+    for (let lv = 1; lv <= 100; lv++) {
+        const req = lv === 1 ? 0 : (lv === 100 ? 100000000 : Math.round(100000000 * Math.pow((lv - 1) / 99, 3.2)));
+        if (currentXP >= req) currentLevel = lv;
+        else break;
     }
-
-    function renderInventoryModal() {
-        const state = loadState();
-        const grid = document.getElementById("inventoryGridContainer");
-        if (!grid) return;
-        grid.innerHTML = "";
-
-        const items = [
-            {
-                artClass: "mini-chest-icon",
-                name: t("CASSA SFARZOSA", "LUXURY CHEST"),
-                qty: state.luxuryChests,
-                desc: t("Aprila per trovare fino a 5.000 XP rari, vite Continua, potenziamenti XP e stili per il tuo nome!", "Open to find up to 5,000 rare XP, Continue tokens, XP boosters and Name Styles!"),
-                isChest: true,
-                showBtn: true,
-                btnLabel: state.luxuryChests > 0 ? t("APRI CASSA!", "OPEN CHEST!") : t("NESSUNA CASSA", "NO CHESTS"),
-                disabled: state.luxuryChests <= 0,
-                onAction: () => openLuxuryChestModal()
-            },
-            {
-                artClass: "art-revive-heart",
-                name: t("CONTINUA (+3.0s)", "CONTINUE (+3.0s)"),
-                qty: state.reviveTokens,
-                desc: t("Quando perdi una partita, ti permette di continuare dallo stesso punteggio con +3.0 secondi extra!", "When you lose a match, lets you continue from your score with +3.0 extra seconds!"),
-                isChest: false,
-                showBtn: false
-            },
-            {
-                artClass: "art-xp-bolt",
-                name: t("BOOST +15% XP", "+15% XP BOOST"),
-                qty: state.xp15Tokens,
-                desc: t("A fine partita aumenta del +15% tutti i punti esperienza (XP) che hai appena guadagnato!", "At the end of a match, boosts all Experience Points (XP) you just earned by +15%!"),
-                isChest: false,
-                showBtn: false
-            },
-            {
-                artClass: "art-xp-star",
-                name: t("RADDOPPIA 2X XP", "2X XP DOUBLER"),
-                qty: state.xp2xTokens,
-                desc: t("Oggetto rarissimo delle casse: raddoppia (2X) tutti gli XP guadagnati alla fine della partita!", "Ultra-rare chest drop: doubles (2X) all XP earned at the end of the match!"),
-                isChest: false,
-                showBtn: false
-            }
-        ];
-
-        items.forEach(it => {
-            const card = document.createElement("div");
-            card.className = "item-card" + (it.isChest ? " luxury-item-card" : "");
-
-            const visualCol = document.createElement("div");
-            visualCol.className = "item-visual-col";
-
-            const artBox = document.createElement("div");
-            artBox.className = "drawn-item-art";
-            const artInner = document.createElement("div");
-            artInner.className = it.artClass;
-            artBox.appendChild(artInner);
-
-            const qtyPill = document.createElement("div");
-            qtyPill.className = "item-qty-pill" + (it.qty >= MAX_ITEM_STACK ? " max-cap-reached" : "");
-            qtyPill.textContent = it.qty + " / " + MAX_ITEM_STACK;
-
-            visualCol.appendChild(artBox);
-            visualCol.appendChild(qtyPill);
-
-            const infoCol = document.createElement("div");
-            infoCol.className = "item-info-col";
-
-            const nameEl = document.createElement("div");
-            nameEl.className = "item-name";
-            nameEl.textContent = it.name;
-
-            const yellowBox = document.createElement("div");
-            yellowBox.className = "item-yellow-desc-box";
-            yellowBox.textContent = it.desc;
-
-            infoCol.appendChild(nameEl);
-            infoCol.appendChild(yellowBox);
-
-            if (it.showBtn) {
-                const btn = document.createElement("button");
-                btn.className = "item-action-btn";
-                btn.textContent = it.btnLabel;
-                btn.disabled = it.disabled;
-                if (!it.disabled && it.onAction) btn.addEventListener("click", it.onAction);
-                infoCol.appendChild(btn);
-            }
-
-            card.appendChild(visualCol);
-            card.appendChild(infoCol);
-            grid.appendChild(card);
-        });
+    const milestones = [];
+    for (let lv = 20; lv <= 100; lv += 5) {
+        const rewards = [];
+        if (lv % 20 === 0) rewards.push(t("+2 CONTINUA PARTITA & +1 CASSA", "+2 CONTINUE & +1 CHEST"));
+        if (lv % 25 === 0) rewards.push(t("+1 BOOST +15% XP", "+1 (+15% XP BOOST)"));
+        if (rewards.length > 0) {
+            milestones.push({
+                level: lv,
+                title: rewards.join(" + "),
+                sub: lv === 100 ? t("PREMIO FINALE LIVELLO 100!", "MAX LEVEL GRAND PRIZE!") : t("Aggiunto nello Zaino (Max 10)", "Auto-added to Bag (Max 10)")
+            });
+        }
     }
+    listEl.innerHTML = "";
+    let nextFound = false;
+    milestones.forEach(m => {
+        const isUnlocked = currentLevel >= m.level;
+        const isNext = !isUnlocked && !nextFound;
+        if (isNext) nextFound = true;
+        const row = document.createElement("div");
+        row.className = "level-reward-row" + (isUnlocked ? " lv-unlocked" : (isNext ? " lv-next-target" : ""));
+        const lvBadge = document.createElement("div");
+        lvBadge.className = "lv-badge-box";
+        lvBadge.textContent = "LV " + m.level;
+        const details = document.createElement("div");
+        details.className = "lv-reward-details";
+        const mainTxt = document.createElement("div");
+        mainTxt.className = "lv-reward-main";
+        mainTxt.textContent = m.title;
+        const subTxt = document.createElement("div");
+        subTxt.className = "lv-reward-sub";
+        subTxt.textContent = m.sub;
+        details.appendChild(mainTxt);
+        details.appendChild(subTxt);
+        const status = document.createElement("div");
+        status.className = "lv-status-badge";
+        status.textContent = isUnlocked ? t("SBLOCCATO", "UNLOCKED") : (isNext ? t("PROSSIMO", "NEXT") : t("BLOCCATO", "LOCKED"));
+        row.appendChild(lvBadge);
+        row.appendChild(details);
+        row.appendChild(status);
+        listEl.appendChild(row);
+    });
+}
 
-    function rollLuxuryChestReward(state) {
-        const r = Math.random();
-        if (r < 0.03) {
-            return { rarity: t("LEGGENDARIO", "LEGENDARY"), rarityClass: "rarity-legendary", name: "+5,000 XP JACKPOT!", desc: t("Drop XP massimo rarissimo!", "Ultra-rare max XP drop!"), xpAmount: 5000 };
-        }
-        if (r < 0.07) {
-            state.xp2xTokens = clampItemStack(state.xp2xTokens + 1);
-            return { rarity: t("LEGGENDARIO", "LEGENDARY"), rarityClass: "rarity-legendary", name: t("RADDOPPIA 2X XP!", "2X XP DOUBLER!"), desc: t("Aggiunto allo Zaino (Max 10)!", "Added to Bag (Max 10)!") };
-        }
-        if (r < 0.15) {
-            state.reviveTokens = clampItemStack(state.reviveTokens + 1);
-            return { rarity: t("EPICO", "EPIC"), rarityClass: "rarity-epic", name: t("+1 CONTINUA PARTITA!", "+1 CONTINUE TOKEN!"), desc: t("Molto raro! Aggiunto allo Zaino!", "Very rare! Added to Bag!") };
-        }
-        if (r < 0.24) {
-            state.xp15Tokens = clampItemStack(state.xp15Tokens + 1);
-            return { rarity: t("EPICO", "EPIC"), rarityClass: "rarity-epic", name: t("BOOST +15% XP!", "+15% XP BOOSTER!"), desc: t("Molto raro! Aggiunto allo Zaino!", "Very rare! Added to Bag!") };
-        }
-        if (r < 0.62) {
-            const locked = NAME_STYLES_CATALOG.filter(s => !s.free && !state.unlockedStyles.includes(s.id));
-            if (locked.length > 0) {
-                const picked = locked[Math.floor(Math.random() * locked.length)];
-                state.unlockedStyles.push(picked.id);
-                return { rarity: picked.rarity, rarityClass: "rarity-" + picked.rarity.toLowerCase(), name: picked.category + ": " + picked.name, desc: t("Equipaggialo nel Profilo!", "Equip it in Profile!") };
-            }
-        }
-        const xpRoll = Math.random();
-        let xpWon = 250 + Math.floor(Math.random() * 551);
-        let rar = t("COMUNE", "COMMON");
-        let rarCls = "rarity-common";
-        if (xpRoll > 0.75) {
-            xpWon = 1000 + Math.floor(Math.random() * 1201);
-            rar = t("RARO", "RARE");
-            rarCls = "rarity-rare";
-        }
-        return { rarity: rar, rarityClass: rarCls, name: "+" + xpWon.toLocaleString("it-IT") + " XP", desc: t("XP bonus aggiunti!", "Bonus XP added!"), xpAmount: xpWon };
-    }
+function renderInventoryModal() {
+    const state = loadState();
+    const grid = document.getElementById("inventoryGridContainer");
+    if (!grid) return;
+    grid.innerHTML = "";
 
-    function openLuxuryChestModal() {
-        const modal = document.getElementById("chestOpenModal");
-        const box = document.getElementById("chestVisualBox");
-        const rewDisplay = document.getElementById("chestRewardDisplay");
-        const openBtn = document.getElementById("openChestActionBtn");
-        const closeBtn = document.getElementById("closeChestActionBtn");
-        if (!modal) return;
-
-        box.className = "luxury-chest-box";
-        rewDisplay.style.display = "none";
-        openBtn.style.display = "block";
-        closeBtn.style.display = "none";
-        modal.style.display = "flex";
-
-        openBtn.onclick = () => {
-            const state = loadState();
-            if (state.luxuryChests <= 0) return;
-            state.luxuryChests -= 1;
-            const prize = rollLuxuryChestReward(state);
-            saveState(state);
-
+    const items = [
+        {
+            artClass: "mini-chest-icon",
+            name: t("CASSA SFARZOSA", "LUXURY CHEST"),
+            qty: state.luxuryChests,
+            desc: t("Aprila per trovare fino a 5.000 XP rari, vite Continua, potenziamenti XP e stili per il tuo nome!", "Open to find up to 5,000 rare XP, Continue tokens, XP boosters and Name Styles!"),
+            isChest: true,
+            showBtn: true,
+            btnLabel: state.luxuryChests > 0 ? t("APRI CASSA!", "OPEN CHEST!") : t("NESSUNA CASSA", "NO CHESTS"),
+            disabled: state.luxuryChests <= 0,
+            onAction: () => openLuxuryChestModal()
+        },
+        {
+            artClass: "art-revive-heart",
+            name: t("CONTINUA (+3.0s)", "CONTINUE (+3.0s)"),
+            qty: state.reviveTokens,
+            desc: t("Quando perdi una partita, ti permette di continuare dallo stesso punteggio con +3.0 secondi extra!", "When you lose a match, lets you continue from your score with +3.0 extra seconds!"),
+            isChest: false,
+            showBtn: false
+        },
+        {
+            artClass: "art-xp-bolt",
+            name: t("BOOST +15% XP", "+15% XP BOOST"),
+            qty: state.xp15Tokens,
+            desc: t("A fine partita aumenta del +15% tutti i punti esperienza (XP) che hai appena guadagnato!", "At the end of a match, boosts all Experience Points (XP) you just earned by +15%!"),
+            isChest: false,
+            showBtn: false
+        },
+        {
+            artClass: "art-xp-star",
+            name: t("RADDOPPIA 2X XP", "2X XP DOUBLER"),
+            qty: state.xp2xTokens,
+desc: t("Oggetto rarissimo delle casse: raddoppia (2X) tutti gli XP guadagnati alla fine della partita!", "Ultra-rare chest drop: doubles (2X) all XP earned at the end of the match!"),
+isChest: false,
+showBtn: false
+}
+];
+items.forEach(it => {
+const card = document.createElement("div");
+card.className = "item-card" + (it.isChest ? " luxury-item-card" : "");
+const visualCol = document.createElement("div");
+visualCol.className = "item-visual-col";
+const artBox = document.createElement("div");
+artBox.className = "drawn-item-art";
+const artInner = document.createElement("div");
+artInner.className = it.artClass;
+artBox.appendChild(artInner);
+const qtyPill = document.createElement("div");
+qtyPill.className = "item-qty-pill" + (it.qty >= MAX_ITEM_STACK ? " max-cap-reached" : "");
+qtyPill.textContent = it.qty + " / " + MAX_ITEM_STACK;
+visualCol.appendChild(artBox);
+visualCol.appendChild(qtyPill);
+const infoCol = document.createElement("div");
+infoCol.className = "item-info-col";
+const nameEl = document.createElement("div");
+nameEl.className = "item-name";
+nameEl.textContent = it.name;
+const yellowBox = document.createElement("div");
+yellowBox.className = "item-yellow-desc-box";
+yellowBox.textContent = it.desc;
+infoCol.appendChild(nameEl);
+infoCol.appendChild(yellowBox);
+if (it.showBtn) {
+const btn = document.createElement("button");
+btn.className = "item-action-btn";
+btn.textContent = it.btnLabel;
+btn.disabled = it.disabled;
+if (!it.disabled && it.onAction) btn.addEventListener("click", it.onAction);
+infoCol.appendChild(btn);
+}
+card.appendChild(visualCol);
+card.appendChild(infoCol);
+grid.appendChild(card);
+});
+}
+function rollLuxuryChestReward(state) {
+const r = Math.random();
+if (r < 0.03) {
+return { rarity: t("LEGGENDARIO", "LEGENDARY"), rarityClass: "rarity-legendary", name: "+5,000 XP JACKPOT!", desc: t("Drop XP massimo rarissimo!", "Ultra-rare max XP drop!"), xpAmount: 5000 };
+}
+if (r < 0.07) {
+state.xp2xTokens = clampItemStack(state.xp2xTokens + 1);
+return { rarity: t("LEGGENDARIO", "LEGENDARY"), rarityClass: "rarity-legendary", name: t("RADDOPPIA 2X XP!", "2X XP DOUBLER!"), desc: t("Aggiunto allo Zaino (Max 10)!", "Added to Bag (Max 10)!") };
+}
+if (r < 0.15) {
+state.reviveTokens = clampItemStack(state.reviveTokens + 1);
+return { rarity: t("EPICO", "EPIC"), rarityClass: "rarity-epic", name: t("+1 CONTINUA PARTITA!", "+1 CONTINUE TOKEN!"), desc: t("Molto raro! Aggiunto allo Zaino!", "Very rare! Added to Bag!") };
+}
+if (r < 0.24) {
+state.xp15Tokens = clampItemStack(state.xp15Tokens + 1);
+return { rarity: t("EPICO", "EPIC"), rarityClass: "rarity-epic", name: t("BOOST +15% XP!", "+15% XP BOOSTER!"), desc: t("Molto raro! Aggiunto allo Zaino!", "Very rare! Added to Bag!") };
+}
+if (r < 0.62) {
+const locked = NAME_STYLES_CATALOG.filter(s => !s.free && !state.unlockedStyles.includes(s.id));
+if (locked.length > 0) {
+const picked = locked[Math.floor(Math.random() * locked.length)];
+state.unlockedStyles.push(picked.id);
+return { rarity: picked.rarity, rarityClass: "rarity-" + picked.rarity.toLowerCase(), name: picked.category + ": " + picked.name, desc: t("Equipaggialo nel Profilo!", "Equip it in Profile!") };
+}
+}
+const xpRoll = Math.random();
+let xpWon = 250 + Math.floor(Math.random() * 551);
+let rar = t("COMUNE", "COMMON");
+let rarCls = "rarity-common";
+if (xpRoll > 0.75) {
+xpWon = 1000 + Math.floor(Math.random() * 1201);
+rar = t("RARO", "RARE");
+rarCls = "rarity-rare";
+}
+return { rarity: rar, rarityClass: rarCls, name: "+" + xpWon.toLocaleString("it-IT") + " XP", desc: t("XP bonus aggiunti!", "Bonus XP added!"), xpAmount: xpWon };
+}
+function openLuxuryChestModal() {
+const modal = document.getElementById("chestOpenModal");
+const box = document.getElementById("chestVisualBox");
+const rewDisplay = document.getElementById("chestRewardDisplay");
+const openBtn = document.getElementById("openChestActionBtn");
+const closeBtn = document.getElementById("closeChestActionBtn");
+if (!modal) return;
+box.className = "luxury-chest-box";
+rewDisplay.style.display = "none";
+openBtn.style.display = "block";
+closeBtn.style.display = "none";
+modal.style.display = "flex";
+openBtn.onclick = () => {
+const state = loadState();
+if (state.luxuryChests <= 0) return;
+state.luxuryChests -= 1;
+const prize = rollLuxuryChestReward(state);
+saveState(state);
 openBtn.style.display = "none";
 box.classList.add("chest-shaking");
 if (window.ttCoreBridge) window.ttCoreBridge.playClick();
@@ -2727,7 +2724,10 @@ else if (item.category === "FONT") fresh.equippedFont = item.id;
 else if (item.category === "SYMBOL") fresh.equippedSymbol = item.id;
 saveState(fresh);
 applyAllCosmetics();
-if (window.ttCoreBridge) window.ttCoreBridge.playClick();
+if (window.ttCoreBridge) {
+window.ttCoreBridge.playClick();
+if (window.ttCoreBridge.syncCloudNow) window.ttCoreBridge.syncCloudNow();
+}
 renderNameCustomModal();
 });
 }
@@ -3018,5 +3018,4 @@ document.addEventListener("DOMContentLoaded", initTimeTapGame);
 } else {
 initTimeTapGame();
 }
-
    
