@@ -2,7 +2,7 @@ function initTimeTapGame() {
     const SUPABASE_URL ="https://jnhkktvtxbsfbrafsnig.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaGtrdHZ0eGJzZmJyYWZzbmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NTMzNjAsImV4cCI6MjExMTAyOTM2MH0.xRde38jj8K1cBpbXIIDyc14OMSsjRVUMkqTEvwDq2Tw";
 
- const onboardingScreen = document.getElementById("onboardingScreen");
+const onboardingScreen = document.getElementById("onboardingScreen");
     const usernameInput = document.getElementById("usernameInput");
     const onboardingErrorMsg = document.getElementById("onboardingErrorMsg");
     const saveProfileBtn = document.getElementById("saveProfileBtn");
@@ -179,10 +179,14 @@ function initTimeTapGame() {
         col_diamond: "name-style-diamond",
         col_rainbow: "rainbow-master-text",
         font_arcade: "name-font-arcade",
+        font_chubby: "name-font-chubby",
+        font_bubble: "name-font-bubble",
         font_wide: "name-font-wide",
+        font_pixel: "name-font-pixel",
         font_mono: "name-font-mono",
         font_italic: "name-font-italic-script",
-        font_serif: "name-font-serif"
+        font_serif: "name-font-serif",
+        font_gothic: "name-font-gothic"
     };
 
     const LB_SYMBOL_MAP = {
@@ -221,9 +225,9 @@ function initTimeTapGame() {
         const noun = [
             "PANDA", "PIZZA", "LLAMA", "TACO", "DRAGON", "BANANA", "SHARK", "ROBOT",
             "CAT", "MONKEY", "WIZARD", "POTATO", "GHOST", "TIGER", "ALIEN", "DUCK",
-            "DONUT", "KOALA", "NINJA", "FROG", "UNICORN", "CACTUS", "WAFFLE", "SLOTH"
-        ];
-        const a = adj[Math.floor(Math.random() * adj.length)];
+"DONUT", "KOALA", "NINJA", "FROG", "UNICORN", "CACTUS", "WAFFLE", "SLOTH"
+];
+const a = adj[Math.floor(Math.random() * adj.length)];
 const n = noun[Math.floor(Math.random() * noun.length)];
 const num = Math.floor(10 + Math.random() * 90);
 return a + "_" + n + num;
@@ -1095,246 +1099,253 @@ startGame(true);
 });
 }
 function finalizeRunStatsAndShowSummary() {
-const xpBeforeRun = calculateTotalXP();
-const isNewBest = score > record && score > 0;
-const pcMultiplier = isDesktop ? 1.25 : 1.0;
-let comboBonusPct = 0;
-if (maxComboRun > 200) comboBonusPct = 20;
-else if (maxComboRun > 100) comboBonusPct = 10;
-gamesPlayed++;
-totalScoreAccumulated += score;
-if (isNewBest) {
-record = score;
-localStorage.setItem("record", record);
-}
-const baseRunXP = 2000 + Math.floor(score * 0.1) + (isNewBest ? 1500 : 0);
-const withPcXP = Math.floor(baseRunXP * pcMultiplier);
-const comboBonusXP = Math.floor(withPcXP * (comboBonusPct / 100));
-const finalRunXP = withPcXP + comboBonusXP;
-const diffPart = isNewBest ? Math.floor((score - record) * 0.1) : 0;
-const naturalFormulaDiff = 2000 + Math.floor(score * 0.04) + diffPart;
-const extraToStore = Math.max(0, finalRunXP - Math.max(0, naturalFormulaDiff));
-storedBonusXP += extraToStore;
-localStorage.setItem("gamesPlayed", gamesPlayed);
-localStorage.setItem("totalScoreAccumulated", totalScoreAccumulated);
-localStorage.setItem("storedBonusXP", storedBonusXP);
-if (maxComboRun > bestCombo) {
-bestCombo = maxComboRun;
-localStorage.setItem("bestCombo", bestCombo);
-}
-const xpAfterRun = calculateTotalXP();
-const earnedXP = Math.max(0, xpAfterRun - xpBeforeRun);
-lastRunBaseEarnedXP = earnedXP;
-runXpBoostApplied = false;
-if (xpEarnedBadge) {
-const comboLabel = comboBonusPct > 0 ? " + " + comboBonusPct + "% COMBO" : "";
-xpEarnedBadge.textContent = "+" + fmtNum(earnedXP) + " XP" + comboLabel;
-}
-const { currentTier: tierAfter, nextTier: nextAfter } = getCurrentAndNextTier(xpAfterRun);
-if (goRankFrom) goRankFrom.textContent = tierAfter.name;
-if (goRankTo) goRankTo.textContent = nextAfter ? nextAfter.name : "MAX";
-if (goXpProgressText) {
-goXpProgressText.textContent = nextAfter
-? fmtNum(xpAfterRun) + " / " + fmtNum(nextAfter.xpRequired) + " XP"
-: fmtNum(xpAfterRun) + " XP";
-}
-if (menu) menu.style.display = "none";
-if (gameOverScreen) gameOverScreen.style.display = "flex";
-finalScore.textContent = fmtNum(score);
-finalCombo.textContent = fmtNum(maxComboRun);
-if (goXpBarFill) {
-const startPct = computeSegmentPercent(xpBeforeRun);
-const endPct = computeSegmentPercent(xpAfterRun);
-goXpBarFill.style.transition = "none";
-goXpBarFill.style.width = startPct.toFixed(1) + "%";
-requestAnimationFrame(() => {
-goXpBarFill.style.transition = "width 1.15s cubic-bezier(0.22, 1, 0.36, 1)";
-goXpBarFill.style.width = endPct.toFixed(1) + "%";
-});
-}
-if (isNewBest) {
-newRecordMessage.style.display = "block";
-isAnimatingRecord = true;
-playSynthEffect("newrecord");
-speakEnglish("New record!", 1.05, 1.15);
-finalRecord.textContent = "0";
-animateScoreCounter(finalRecord, record, () => {
-isAnimatingRecord = false;
-});
-} else {
-newRecordMessage.style.display = "none";
-playSynthEffect("gameover");
-speakEnglish("Game over!", 0.95, 0.95);
-finalRecord.textContent = fmtNum(record);
-}
-if (window.ttProgressionEngine) {
-window.ttProgressionEngine.onRunEnd(score, maxComboRun, secondChanceUsed, earnedXP);
-}
-refreshAllProfileAndRankUI(xpBeforeRun);
-setTimeout(() => syncPlayerToCloud(playerUsername), 400);
-}
-function returnToHome(keepPausedRun = false) {
-const xpAtEnter = lastKnownXP;
-if (keepPausedRun) savePausedGameState();
-else clearSavedPausedState();
-running = false;
-isPaused = false;
-isResumingCountdown = false;
-isFrozen = false;
-isSlowMo = false;
-doubleBonus = false;
-overdriveRemainingMs = 0;
-pauseCooldownRemainingMs = 0;
-secondChanceUsed = false;
-updatePauseButtonUI();
-clearInterval(gameLoopInterval);
-while (activeButtons.length > 0) {
-const b = activeButtons.shift();
-if (b && b.parentNode) b.remove();
-}
-if (pauseOverlay) pauseOverlay.style.display = "none";
-if (gameOverScreen) gameOverScreen.style.display = "none";
-if (game) {
-game.style.display = "none";
-game.classList.remove("overdrive-active", "slowmo-active");
-}
-if (countdown) countdown.style.display = "none";
-if (menu) menu.style.display = "flex";
-time = baseTime;
-score = 0;
-comboCount = 0;
-maxComboRun = 0;
-normalSpawnsSinceLastSpecial = 8;
-if (timerCircle) {
-timerCircle.textContent = time.toFixed(1);
-timerCircle.classList.remove("timer-panic", "timer-frozen", "timer-slowmo", "timer-max-cap");
-}
-if (scoreText) scoreText.textContent = "SCORE: 0";
-if (comboText) {
-comboText.textContent = "COMBO 0";
-comboText.classList.remove("combo-fire");
-}
-refreshAllProfileAndRankUI(xpAtEnter);
-checkAndTriggerRankUpCelebration();
-startHomeSymphony();
-}
-if (pauseBtn) {
-pauseBtn.addEventListener("click", () => {
-playSynthEffect("click");
-pauseGame();
-});
-}
-if (resumeBtn) {
-resumeBtn.addEventListener("click", () => {
-playSynthEffect("click");
-resumeGame();
-});
-}
-if (quitToHomeBtn) {
-quitToHomeBtn.addEventListener("click", () => {
-playSynthEffect("click");
-returnToHome(true);
-});
-}
-window.addEventListener("beforeunload", () => {
-if (running && isPaused) savePausedGameState();
-});
-document.addEventListener("visibilitychange", () => {
-if (document.hidden) {
-stopHomeSymphony();
-if (audioCtx && audioCtx.state === "running") {
-audioCtx.suspend().catch(() => {});
-}
-if ("speechSynthesis" in window) {
-window.speechSynthesis.cancel();
-}
-} else if (musicEnabled && menu && menu.style.display !== "none") {
-if (audioCtx && audioCtx.state === "suspended") {
-audioCtx.resume().catch(() => {});
-}
-startHomeSymphony();
-}
-});
-window.addEventListener("pagehide", () => {
-stopHomeSymphony();
-if (audioCtx && audioCtx.state === "running") {
-audioCtx.suspend().catch(() => {});
-}
-});
-function resumeSavedRunFromHome() {
-const raw = localStorage.getItem(PAUSE_STATE_KEY);
-if (!raw) {
-startCountdown();
-return;
-}
-try {
-const saved = JSON.parse(raw);
-if (!saved || typeof saved.time !== "number" || saved.time <= 0) {
-clearSavedPausedState();
-startCountdown();
-return;
-}
-time = Math.min(MAX_TIME, saved.time);
-score = saved.score || 0;
-comboCount = saved.comboCount || 0;
-maxComboRun = saved.maxComboRun || 0;
-doubleBonus = Boolean(saved.doubleBonus);
-doubleBonusRemainingMs = saved.doubleBonusRemainingMs || 0;
-isFrozen = Boolean(saved.isFrozen);
-freezeRemainingMs = saved.freezeRemainingMs || 0;
-isSlowMo = Boolean(saved.isSlowMo);
-slowMoRemainingMs = saved.slowMoRemainingMs || 0;
-overdriveRemainingMs = saved.overdriveRemainingMs || 0;
-pauseCooldownRemainingMs = 0;
-secondChanceUsed = false;
-stopHomeSymphony();
-if (window.ttProgressionEngine) window.ttProgressionEngine.onRunStart();
-if (menu) menu.style.display = "none";
-if (game) game.style.display = "block";
-timerCircle.textContent = time.toFixed(1);
-scoreText.textContent = "SCORE: " + fmtNum(score);
-comboText.textContent = "COMBO " + comboCount;
-updateTimerVisuals();
-if (Array.isArray(saved.buttons)) {
-saved.buttons.forEach(bData => createButton(bData));
-}
-running = true;
-isPaused = true;
-runResumeCountdown(() => {
-isPaused = false;
-clearSavedPausedState();
-startGame(true);
-pauseCooldownRemainingMs = PAUSE_COOLDOWN_MS;
-updatePauseButtonUI();
-});
-} catch (e) {
-clearSavedPausedState();
-startCountdown();
-}
-}
-if (playBtn) {
-playBtn.addEventListener("click", () => {
-playSynthEffect("click");
-if (hasSavedRun()) resumeSavedRunFromHome();
-else startCountdown();
-});
-}
-if (discardSavedBtn && confirmNewRunModal) {
-discardSavedBtn.addEventListener("click", () => {
-playSynthEffect("click");
-confirmNewRunModal.style.display = "flex";
-});
-}
-if (confirmNewRunNoBtn) {
-confirmNewRunNoBtn.addEventListener("click", () => {
-playSynthEffect("click");
-if (confirmNewRunModal) confirmNewRunModal.style.display = "none";
-});
-}
-if (confirmNewRunYesBtn) {
-confirmNewRunYesBtn.addEventListener("click", () => {
-playSynthEffect("click");
-if (confirmNewRunModal) confirmNewRunModal.style.display = "none";
+        const xpBeforeRun = calculateTotalXP();
+        const isNewBest = score > record && score > 0;
+        const pcMultiplier = isDesktop ? 1.25 : 1.0;
+        let comboBonusPct = 0;
+        if (maxComboRun > 200) comboBonusPct = 20;
+        else if (maxComboRun > 100) comboBonusPct = 10;
+        gamesPlayed++;
+        totalScoreAccumulated += score;
+        if (isNewBest) {
+            record = score;
+            localStorage.setItem("record", record);
+        }
+        const baseRunXP = 2000 + Math.floor(score * 0.1) + (isNewBest ? 1500 : 0);
+        const withPcXP = Math.floor(baseRunXP * pcMultiplier);
+        const comboBonusXP = Math.floor(withPcXP * (comboBonusPct / 100));
+        const finalRunXP = withPcXP + comboBonusXP;
+        const diffPart = isNewBest ? Math.floor((score - record) * 0.1) : 0;
+        const naturalFormulaDiff = 2000 + Math.floor(score * 0.04) + diffPart;
+        const extraToStore = Math.max(0, finalRunXP - Math.max(0, naturalFormulaDiff));
+        storedBonusXP += extraToStore;
+        localStorage.setItem("gamesPlayed", gamesPlayed);
+        localStorage.setItem("totalScoreAccumulated", totalScoreAccumulated);
+        localStorage.setItem("storedBonusXP", storedBonusXP);
+        if (maxComboRun > bestCombo) {
+            bestCombo = maxComboRun;
+            localStorage.setItem("bestCombo", bestCombo);
+        }
+        const xpAfterRun = calculateTotalXP();
+        const earnedXP = Math.max(0, xpAfterRun - xpBeforeRun);
+        lastRunBaseEarnedXP = earnedXP;
+        runXpBoostApplied = false;
+        if (xpEarnedBadge) {
+            const comboLabel = comboBonusPct > 0 ? " + " + comboBonusPct + "% COMBO" : "";
+            xpEarnedBadge.textContent = "+" + fmtNum(earnedXP) + " XP" + comboLabel;
+        }
+        const { currentTier: tierAfter, nextTier: nextAfter } = getCurrentAndNextTier(xpAfterRun);
+        if (goRankFrom) goRankFrom.textContent = tierAfter.name;
+        if (goRankTo) goRankTo.textContent = nextAfter ? nextAfter.name : "MAX";
+        if (goXpProgressText) {
+            goXpProgressText.textContent = nextAfter
+                ? fmtNum(xpAfterRun) + " / " + fmtNum(nextAfter.xpRequired) + " XP"
+                : fmtNum(xpAfterRun) + " XP";
+        }
+        if (menu) menu.style.display = "none";
+        if (gameOverScreen) gameOverScreen.style.display = "flex";
+        finalScore.textContent = fmtNum(score);
+        finalCombo.textContent = fmtNum(maxComboRun);
+        if (goXpBarFill) {
+            const startPct = computeSegmentPercent(xpBeforeRun);
+            const endPct = computeSegmentPercent(xpAfterRun);
+            goXpBarFill.style.transition = "none";
+            goXpBarFill.style.width = startPct.toFixed(1) + "%";
+            requestAnimationFrame(() => {
+                goXpBarFill.style.transition = "width 1.15s cubic-bezier(0.22, 1, 0.36, 1)";
+                goXpBarFill.style.width = endPct.toFixed(1) + "%";
+            });
+        }
+        if (isNewBest) {
+            newRecordMessage.style.display = "block";
+            isAnimatingRecord = true;
+            playSynthEffect("newrecord");
+            speakEnglish("New record!", 1.05, 1.15);
+            finalRecord.textContent = "0";
+            animateScoreCounter(finalRecord, record, () => {
+                isAnimatingRecord = false;
+            });
+        } else {
+            newRecordMessage.style.display = "none";
+            playSynthEffect("gameover");
+            speakEnglish("Game over!", 0.95, 0.95);
+            finalRecord.textContent = fmtNum(record);
+        }
+        if (window.ttProgressionEngine) {
+            window.ttProgressionEngine.onRunEnd(score, maxComboRun, secondChanceUsed, earnedXP);
+        }
+        refreshAllProfileAndRankUI(xpBeforeRun);
+        setTimeout(() => syncPlayerToCloud(playerUsername), 400);
+    }
+
+    function returnToHome(keepPausedRun = false) {
+        const xpAtEnter = lastKnownXP;
+        if (keepPausedRun) savePausedGameState();
+        else clearSavedPausedState();
+        running = false;
+        isPaused = false;
+        isResumingCountdown = false;
+        isFrozen = false;
+        isSlowMo = false;
+        doubleBonus = false;
+        overdriveRemainingMs = 0;
+        pauseCooldownRemainingMs = 0;
+        secondChanceUsed = false;
+        updatePauseButtonUI();
+        clearInterval(gameLoopInterval);
+        while (activeButtons.length > 0) {
+            const b = activeButtons.shift();
+            if (b && b.parentNode) b.remove();
+        }
+        if (pauseOverlay) pauseOverlay.style.display = "none";
+        if (gameOverScreen) gameOverScreen.style.display = "none";
+        if (game) {
+            game.style.display = "none";
+            game.classList.remove("overdrive-active", "slowmo-active");
+        }
+        if (countdown) countdown.style.display = "none";
+        if (menu) menu.style.display = "flex";
+        time = baseTime;
+        score = 0;
+        comboCount = 0;
+        maxComboRun = 0;
+        normalSpawnsSinceLastSpecial = 8;
+        if (timerCircle) {
+            timerCircle.textContent = time.toFixed(1);
+            timerCircle.classList.remove("timer-panic", "timer-frozen", "timer-slowmo", "timer-max-cap");
+        }
+        if (scoreText) scoreText.textContent = "SCORE: 0";
+        if (comboText) {
+            comboText.textContent = "COMBO 0";
+            comboText.classList.remove("combo-fire");
+        }
+        refreshAllProfileAndRankUI(xpAtEnter);
+        checkAndTriggerRankUpCelebration();
+        startHomeSymphony();
+    }
+
+    if (pauseBtn) {
+        pauseBtn.addEventListener("click", () => {
+            playSynthEffect("click");
+            pauseGame();
+        });
+    }
+    if (resumeBtn) {
+        resumeBtn.addEventListener("click", () => {
+            playSynthEffect("click");
+            resumeGame();
+        });
+    }
+    if (quitToHomeBtn) {
+        quitToHomeBtn.addEventListener("click", () => {
+            playSynthEffect("click");
+            returnToHome(true);
+        });
+    }
+
+    window.addEventListener("beforeunload", () => {
+        if (running && isPaused) savePausedGameState();
+    });
+
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+            stopHomeSymphony();
+            if (audioCtx && audioCtx.state === "running") {
+                audioCtx.suspend().catch(() => {});
+            }
+            if ("speechSynthesis" in window) {
+                window.speechSynthesis.cancel();
+            }
+        } else if (musicEnabled && menu && menu.style.display !== "none") {
+            if (audioCtx && audioCtx.state === "suspended") {
+                audioCtx.resume().catch(() => {});
+            }
+            startHomeSymphony();
+        }
+    });
+
+    window.addEventListener("pagehide", () => {
+        stopHomeSymphony();
+        if (audioCtx && audioCtx.state === "running") {
+            audioCtx.suspend().catch(() => {});
+        }
+    });
+
+    function resumeSavedRunFromHome() {
+        const raw = localStorage.getItem(PAUSE_STATE_KEY);
+        if (!raw) {
+            startCountdown();
+            return;
+        }
+        try {
+            const saved = JSON.parse(raw);
+            if (!saved || typeof saved.time !== "number" || saved.time <= 0) {
+                clearSavedPausedState();
+                startCountdown();
+                return;
+            }
+            time = Math.min(MAX_TIME, saved.time);
+            score = saved.score || 0;
+            comboCount = saved.comboCount || 0;
+            maxComboRun = saved.maxComboRun || 0;
+            doubleBonus = Boolean(saved.doubleBonus);
+            doubleBonusRemainingMs = saved.doubleBonusRemainingMs || 0;
+            isFrozen = Boolean(saved.isFrozen);
+            freezeRemainingMs = saved.freezeRemainingMs || 0;
+            isSlowMo = Boolean(saved.isSlowMo);
+            slowMoRemainingMs = saved.slowMoRemainingMs || 0;
+            overdriveRemainingMs = saved.overdriveRemainingMs || 0;
+            pauseCooldownRemainingMs = 0;
+            secondChanceUsed = false;
+            stopHomeSymphony();
+            if (window.ttProgressionEngine) window.ttProgressionEngine.onRunStart();
+            if (menu) menu.style.display = "none";
+            if (game) game.style.display = "block";
+            timerCircle.textContent = time.toFixed(1);
+            scoreText.textContent = "SCORE: " + fmtNum(score);
+            comboText.textContent = "COMBO " + comboCount;
+            updateTimerVisuals();
+            if (Array.isArray(saved.buttons)) {
+                saved.buttons.forEach(bData => createButton(bData));
+            }
+            running = true;
+            isPaused = true;
+            runResumeCountdown(() => {
+                isPaused = false;
+                clearSavedPausedState();
+                startGame(true);
+                pauseCooldownRemainingMs = PAUSE_COOLDOWN_MS;
+                updatePauseButtonUI();
+            });
+        } catch (e) {
+            clearSavedPausedState();
+            startCountdown();
+        }
+    }
+
+    if (playBtn) {
+        playBtn.addEventListener("click", () => {
+            playSynthEffect("click");
+            if (hasSavedRun()) resumeSavedRunFromHome();
+            else startCountdown();
+        });
+    }
+    if (discardSavedBtn && confirmNewRunModal) {
+        discardSavedBtn.addEventListener("click", () => {
+            playSynthEffect("click");
+            confirmNewRunModal.style.display = "flex";
+        });
+    }
+    if (confirmNewRunNoBtn) {
+        confirmNewRunNoBtn.addEventListener("click", () => {
+            playSynthEffect("click");
+            if (confirmNewRunModal) confirmNewRunModal.style.display = "none";
+        });
+    }
+    if (confirmNewRunYesBtn) {
+        confirmNewRunYesBtn.addEventListener("click", () => {
+            playSynthEffect("click");
+            if (confirmNewRunModal) confirmNewRunModal.style.display = "none";
 const raw = localStorage.getItem(PAUSE_STATE_KEY);
 clearSavedPausedState();
 if (raw) {
@@ -1995,7 +2006,7 @@ enterHomeScreen();
 runStartupSequence();
 }
 (function initTimeTapProgressionV2() {
-const SUPABASE_URL = "https://jnhkktvtxbsfbrafsnig.supabase.co";
+const SUPABASE_URL = "supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaGtrdHZ0eGJzZmJyYWZzbmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NTMzNjAsImV4cCI6MjExMTAyOTM2MH0.xRde38jj8K1cBpbXIIDyc14OMSsjRVUMkqTEvwDq2Tw";
 const STATE_KEY = "timeTapProgressionState_v3";
 const MAX_ITEM_STACK = 10;
@@ -2010,6 +2021,7 @@ function clampItemStack(val) {
 return Math.min(MAX_ITEM_STACK, Math.max(0, Number(val) || 0));
 }
 const NAME_STYLES_CATALOG = [
+// COLORI
 { id: "default", name: "CLASSIC WHITE", category: "COLOR", rarity: "COMMON", cssClass: "", prefix: "", free: true },
 { id: "col_gold", name: "ROYAL GOLD", category: "COLOR", rarity: "COMMON", cssClass: "name-style-gold", prefix: "", free: false },
 { id: "col_emerald", name: "EMERALD NEON", category: "COLOR", rarity: "COMMON", cssClass: "name-style-emerald", prefix: "", free: false },
@@ -2018,11 +2030,17 @@ const NAME_STYLES_CATALOG = [
 { id: "col_inferno", name: "INFERNO FLAME", category: "COLOR", rarity: "EPIC", cssClass: "name-style-inferno", prefix: "", free: false },
 { id: "col_diamond", name: "DIAMOND SHINE", category: "COLOR", rarity: "EPIC", cssClass: "name-style-diamond", prefix: "", free: false },
 { id: "col_rainbow", name: "PRISM RAINBOW", category: "COLOR", rarity: "LEGENDARY", cssClass: "rainbow-master-text", prefix: "", free: false },
+// GRAFIE / FONT (Inclusi cicciotti e vari stili!)
+{ id: "font_chubby", name: "CHUBBY TITAN", category: "FONT", rarity: "COMMON", cssClass: "name-font-chubby", prefix: "", free: false },
+{ id: "font_bubble", name: "BUBBLE POP", category: "FONT", rarity: "RARE", cssClass: "name-font-bubble", prefix: "", free: false },
 { id: "font_arcade", name: "BOUNCE POP", category: "FONT", rarity: "RARE", cssClass: "name-font-arcade", prefix: "", free: false },
-{ id: "font_wide", name: "WIDE TITAN", category: "FONT", rarity: "RARE", cssClass: "name-font-wide", prefix: "", free: false },
+{ id: "font_wide", name: "WIDE BLOCK", category: "FONT", rarity: "RARE", cssClass: "name-font-wide", prefix: "", free: false },
+{ id: "font_pixel", name: "RETRO PIXEL", category: "FONT", rarity: "EPIC", cssClass: "name-font-pixel", prefix: "", free: false },
 { id: "font_mono", name: "HACKER CODE", category: "FONT", rarity: "EPIC", cssClass: "name-font-mono", prefix: "", free: false },
 { id: "font_italic", name: "SPEED SLANT", category: "FONT", rarity: "EPIC", cssClass: "name-font-italic-script", prefix: "", free: false },
 { id: "font_serif", name: "IMPERIAL SERIF", category: "FONT", rarity: "LEGENDARY", cssClass: "name-font-serif", prefix: "", free: false },
+{ id: "font_gothic", name: "ROYAL GOTHIC", category: "FONT", rarity: "LEGENDARY", cssClass: "name-font-gothic", prefix: "", free: false },
+// SIMBOLI
 { id: "sym_star", name: "STAR BADGE", category: "SYMBOL", rarity: "COMMON", cssClass: "", prefix: "★ ", free: false },
 { id: "sym_bolt", name: "THUNDER BOLT", category: "SYMBOL", rarity: "RARE", cssClass: "", prefix: "⚡ ", free: false },
 { id: "sym_fire", name: "FIRE FACE", category: "SYMBOL", rarity: "RARE", cssClass: "", prefix: "🔥 ", free: false },
@@ -2063,6 +2081,7 @@ weekKey: curWeek,
 lastDailyClaimDate: "",
 weeklyGames: 0,
 weeklyBestScore: 0,
+weekly800kGames: 0,
 monthlyGames: 0,
 monthlyBestCombo: 0,
 monthlyBestScore: 0,
@@ -2093,6 +2112,7 @@ if (state.weekKey !== curWeek) {
 state.weekKey = curWeek;
 state.weeklyGames = 0;
 state.weeklyBestScore = 0;
+state.weekly800kGames = 0;
 delete state.claimedIds["w_40_games"];
 }
 if (state.monthKey !== curMonth) {
@@ -2112,138 +2132,328 @@ saveState(state);
 return state;
 }
 function saveState(state) {
-state.reviveTokens = clampItemStack(state.reviveTokens);
-state.xp15Tokens = clampItemStack(state.xp15Tokens);
-state.xp2xTokens = clampItemStack(state.xp2xTokens);
-state.luxuryChests = clampItemStack(state.luxuryChests);
-localStorage.setItem(STATE_KEY, JSON.stringify(state));
-}
-function showXpGainToast(text) {
-const old = document.querySelector(".xp-claim-toast");
-if (old) old.remove();
-const toast = document.createElement("div");
-toast.className = "xp-claim-toast";
-toast.textContent = text;
-document.body.appendChild(toast);
-setTimeout(() => { if (toast.parentNode) toast.remove(); }, 2200);
-}
-function grantBonusXPAnimated(amount, labelText) {
-const beforeXP = window.ttCoreBridge ? window.ttCoreBridge.getCurrentXP() : 0;
-const cur = Number(localStorage.getItem("storedBonusXP")) || 0;
-localStorage.setItem("storedBonusXP", cur + amount);
-if (window.ttCoreBridge) {
-window.ttCoreBridge.playXpSound();
-window.ttCoreBridge.refreshXPBar(beforeXP);
-}
-showXpGainToast(labelText || ("+" + amount.toLocaleString("it-IT") + " XP!"));
-}
-function syncLevelMilestones(currentLevel) {
-const state = loadState();
-let changed = false;
-for (let lv = 20; lv <= currentLevel; lv += 20) {
-const key = "revive20_" + lv;
-if (!state.claimedLevelMilestones[key]) {
-state.claimedLevelMilestones[key] = true;
-state.reviveTokens = clampItemStack(state.reviveTokens + 2);
-changed = true;
-}
-}
-for (let lv = 25; lv <= currentLevel; lv += 25) {
-const key = "xp15_" + lv;
-if (!state.claimedLevelMilestones[key]) {
-state.claimedLevelMilestones[key] = true;
-state.xp15Tokens = clampItemStack(state.xp15Tokens + 1);
-changed = true;
-}
-}
-for (let lv = 20; lv <= currentLevel; lv += 20) {
-const key = "chest_" + lv;
-if (!state.claimedLevelMilestones[key]) {
-state.claimedLevelMilestones[key] = true;
-state.luxuryChests = clampItemStack(state.luxuryChests + 1);
-changed = true;
-}
-}
-if (changed) {
-saveState(state);
-updateAllAlertDots();
-}
-}
-function getMissionsCatalog(state) {
-const gamesOk = state.weeklyGames > 40;
-const scoreOk = (state.weeklyBestScore || 0) > 800000;
-return [
+        state.reviveTokens = clampItemStack(state.reviveTokens);
+        state.xp15Tokens = clampItemStack(state.xp15Tokens);
+        state.xp2xTokens = clampItemStack(state.xp2xTokens);
+        state.luxuryChests = clampItemStack(state.luxuryChests);
+        localStorage.setItem(STATE_KEY, JSON.stringify(state));
+    }
+
+    function showXpGainToast(text) {
+        const old = document.querySelector(".xp-claim-toast");
+        if (old) old.remove();
+        const toast = document.createElement("div");
+        toast.className = "xp-claim-toast";
+        toast.textContent = text;
+        document.body.appendChild(toast);
+        setTimeout(() => { if (toast.parentNode) toast.remove(); }, 2200);
+    }
+
+    function grantBonusXPAnimated(amount, labelText) {
+        const beforeXP = window.ttCoreBridge ? window.ttCoreBridge.getCurrentXP() : 0;
+        const cur = Number(localStorage.getItem("storedBonusXP")) || 0;
+        localStorage.setItem("storedBonusXP", cur + amount);
+        if (window.ttCoreBridge) {
+            window.ttCoreBridge.playXpSound();
+            window.ttCoreBridge.refreshXPBar(beforeXP);
+        }
+        showXpGainToast(labelText || ("+" + amount.toLocaleString("it-IT") + " XP!"));
+    }
+
+    function syncLevelMilestones(currentLevel) {
+        const state = loadState();
+        let changed = false;
+        for (let lv = 20; lv <= currentLevel; lv += 20) {
+            const key = "revive20_" + lv;
+            if (!state.claimedLevelMilestones[key]) {
+                state.claimedLevelMilestones[key] = true;
+                state.reviveTokens = clampItemStack(state.reviveTokens + 2);
+                changed = true;
+            }
+        }
+        for (let lv = 25; lv <= currentLevel; lv += 25) {
+            const key = "xp15_" + lv;
+            if (!state.claimedLevelMilestones[key]) {
+                state.claimedLevelMilestones[key] = true;
+                state.xp15Tokens = clampItemStack(state.xp15Tokens + 1);
+                changed = true;
+            }
+        }
+        for (let lv = 20; lv <= currentLevel; lv += 20) {
+            const key = "chest_" + lv;
+            if (!state.claimedLevelMilestones[key]) {
+                state.claimedLevelMilestones[key] = true;
+                state.luxuryChests = clampItemStack(state.luxuryChests + 1);
+                changed = true;
+            }
+        }
+        if (changed) {
+            saveState(state);
+            updateAllAlertDots();
+        }
+    }
+
+    function getMissionsCatalog(state) {
+        return [
+            // --- MISSIONE SETTIMANALE ---
+            {
+                id: "w_40_games",
+                type: "WEEKLY",
+                title: t("CAMPIONE SETTIMANALE", "WEEKLY CHAMPION"),
+                desc: t("Gioca 40 partite ognuna da almeno 800K punti", "Play 40 games with at least 800K points each"),
+                progress: state.weekly800kGames || 0,
+                target: 40,
+                rewardType: "xp_and_chest",
+                rewardAmount: 500000,
+                chestCount: 1,
+                rewardLabel: t("+500K XP & 1 CASSA", "+500K XP & 1 CHEST")
+            },
+
+            // --- 20 MISSIONI MENSILI (MEDIE -> DIFFICILI -> MOLTO DIFFICILI) ---
+            // 1-6: MEDIE (Solo XP)
+            {
+                id: "m_games_50",
+                type: "MONTHLY",
+                title: t("RISCALDAMENTO", "WARM UP"),
+                desc: t("Gioca 50 partite questo mese", "Play 50 games this month"),
+                progress: state.monthlyGames,
+                target: 50,
+                rewardType: "xp",
+                rewardAmount: 75000,
+                chestCount: 0,
+                rewardLabel: "+75.000 XP"
+            },
+            {
+                id: "m_combo_150",
+                type: "MONTHLY",
+                title: t("MANO FERMA", "STEADY HAND"),
+                desc: t("Raggiungi Combo 150 in una partita", "Reach 150 Combo in one run"),
+                progress: state.monthlyBestCombo,
+                target: 150,
+                rewardType: "xp",
+                rewardAmount: 100000,
+                chestCount: 0,
+                rewardLabel: "+100.000 XP"
+            },
+            {
+                id: "m_score_250k",
+                type: "MONTHLY",
+                title: t("SCALATORE", "CLIMBER"),
+                desc: t("Fai 250.000 punti in una partita", "Score 250,000 points in one run"),
+                progress: state.monthlyBestScore,
+                target: 250000,
+                rewardType: "xp",
+                rewardAmount: 120000,
+                chestCount: 0,
+                rewardLabel: "+120.000 XP"
+            },
+            {
+                id: "m_total_3m",
+                type: "MONTHLY",
+                title: t("ACCUMULATORE", "ACCUMULATOR"),
+                desc: t("Accumula 3.000.000 punti nel mese", "Accumulate 3,000,000 score this month"),
+                progress: state.monthlyTotalScore,
+                target: 3000000,
+                rewardType: "xp",
+                rewardAmount: 150000,
+                chestCount: 0,
+                rewardLabel: "+150.000 XP"
+            },
+            {
+                id: "m_games_150",
+                type: "MONTHLY",
+                title: t("GIOCATORE ASSIDUO", "DEDICATED PLAYER"),
+                desc: t("Gioca 150 partite questo mese", "Play 150 games this month"),
+                progress: state.monthlyGames,
+                target: 150,
+                rewardType: "xp",
+                rewardAmount: 200000,
+                chestCount: 0,
+                rewardLabel: "+200.000 XP"
+            },
+            {
+                id: "m_combo_250",
+                type: "MONTHLY",
+                title: t("RITMO PERFETTO", "PERFECT RHYTHM"),
+                desc: t("Raggiungi Combo 250 in una partita", "Reach 250 Combo in one run"),
+                progress: state.monthlyBestCombo,
+                target: 250,
+                rewardType: "xp",
+                rewardAmount: 250000,
+                chestCount: 0,
+                rewardLabel: "+250.000 XP"
+            },
+
+            // 7-13: DIFFICILI (XP alti + prime Casse rare)
+            {
+                id: "m_score_600k",
+                type: "MONTHLY",
+                title: t("CECCHINO VELOCE", "SPEED SNIPER"),
+                desc: t("Fai 600.000 punti in una partita", "Score 600,000 points in one run"),
+                progress: state.monthlyBestScore,
+                target: 600000,
+                rewardType: "xp",
+                rewardAmount: 300000,
+                chestCount: 0,
+                rewardLabel: "+300.000 XP"
+            },
+            {
+                id: "m_total_10m",
+                type: "MONTHLY",
+                title: t("BANCHIERE D'ORO", "GOLD BANKER"),
+                desc: t("Accumula 10.000.000 punti nel mese", "Accumulate 10,000,000 score this month"),
+                progress: state.monthlyTotalScore,
+                target: 10000000,
+                rewardType: "xp",
+                rewardAmount: 400000,
+                chestCount: 0,
+                rewardLabel: "+400.000 XP"
+            },
+            {
+                id: "m_games_300",
+                type: "MONTHLY",
+                title: t("INSTANCABILE", "RELENTLESS"),
+                desc: t("Gioca 300 partite questo mese", "Play 300 games this month"),
+                progress: state.monthlyGames,
+                target: 300,
+                rewardType: "chest",
+                rewardAmount: 0,
+                chestCount: 1,
+                rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
+            },
+            {
+                id: "m_combo_360",
+                type: "MONTHLY",
+                title: t("DOPPIA ESPLOSIONE", "DOUBLE EXPLOSION"),
+                desc: t("Raggiungi Combo 360 in una partita", "Reach 360 Combo in one run"),
+                progress: state.monthlyBestCombo,
+                target: 360,
+                rewardType: "xp",
+                rewardAmount: 500000,
+                chestCount: 0,
+                rewardLabel: "+500.000 XP"
+            },
+            {
+                id: "m_score_1m",
+                type: "MONTHLY",
+                title: t("MILIONARIO SINGOLO", "SINGLE MILLIONAIRE"),
+                desc: t("Fai 1.000.000 punti in una partita", "Score 1,000,000 points in one run"),
+                progress: state.monthlyBestScore,
+                target: 1000000,
+                rewardType: "chest",
+                rewardAmount: 0,
+                chestCount: 1,
+                rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
+            },
+            {
+                id: "m_total_25m",
+                type: "MONTHLY",
+                title: t("IMPERO DI PUNTI", "SCORE EMPIRE"),
+                desc: t("Accumula 25.000.000 punti nel mese", "Accumulate 25,000,000 score this month"),
+                progress: state.monthlyTotalScore,
+                target: 25000000,
+                rewardType: "xp",
+                rewardAmount: 700000,
+                chestCount: 0,
+                rewardLabel: "+700.000 XP"
+            },
+            {
+                id: "m_combo_540",
+                type: "MONTHLY",
+                title: t("RIFLESSI SUPERNOVA", "SUPERNOVA REFLEXES"),
+                desc: t("Raggiungi Combo 540 (3x Esplosione!)", "Reach 540 Combo (3x Explosion!)"),
+                progress: state.monthlyBestCombo,
+                target: 540,
+                rewardType: "chest",
+                rewardAmount: 0,
+                chestCount: 1,
+                rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
+            },
+
+            // 14-20: MOLTO DIFFICILI / ESTREME (Grandi XP + Casse rare + Nome Arcobaleno)
+            {
+                id: "m_games_500",
+                type: "MONTHLY",
+                title: t("MARATONA D'ACCIAIO", "STEEL MARATHON"),
+                desc: t("Gioca 500 partite questo mese", "Play 500 games this month"),
+progress: state.monthlyGames,
+target: 500,
+rewardType: "xp",
+rewardAmount: 900000,
+chestCount: 0,
+rewardLabel: "+900.000 XP"
+},
 {
-id: "w_40_games",
-type: "WEEKLY",
-title: t("CAMPIONE SETTIMANALE", "WEEKLY CHAMPION"),
-desc: t("Gioca >40 partite (" + state.weeklyGames + "/41) e fai >800K punti", "Play >40 games (" + state.weeklyGames + "/41) & score >800K"),
-progress: (gamesOk && scoreOk) ? 1 : 0,
-target: 1,
+id: "m_score_1_5m",
+type: "MONTHLY",
+title: t("LEGGENDA VIVENTE", "LIVING LEGEND"),
+desc: t("Fai 1.500.000 punti in una partita", "Score 1,500,000 points in one run"),
+progress: state.monthlyBestScore,
+target: 1500000,
 rewardType: "xp_and_chest",
 rewardAmount: 500000,
 chestCount: 1,
 rewardLabel: t("+500K XP & 1 CASSA", "+500K XP & 1 CHEST")
 },
 {
-id: "m_350_games",
+id: "m_combo_720",
 type: "MONTHLY",
-title: t("MARATONA DI FERRO", "IRON MARATHON"),
-desc: t("Gioca 350 partite questo mese", "Play 350 games this month"),
+title: t("FURIA QUADRUPLE", "QUADRUPLE FURY"),
+desc: t("Raggiungi Combo 720 (4x Esplosione!)", "Reach 720 Combo (4x Explosion!)"),
+progress: state.monthlyBestCombo,
+target: 720,
+rewardType: "chest",
+rewardAmount: 0,
+chestCount: 1,
+rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
+},
+{
+id: "m_total_50m",
+type: "MONTHLY",
+title: t("MAGNATE SUPREMO", "SUPREME TYCOON"),
+desc: t("Accumula 50.000.000 punti nel mese", "Accumulate 50,000,000 score this month"),
+progress: state.monthlyTotalScore,
+target: 50000000,
+rewardType: "xp",
+rewardAmount: 1200000,
+chestCount: 0,
+rewardLabel: "+1.200.000 XP"
+},
+{
+id: "m_score_2_2m",
+type: "MONTHLY",
+title: t("DIVINITÀ DEL TEMPO", "TIME DEITY"),
+desc: t("Fai 2.200.000 punti in una partita", "Score 2,200,000 points in one run"),
+progress: state.monthlyBestScore,
+target: 2200000,
+rewardType: "chest",
+rewardAmount: 0,
+chestCount: 2,
+rewardLabel: t("2 CASSE SFARZOSE", "2 LUXURY CHESTS")
+},
+{
+id: "m_combo_900",
+type: "MONTHLY",
+title: t("DITA DI FULMINE", "LIGHTNING FINGERS"),
+desc: t("Raggiungi Combo 900 (5x Esplosione!)", "Reach 900 Combo (5x Explosion!)"),
+progress: state.monthlyBestCombo,
+target: 900,
+rewardType: "xp_and_chest",
+rewardAmount: 1000000,
+chestCount: 1,
+rewardLabel: t("+1M XP & 1 CASSA", "+1M XP & 1 CHEST")
+},
+{
+id: "m_games_800",
+type: "MONTHLY",
+title: t("SIGNORE ASSOLUTO", "ABSOLUTE OVERLORD"),
+desc: t("Gioca 800 partite questo mese", "Play 800 games this month"),
 progress: state.monthlyGames,
-target: 350,
+target: 800,
 rewardType: "maestro_chest",
 rewardAmount: 0,
 chestCount: 2,
 rewardLabel: t("NOME ARCOBALENO + 2 CASSE", "RAINBOW NAME + 2 CHESTS")
-},
-{
-id: "m_combo_250",
-type: "MONTHLY",
-title: t("TITANO DELLE COMBO", "COMBO TITAN"),
-desc: t("Raggiungi Combo 250 in una partita", "Reach 250 Combo in one run"),
-progress: state.monthlyBestCombo,
-target: 250,
-rewardType: "chest",
-rewardAmount: 0,
-chestCount: 1,
-rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
-},
-{
-id: "m_combo_540",
-type: "MONTHLY",
-title: t("RIFLESSI SUPERNOVA", "SUPERNOVA REFLEXES"),
-desc: t("Raggiungi Combo 540 (3x Esplosione!)", "Reach 540 Combo (3x Explosion!)"),
-progress: state.monthlyBestCombo,
-target: 540,
-rewardType: "chest",
-rewardAmount: 0,
-chestCount: 2,
-rewardLabel: t("2 CASSE SFARZOSE", "2 LUXURY CHESTS")
-},
-{
-id: "m_score_250k",
-type: "MONTHLY",
-title: t("PUNTEGGIO LEGGENDARIO", "LEGENDARY SCORER"),
-desc: t("Fai 250.000 punti in una partita", "Score 250,000 points in one run"),
-progress: state.monthlyBestScore,
-target: 250000,
-rewardType: "chest",
-rewardAmount: 0,
-chestCount: 1,
-rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
-},
-{
-id: "m_total_2m",
-type: "MONTHLY",
-title: t("COLLEZIONISTA MILIONARIO", "MILLIONAIRE COLLECTOR"),
-desc: t("Accumula 2.000.000 punti nel mese", "Accumulate 2,000,000 score this month"),
-progress: state.monthlyTotalScore,
-target: 2000000,
-rewardType: "chest",
-rewardAmount: 0,
-chestCount: 2,
-rewardLabel: t("2 CASSE SFARZOSE", "2 LUXURY CHESTS")
 }
 ];
 }
@@ -2313,7 +2523,8 @@ const decoratedName = (symItem ? symItem.prefix : "") + rawUsername;
 const styleClasses = [
 "name-style-gold", "name-style-emerald", "name-style-cyan", "name-style-amethyst",
 "name-style-inferno", "name-style-diamond", "rainbow-master-text",
-"name-font-arcade", "name-font-wide", "name-font-mono", "name-font-italic-script", "name-font-serif"
+"name-font-arcade", "name-font-chubby", "name-font-bubble", "name-font-wide",
+"name-font-pixel", "name-font-mono", "name-font-italic-script", "name-font-serif", "name-font-gothic"
 ];
 [homeName, modalName].forEach(el => {
 if (!el) return;
@@ -2327,7 +2538,7 @@ if (rankNum > 0) {
 const label = "MAESTRO " + ROMAN_NUMERALS[Math.min(5, rankNum)];
 if (homeTitle) { homeTitle.textContent = label; homeTitle.classList.add("maestro-title-badge"); }
 if (modalTitle) { modalTitle.textContent = label; modalTitle.classList.add("maestro-title-badge"); }
-} else if (state.claimedIds["m_350_games"]) {
+} else if (state.claimedIds["m_games_800"]) {
 if (homeTitle) { homeTitle.textContent = "MAESTRO"; homeTitle.classList.add("maestro-title-badge"); }
 if (modalTitle) { modalTitle.textContent = "MAESTRO"; modalTitle.classList.add("maestro-title-badge"); }
 }
@@ -2356,207 +2567,205 @@ const iDot = document.getElementById("inventoryAlertDot");
 if (iDot) iDot.style.display = state.luxuryChests > 0 ? "flex" : "none";
 }
 function renderMissionsModal() {
-    const state = loadState();
-    const listContainer = document.getElementById("missionsListContainer");
-    const claimDailyBtn = document.getElementById("claimDailyXpBtn");
-    const streakBadge = document.getElementById("masterStreakBadge");
-    const today = getTodayDateKey();
-    if (claimDailyBtn) {
-        if (state.lastDailyClaimDate === today) {
-            claimDailyBtn.textContent = t("RISCATTATO OGGI", "CLAIMED TODAY");
-            claimDailyBtn.disabled = true;
-            claimDailyBtn.classList.add("claimed-disabled");
-        } else {
-            claimDailyBtn.textContent = t("RISCATTA 10K XP", "CLAIM 10K XP");
-            claimDailyBtn.disabled = false;
-            claimDailyBtn.classList.remove("claimed-disabled");
-        }
-    }
-    if (streakBadge) {
-        streakBadge.textContent = state.activeMaestroRank > 0
-            ? "MAESTRO " + ROMAN_NUMERALS[state.activeMaestroRank] + " (" + state.masterStreak + "/5)"
-            : "MASTER STREAK: " + state.masterStreak + " / 5";
-    }
-    if (!listContainer) return;
-    listContainer.innerHTML = "";
-    getMissionsCatalog(state).forEach(m => {
-        const isClaimed = Boolean(state.claimedIds[m.id]);
-        const isDone = m.progress >= m.target;
-        const pct = Math.min(100, Math.round((m.progress / m.target) * 100));
-        const card = document.createElement("div");
-        card.className = "mission-card" + (isClaimed ? " mission-claimed" : (isDone ? " mission-ready" : ""));
-        const header = document.createElement("div");
-        header.className = "mission-card-top";
-        const titleEl = document.createElement("span");
-        titleEl.className = "mission-title";
-        titleEl.textContent = m.title;
-        const tag = document.createElement("span");
-        tag.className = "mission-type-pill " + (m.type === "WEEKLY" ? "pill-weekly" : "pill-monthly");
-        tag.textContent = m.type === "WEEKLY" ? t("SETTIMANALE", "WEEKLY") : t("MENSILE", "MONTHLY");
-        header.appendChild(titleEl);
-        header.appendChild(tag);
-        const descEl = document.createElement("div");
-        descEl.className = "mission-desc";
-        descEl.textContent = m.desc;
-        const barWrap = document.createElement("div");
-        barWrap.className = "mission-bar-wrap";
-        const barTrack = document.createElement("div");
-        barTrack.className = "mission-bar-track";
-        const barFill = document.createElement("div");
-        barFill.className = "mission-bar-fill";
-        barFill.style.width = pct + "%";
-        barTrack.appendChild(barFill);
-        const barText = document.createElement("span");
-        barText.className = "mission-bar-text";
-        barText.textContent = Math.min(m.progress, m.target).toLocaleString("it-IT") + " / " + m.target.toLocaleString("it-IT");
-        barWrap.appendChild(barTrack);
-        barWrap.appendChild(barText);
-        const footer = document.createElement("div");
-        footer.className = "mission-card-footer";
-        const rewLabel = document.createElement("span");
-        rewLabel.className = "mission-reward-label";
-        rewLabel.textContent = m.rewardLabel;
-        const actionBtn = document.createElement("button");
-        actionBtn.className = "mission-claim-btn";
-        if (isClaimed) {
-            actionBtn.textContent = t("RISCATTATO", "CLAIMED");
-            actionBtn.disabled = true;
-        } else if (isDone) {
-            actionBtn.textContent = t("RISCATTA!", "CLAIM!");
-            actionBtn.classList.add("ready-pulse");
-            actionBtn.addEventListener("click", () => {
-                const fresh = loadState();
-                if (fresh.claimedIds[m.id]) return;
-                fresh.claimedIds[m.id] = true;
-                if (m.chestCount && m.chestCount > 0) fresh.luxuryChests = clampItemStack(fresh.luxuryChests + m.chestCount);
-                if (m.rewardType === "maestro_chest" && !fresh.unlockedStyles.includes("col_rainbow")) {
-                    fresh.unlockedStyles.push("col_rainbow");
-                    fresh.equippedColor = "col_rainbow";
-                }
-                saveState(fresh);
-                checkAllMonthlyCompleted(fresh);
-                applyAllCosmetics();
-                updateAllAlertDots();
-                if (window.ttCoreBridge && window.ttCoreBridge.syncCloudNow) {
-                    window.ttCoreBridge.syncCloudNow();
-                }
-                if (m.rewardType === "xp_and_chest" && m.rewardAmount > 0) {
-                    grantBonusXPAnimated(m.rewardAmount, "+" + m.rewardAmount.toLocaleString("it-IT") + t(" XP & +1 CASSA!", " XP & +1 CHEST!"));
-                } else if (m.rewardType === "chest") {
-                    if (window.ttCoreBridge) window.ttCoreBridge.playXpSound();
-                    showXpGainToast("+" + m.chestCount + t(" CASSA AGGIUNTA!", " CHEST ADDED!"));
-                } else if (m.rewardType === "maestro_chest") {
-                    if (window.ttCoreBridge) window.ttCoreBridge.playXpSound();
-                    showXpGainToast(t("NOME ARCOBALENO & +2 CASSE!", "RAINBOW NAME & +2 CHESTS!"));
-                }
-                renderMissionsModal();
-            });
-        } else {
-            actionBtn.textContent = pct + "%";
-            actionBtn.disabled = true;
-        }
-        footer.appendChild(rewLabel);
-        footer.appendChild(actionBtn);
-        card.appendChild(header);
-        card.appendChild(descEl);
-        card.appendChild(barWrap);
-        card.appendChild(footer);
-        listContainer.appendChild(card);
-    });
+const state = loadState();
+const listContainer = document.getElementById("missionsListContainer");
+const claimDailyBtn = document.getElementById("claimDailyXpBtn");
+const streakBadge = document.getElementById("masterStreakBadge");
+const today = getTodayDateKey();
+if (claimDailyBtn) {
+if (state.lastDailyClaimDate === today) {
+claimDailyBtn.textContent = t("RISCATTATO OGGI", "CLAIMED TODAY");
+claimDailyBtn.disabled = true;
+claimDailyBtn.classList.add("claimed-disabled");
+} else {
+claimDailyBtn.textContent = t("RISCATTA 10K XP", "CLAIM 10K XP");
+claimDailyBtn.disabled = false;
+claimDailyBtn.classList.remove("claimed-disabled");
 }
-
+}
+if (streakBadge) {
+streakBadge.textContent = state.activeMaestroRank > 0
+? "MAESTRO " + ROMAN_NUMERALS[state.activeMaestroRank] + " (" + state.masterStreak + "/5)"
+: "MASTER STREAK: " + state.masterStreak + " / 5";
+}
+if (!listContainer) return;
+listContainer.innerHTML = "";
+getMissionsCatalog(state).forEach(m => {
+const isClaimed = Boolean(state.claimedIds[m.id]);
+const isDone = m.progress >= m.target;
+const pct = Math.min(100, Math.round((m.progress / m.target) * 100));
+const card = document.createElement("div");
+card.className = "mission-card" + (isClaimed ? " mission-claimed" : (isDone ? " mission-ready" : ""));
+const header = document.createElement("div");
+header.className = "mission-card-top";
+const titleEl = document.createElement("span");
+titleEl.className = "mission-title";
+titleEl.textContent = m.title;
+const tag = document.createElement("span");
+tag.className = "mission-type-pill " + (m.type === "WEEKLY" ? "pill-weekly" : "pill-monthly");
+tag.textContent = m.type === "WEEKLY" ? t("SETTIMANALE", "WEEKLY") : t("MENSILE", "MONTHLY");
+header.appendChild(titleEl);
+header.appendChild(tag);
+const descEl = document.createElement("div");
+descEl.className = "mission-desc";
+descEl.textContent = m.desc;
+const barWrap = document.createElement("div");
+barWrap.className = "mission-bar-wrap";
+const barTrack = document.createElement("div");
+barTrack.className = "mission-bar-track";
+const barFill = document.createElement("div");
+barFill.className = "mission-bar-fill";
+barFill.style.width = pct + "%";
+barTrack.appendChild(barFill);
+const barText = document.createElement("span");
+barText.className = "mission-bar-text";
+barText.textContent = Math.min(m.progress, m.target).toLocaleString("it-IT") + " / " + m.target.toLocaleString("it-IT");
+barWrap.appendChild(barTrack);
+barWrap.appendChild(barText);
+const footer = document.createElement("div");
+footer.className = "mission-card-footer";
+const rewLabel = document.createElement("span");
+rewLabel.className = "mission-reward-label";
+rewLabel.textContent = m.rewardLabel;
+const actionBtn = document.createElement("button");
+actionBtn.className = "mission-claim-btn";
+if (isClaimed) {
+actionBtn.textContent = t("RISCATTATO", "CLAIMED");
+actionBtn.disabled = true;
+} else if (isDone) {
+actionBtn.textContent = t("RISCATTA!", "CLAIM!");
+actionBtn.classList.add("ready-pulse");
+actionBtn.addEventListener("click", () => {
+const fresh = loadState();
+if (fresh.claimedIds[m.id]) return;
+fresh.claimedIds[m.id] = true;
+if (m.chestCount && m.chestCount > 0) fresh.luxuryChests = clampItemStack(fresh.luxuryChests + m.chestCount);
+if (m.rewardType === "maestro_chest" && !fresh.unlockedStyles.includes("col_rainbow")) {
+fresh.unlockedStyles.push("col_rainbow");
+fresh.equippedColor = "col_rainbow";
+}
+saveState(fresh);
+checkAllMonthlyCompleted(fresh);
+applyAllCosmetics();
+updateAllAlertDots();
+if (window.ttCoreBridge && window.ttCoreBridge.syncCloudNow) {
+window.ttCoreBridge.syncCloudNow();
+}
+if ((m.rewardType === "xp" || m.rewardType === "xp_and_chest") && m.rewardAmount > 0) {
+const suffix = m.chestCount > 0 ? t(" XP & +1 CASSA!", " XP & +1 CHEST!") : " XP!";
+grantBonusXPAnimated(m.rewardAmount, "+" + m.rewardAmount.toLocaleString("it-IT") + suffix);
+} else if (m.rewardType === "chest") {
+if (window.ttCoreBridge) window.ttCoreBridge.playXpSound();
+showXpGainToast("+" + m.chestCount + t(" CASSA AGGIUNTA!", " CHEST ADDED!"));
+} else if (m.rewardType === "maestro_chest") {
+if (window.ttCoreBridge) window.ttCoreBridge.playXpSound();
+showXpGainToast(t("NOME ARCOBALENO & +2 CASSE!", "RAINBOW NAME & +2 CHESTS!"));
+}
+renderMissionsModal();
+});
+} else {
+actionBtn.textContent = pct + "%";
+actionBtn.disabled = true;
+}
+footer.appendChild(rewLabel);
+footer.appendChild(actionBtn);
+card.appendChild(header);
+card.appendChild(descEl);
+card.appendChild(barWrap);
+card.appendChild(footer);
+listContainer.appendChild(card);
+});
+}
 function renderLevelRewardsModal() {
-    const listEl = document.getElementById("levelRewardsListContainer");
-    if (!listEl) return;
-    const currentXP = window.ttCoreBridge ? window.ttCoreBridge.getCurrentXP() : 0;
-    let currentLevel = 1;
-    for (let lv = 1; lv <= 100; lv++) {
-        const req = lv === 1 ? 0 : (lv === 100 ? 100000000 : Math.round(100000000 * Math.pow((lv - 1) / 99, 3.2)));
-        if (currentXP >= req) currentLevel = lv;
-        else break;
-    }
-    const milestones = [];
-    for (let lv = 20; lv <= 100; lv += 5) {
-        const rewards = [];
-        if (lv % 20 === 0) rewards.push(t("+2 CONTINUA PARTITA & +1 CASSA", "+2 CONTINUE & +1 CHEST"));
-        if (lv % 25 === 0) rewards.push(t("+1 BOOST +15% XP", "+1 (+15% XP BOOST)"));
-        if (rewards.length > 0) {
-            milestones.push({
-                level: lv,
-                title: rewards.join(" + "),
-                sub: lv === 100 ? t("PREMIO FINALE LIVELLO 100!", "MAX LEVEL GRAND PRIZE!") : t("Aggiunto nello Zaino (Max 10)", "Auto-added to Bag (Max 10)")
-            });
-        }
-    }
-    listEl.innerHTML = "";
-    let nextFound = false;
-    milestones.forEach(m => {
-        const isUnlocked = currentLevel >= m.level;
-        const isNext = !isUnlocked && !nextFound;
-        if (isNext) nextFound = true;
-        const row = document.createElement("div");
-        row.className = "level-reward-row" + (isUnlocked ? " lv-unlocked" : (isNext ? " lv-next-target" : ""));
-        const lvBadge = document.createElement("div");
-        lvBadge.className = "lv-badge-box";
-        lvBadge.textContent = "LV " + m.level;
-        const details = document.createElement("div");
-        details.className = "lv-reward-details";
-        const mainTxt = document.createElement("div");
-        mainTxt.className = "lv-reward-main";
-        mainTxt.textContent = m.title;
-        const subTxt = document.createElement("div");
-        subTxt.className = "lv-reward-sub";
-        subTxt.textContent = m.sub;
-        details.appendChild(mainTxt);
-        details.appendChild(subTxt);
-        const status = document.createElement("div");
-        status.className = "lv-status-badge";
-        status.textContent = isUnlocked ? t("SBLOCCATO", "UNLOCKED") : (isNext ? t("PROSSIMO", "NEXT") : t("BLOCCATO", "LOCKED"));
-        row.appendChild(lvBadge);
-        row.appendChild(details);
-        row.appendChild(status);
-        listEl.appendChild(row);
-    });
+const listEl = document.getElementById("levelRewardsListContainer");
+if (!listEl) return;
+const currentXP = window.ttCoreBridge ? window.ttCoreBridge.getCurrentXP() : 0;
+let currentLevel = 1;
+for (let lv = 1; lv <= 100; lv++) {
+const req = lv === 1 ? 0 : (lv === 100 ? 100000000 : Math.round(100000000 * Math.pow((lv - 1) / 99, 3.2)));
+if (currentXP >= req) currentLevel = lv;
+else break;
 }
-
+const milestones = [];
+for (let lv = 20; lv <= 100; lv += 5) {
+const rewards = [];
+if (lv % 20 === 0) rewards.push(t("+2 CONTINUA PARTITA & +1 CASSA", "+2 CONTINUE & +1 CHEST"));
+if (lv % 25 === 0) rewards.push(t("+1 BOOST +15% XP", "+1 (+15% XP BOOST)"));
+if (rewards.length > 0) {
+milestones.push({
+level: lv,
+title: rewards.join(" + "),
+sub: lv === 100 ? t("PREMIO FINALE LIVELLO 100!", "MAX LEVEL GRAND PRIZE!") : t("Aggiunto nello Zaino (Max 10)", "Auto-added to Bag (Max 10)")
+});
+}
+}
+listEl.innerHTML = "";
+let nextFound = false;
+milestones.forEach(m => {
+const isUnlocked = currentLevel >= m.level;
+const isNext = !isUnlocked && !nextFound;
+if (isNext) nextFound = true;
+const row = document.createElement("div");
+row.className = "level-reward-row" + (isUnlocked ? " lv-unlocked" : (isNext ? " lv-next-target" : ""));
+const lvBadge = document.createElement("div");
+lvBadge.className = "lv-badge-box";
+lvBadge.textContent = "LV " + m.level;
+const details = document.createElement("div");
+details.className = "lv-reward-details";
+const mainTxt = document.createElement("div");
+mainTxt.className = "lv-reward-main";
+mainTxt.textContent = m.title;
+const subTxt = document.createElement("div");
+subTxt.className = "lv-reward-sub";
+subTxt.textContent = m.sub;
+details.appendChild(mainTxt);
+details.appendChild(subTxt);
+const status = document.createElement("div");
+status.className = "lv-status-badge";
+status.textContent = isUnlocked ? t("SBLOCCATO", "UNLOCKED") : (isNext ? t("PROSSIMO", "NEXT") : t("BLOCCATO", "LOCKED"));
+row.appendChild(lvBadge);
+row.appendChild(details);
+row.appendChild(status);
+listEl.appendChild(row);
+});
+}
 function renderInventoryModal() {
-    const state = loadState();
-    const grid = document.getElementById("inventoryGridContainer");
-    if (!grid) return;
-    grid.innerHTML = "";
-
-    const items = [
-        {
-            artClass: "mini-chest-icon",
-            name: t("CASSA SFARZOSA", "LUXURY CHEST"),
-            qty: state.luxuryChests,
-            desc: t("Aprila per trovare fino a 5.000 XP rari, vite Continua, potenziamenti XP e stili per il tuo nome!", "Open to find up to 5,000 rare XP, Continue tokens, XP boosters and Name Styles!"),
-            isChest: true,
-            showBtn: true,
-            btnLabel: state.luxuryChests > 0 ? t("APRI CASSA!", "OPEN CHEST!") : t("NESSUNA CASSA", "NO CHESTS"),
-            disabled: state.luxuryChests <= 0,
-            onAction: () => openLuxuryChestModal()
-        },
-        {
-            artClass: "art-revive-heart",
-            name: t("CONTINUA (+3.0s)", "CONTINUE (+3.0s)"),
-            qty: state.reviveTokens,
-            desc: t("Quando perdi una partita, ti permette di continuare dallo stesso punteggio con +3.0 secondi extra!", "When you lose a match, lets you continue from your score with +3.0 extra seconds!"),
-            isChest: false,
-            showBtn: false
-        },
-        {
-            artClass: "art-xp-bolt",
-            name: t("BOOST +15% XP", "+15% XP BOOST"),
-            qty: state.xp15Tokens,
-            desc: t("A fine partita aumenta del +15% tutti i punti esperienza (XP) che hai appena guadagnato!", "At the end of a match, boosts all Experience Points (XP) you just earned by +15%!"),
-            isChest: false,
-            showBtn: false
-        },
-        {
-            artClass: "art-xp-star",
-            name: t("RADDOPPIA 2X XP", "2X XP DOUBLER"),
-            qty: state.xp2xTokens,
+const state = loadState();
+const grid = document.getElementById("inventoryGridContainer");
+if (!grid) return;
+grid.innerHTML = "";
+const items = [
+{
+artClass: "mini-chest-icon",
+name: t("CASSA SFARZOSA", "LUXURY CHEST"),
+qty: state.luxuryChests,
+desc: t("Aprila per trovare fino a 5.000 XP rari, vite Continua, potenziamenti XP e stili per il tuo nome!", "Open to find up to 5,000 rare XP, Continue tokens, XP boosters and Name Styles!"),
+isChest: true,
+showBtn: true,
+btnLabel: state.luxuryChests > 0 ? t("APRI CASSA!", "OPEN CHEST!") : t("NESSUNA CASSA", "NO CHESTS"),
+disabled: state.luxuryChests <= 0,
+onAction: () => openLuxuryChestModal()
+},
+{
+artClass: "art-revive-heart",
+name: t("CONTINUA (+3.0s)", "CONTINUE (+3.0s)"),
+qty: state.reviveTokens,
+desc: t("Quando perdi una partita, ti permette di continuare dallo stesso punteggio con +3.0 secondi extra!", "When you lose a match, lets you continue from your score with +3.0 extra seconds!"),
+isChest: false,
+showBtn: false
+},
+{
+artClass: "art-xp-bolt",
+name: t("BOOST +15% XP", "+15% XP BOOST"),
+qty: state.xp15Tokens,
+desc: t("A fine partita aumenta del +15% tutti i punti esperienza (XP) che hai appena guadagnato!", "At the end of a match, boosts all Experience Points (XP) you just earned by +15%!"),
+isChest: false,
+showBtn: false
+},
+{
+artClass: "art-xp-star",
+name: t("RADDOPPIA 2X XP", "2X XP DOUBLER"),
+qty: state.xp2xTokens,
 desc: t("Oggetto rarissimo delle casse: raddoppia (2X) tutti gli XP guadagnati alla fine della partita!", "Ultra-rare chest drop: doubles (2X) all XP earned at the end of the match!"),
 isChest: false,
 showBtn: false
@@ -2925,6 +3134,9 @@ onRunEnd(runScore, runMaxCombo, secondChanceAlreadyUsed) {
 const state = loadState();
 state.weeklyGames += 1;
 if (runScore > (state.weeklyBestScore || 0)) state.weeklyBestScore = runScore;
+if (runScore >= 800000) {
+state.weekly800kGames = (state.weekly800kGames || 0) + 1;
+}
 state.monthlyGames += 1;
 state.monthlyTotalScore += runScore;
 if (runMaxCombo > state.monthlyBestCombo) state.monthlyBestCombo = runMaxCombo;
