@@ -1610,7 +1610,7 @@ btn.classList.add("button-circle");
 let valueText = "";
 if (type === "green") {
 btn.classList.add("green");
-const greenOptions = isDesktop ? [0.420, 0.450, 0.500, 0.550] : [0.290, 0.320, 0.340, 0.370];
+const greenOptions = isDesktop ? [0.420, 0.450, 0.500, 0.550] : [0.290, 0.310, 0.330, 0.360];
 const value = forcedConfig ? Number(valueStr) : greenOptions[Math.floor(Math.random() * greenOptions.length)];
 btn.dataset.value = value;
 valueText = "+" + value.toFixed(3);
