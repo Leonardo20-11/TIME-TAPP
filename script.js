@@ -957,28 +957,37 @@ settingsModal.style.display = "none";
 });
 }
 const activeButtons = [];
-const arrows = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
-let baseButtonDuration = isDesktop ? 1650 : 880;
-let baseSpawnDelay = isDesktop ? 210 : 220;
-const recentSpawnCoords = [];
-const sectorLastCategory = new Array(8).fill(null);
-const SPAWN_PATTERN = ["green", "red", "green", "green", "red"];
-let spawnPatternIndex = 0;
-let lastRemovedPos = null;
-function getScreenSector(x, y) {
-const col = Math.min(3, Math.max(0, Math.floor((x / window.innerWidth) * 4)));
-const row = y < window.innerHeight / 2 ? 0 : 1;
-return row * 4 + col;
-}
-function getNextBalancedCategory() {
-const greenSlots = activeButtons.filter(b => ["green", "gold", "ice", "clock"].includes(b.dataset.action)).length;
-const redSlots = activeButtons.filter(b => ["red", "bomb"].includes(b.dataset.action)).length;
-if (greenSlots >= 3) return "red";
-if (redSlots >= 2) return "green";
-const nextCat = SPAWN_PATTERN[spawnPatternIndex % SPAWN_PATTERN.length];
-spawnPatternIndex++;
-return nextCat;
-}
+    const arrows = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
+    let baseButtonDuration = isDesktop ? 1650 : 620;
+    let baseSpawnDelay = isDesktop ? 210 : 180;
+
+    const recentSpawnCoords = [];
+    const sectorLastCategory = new Array(8).fill(null);
+    const SPAWN_PATTERN = isDesktop
+        ? ["green", "red", "green", "green", "red"]
+        : ["red", "green", "red", "green", "red"];
+    let spawnPatternIndex = 0;
+    let lastRemovedPos = null;
+
+    function getScreenSector(x, y) {
+        const col = Math.min(3, Math.max(0, Math.floor((x / window.innerWidth) * 4)));
+        const row = y < window.innerHeight / 2 ? 0 : 1;
+        return row * 4 + col;
+    }
+
+    function getNextBalancedCategory() {
+        const maxGreens = isDesktop ? 3 : 2;
+        const maxReds = isDesktop ? 2 : 3;
+        const greenSlots = activeButtons.filter(b => ["green", "gold", "ice", "clock"].includes(b.dataset.action)).length;
+        const redSlots = activeButtons.filter(b => ["red", "bomb"].includes(b.dataset.action)).length;
+
+        if (greenSlots >= maxGreens) return "red";
+        if (redSlots >= maxReds) return "green";
+
+        const nextCat = SPAWN_PATTERN[spawnPatternIndex % SPAWN_PATTERN.length];
+        spawnPatternIndex++;
+        return nextCat;
+    }
 let audioCtx = null;
 function ensureAudioContext() {
 try {
@@ -1671,200 +1680,208 @@ timerCircle.classList.remove("timer-panic");
 }
 }
 function startGame(isRestored = false) {
-running = true;
-if (!isRestored) {
-pauseCooldownRemainingMs = 0;
-normalSpawnsSinceLastSpecial = 8;
-spawnPatternIndex = 0;
-recentSpawnCoords.length = 0;
-sectorLastCategory.fill(null);
-lastRemovedPos = null;
-const staggerOffsets = new Array(0, 140, 280, 420, 560);
-for (let i = 0; i < 5; i++) {
-const cat = getNextBalancedCategory();
-createButton(cat, staggerOffsets[i]);
-}
-}
-updatePauseButtonUI();
-updateTimerVisuals();
-const TICK_MS = 50;
-clearInterval(gameLoopInterval);
-gameLoopInterval = setInterval(() => {
-if (!running || isPaused) return;
-if (pauseCooldownRemainingMs > 0) {
-pauseCooldownRemainingMs = Math.max(0, pauseCooldownRemainingMs - TICK_MS);
-updatePauseButtonUI();
-}
-if (overdriveRemainingMs > 0) {
-overdriveRemainingMs = Math.max(0, overdriveRemainingMs - TICK_MS);
-feverMusicTimer += TICK_MS;
-if (feverMusicTimer >= 165) {
-feverMusicTimer = 0;
-playFeverRushBeat();
-}
-} else {
-feverMusicTimer = 0;
-}
-if (isFrozen) {
-freezeRemainingMs -= TICK_MS;
-if (freezeRemainingMs <= 0) { isFrozen = false; freezeRemainingMs = 0; }
-}
-if (isSlowMo) {
-slowMoRemainingMs -= TICK_MS;
-if (slowMoRemainingMs <= 0) { isSlowMo = false; slowMoRemainingMs = 0; }
-}
-if (doubleBonus) {
-doubleBonusRemainingMs -= TICK_MS;
-if (doubleBonusRemainingMs <= 0) { doubleBonus = false; doubleBonusRemainingMs = 0; }
-}
-const speedFactor = isSlowMo ? 0.4 : 1.0;
-if (!isFrozen) {
-const deltaSeconds = (TICK_MS / 1000) * speedFactor;
-time = Math.max(0, Number((time - deltaSeconds).toFixed(3)));
-timerCircle.textContent = time.toFixed(1);
-if (time <= 1.0) {
-panicTickCounter++;
-if (panicTickCounter % 4 === 0 && time > 0) playSynthEffect("tick");
-} else {
-panicTickCounter = 0;
-}
-}
-updateTimerVisuals();
-if (time <= 0) {
-gameOver();
-return;
-}
-for (let i = activeButtons.length - 1; i >= 0; i--) {
-const btn = activeButtons[i];
-const rem = Number(btn.dataset.remainingMs) - TICK_MS * speedFactor;
-const tot = Number(btn.dataset.totalMs) || baseButtonDuration;
-btn.dataset.remainingMs = rem;
-const ringCircle = btn.querySelector(".btn-expiry-ring circle");
-if (ringCircle) {
-const frac = Math.max(0, Math.min(1, rem / tot));
-ringCircle.style.strokeDashoffset = (BTN_RING_CIRCUMFERENCE * (1 - frac)).toFixed(1);
-}
-if (rem <= 0) removeButton(btn);
-}
-while (activeButtons.length < 5) {
-createButton(getNextBalancedCategory());
-}
-}, TICK_MS);
-}
-function renderButtonInner(btn, type, valueText) {
-let contentHtml = "";
-if (type === "bomb") contentHtml = SPECIAL_SVGS.bomb + "BOMB";
-else if (type === "ice") contentHtml = SPECIAL_SVGS.ice + "FREEZE";
-else if (type === "clock") contentHtml = SPECIAL_SVGS.clock + "SLOW";
-else if (type === "gold") contentHtml = SPECIAL_SVGS.gold + "2X TIME";
-else contentHtml = valueText;
-btn.innerHTML = contentHtml;
-}
-function createButton(forcedCategoryOrConfig = null, initialPenaltyMs = 0) {
-let type = "green";
-let key = "";
-let valueStr = "";
-const isSavedObject = forcedCategoryOrConfig && typeof forcedCategoryOrConfig === "object";
-if (isSavedObject) {
-type = forcedCategoryOrConfig.action;
-key = forcedCategoryOrConfig.key;
-valueStr = forcedCategoryOrConfig.value;
-} else {
-const category = (forcedCategoryOrConfig === "green" || forcedCategoryOrConfig === "red")
-? forcedCategoryOrConfig
-: getNextBalancedCategory();
-const greenSlotsCount = activeButtons.filter(b =>
-["green", "gold", "ice", "clock"].includes(b.dataset.action)
-).length;
-const redSlotsCount = activeButtons.filter(b =>
-["red", "bomb"].includes(b.dataset.action)
-).length;
-if (category === "green" && greenSlotsCount >= 3) return;
-if (category === "red" && redSlotsCount >= 2) return;
-type = category;
-const hasSpecialOnScreen = activeButtons.some(b =>
-["gold", "ice", "bomb", "clock"].includes(b.dataset.action)
-);
-const canSpawnPowerup = !hasSpecialOnScreen && normalSpawnsSinceLastSpecial >= 8 && time < 3.0;
-const canSpawnBomb = !hasSpecialOnScreen && normalSpawnsSinceLastSpecial >= 8;
-if (type === "green" && canSpawnPowerup) {
-const rand = Math.random();
-if (rand < 0.008 && !isSlowMo) type = "clock";
-else if (rand < 0.017 && !isFrozen) type = "ice";
-else if (rand < 0.027 && !doubleBonus) type = "gold";
-} else if (type === "red" && canSpawnBomb) {
-if (Math.random() < 0.014) type = "bomb";
-}
-if (["gold", "ice", "bomb", "clock"].includes(type)) normalSpawnsSinceLastSpecial = 0;
-else normalSpawnsSinceLastSpecial++;
-const freeArrows = arrows.filter(a => !activeButtons.some(b => b.dataset.key === a));
-key = freeArrows.length > 0
-? freeArrows[Math.floor(Math.random() * freeArrows.length)]
-: arrows[Math.floor(Math.random() * arrows.length)];
-}
-const btn = document.createElement("button");
-btn.classList.add("button-circle");
-let valueText = "";
-if (type === "green") {
-btn.classList.add("green");
-const greenOptions = isDesktop ? [0.420, 0.450, 0.500, 0.550] : [0.290, 0.300, 0.320, 0.350];
-const value = isSavedObject ? Number(valueStr) : greenOptions[Math.floor(Math.random() * greenOptions.length)];
-btn.dataset.value = value;
-valueText = "+" + value.toFixed(3);
-} else if (type === "red") {
-btn.classList.add("red");
-const redOptions = [0.4, 0.5, 0.6, 0.7];
-const value = isSavedObject ? Number(valueStr) : redOptions[Math.floor(Math.random() * redOptions.length)];
-btn.dataset.value = value;
-valueText = "-" + value.toFixed(1);
-} else if (type === "ice") {
-btn.classList.add("ice");
-} else if (type === "clock") {
-btn.classList.add("clock");
-} else if (type === "bomb") {
-btn.classList.add("bomb");
-} else {
-btn.classList.add("gold");
-valueText = "2X";
-}
-let durationMs = baseButtonDuration;
-if (type === "green" && overdriveRemainingMs > 0) {
-durationMs = Math.round(baseButtonDuration * 0.80);
-}
-const effectiveRemMs = Math.max(380, durationMs - initialPenaltyMs);
-btn.dataset.key = key;
-btn.dataset.action = type;
-btn.dataset.totalMs = isSavedObject ? (forcedCategoryOrConfig.totalMs || durationMs) : durationMs;
-btn.dataset.remainingMs = isSavedObject ? forcedCategoryOrConfig.remainingMs : effectiveRemMs;
-renderButtonInner(btn, type, valueText);
-let x = 0;
-let y = 0;
-const isPositiveType = ["green", "gold", "ice", "clock"].includes(type);
-const currentCategory = isPositiveType ? "green" : "red";
-if (isSavedObject) {
-x = forcedCategoryOrConfig.left;
-y = forcedCategoryOrConfig.top;
-} else {
-const btnSize = isDesktop ? (isPositiveType ? 175 : 145) : 108;
-const minCenterDist = isDesktop ? 195 : 148;
-const minBtnDist = isDesktop ? 170 : 122;
-const minSameColorDist = isDesktop ? 250 : 215;
-const minHistoryDist = isDesktop ? 145 : 125;
-const margin = 18;
-let valid = false;
-let attempts = 0;
-const centerX = window.innerWidth / 2;
-const centerY = window.innerHeight / 2;
-const cornerBlockX = window.innerWidth * 0.14;
-const cornerBlockY = window.innerHeight * 0.16;
-while (!valid && attempts < 260) {
-attempts++;
-if (lastRemovedPos && attempts < 140) {
-const targetX = window.innerWidth - btnSize - lastRemovedPos.x;
-const targetY = window.innerHeight - btnSize - lastRemovedPos.y + 40;
-const jitterX = (Math.random() - 0.5) * (window.innerWidth * 0.55);
-const jitterY = (Math.random() - 0.5) * (window.innerHeight * 0.55);
-x = Math.min(window.innerWidth - btnSize - margin, Math.max(margin, targetX + jitterX));
+        running = true;
+        if (!isRestored) {
+            pauseCooldownRemainingMs = 0;
+            normalSpawnsSinceLastSpecial = 8;
+            spawnPatternIndex = 0;
+            recentSpawnCoords.length = 0;
+            sectorLastCategory.fill(null);
+            lastRemovedPos = null;
+            const staggerOffsets = isDesktop
+                ? new Array(0, 140, 280, 420, 560)
+                : new Array(0, 90, 180, 270, 360);
+            for (let i = 0; i < 5; i++) {
+                const cat = getNextBalancedCategory();
+                createButton(cat, staggerOffsets[i]);
+            }
+        }
+        updatePauseButtonUI();
+        updateTimerVisuals();
+        const TICK_MS = 50;
+        clearInterval(gameLoopInterval);
+        gameLoopInterval = setInterval(() => {
+            if (!running || isPaused) return;
+            if (pauseCooldownRemainingMs > 0) {
+                pauseCooldownRemainingMs = Math.max(0, pauseCooldownRemainingMs - TICK_MS);
+                updatePauseButtonUI();
+            }
+            if (overdriveRemainingMs > 0) {
+                overdriveRemainingMs = Math.max(0, overdriveRemainingMs - TICK_MS);
+                feverMusicTimer += TICK_MS;
+                if (feverMusicTimer >= 165) {
+                    feverMusicTimer = 0;
+                    playFeverRushBeat();
+                }
+            } else {
+                feverMusicTimer = 0;
+            }
+            if (isFrozen) {
+                freezeRemainingMs -= TICK_MS;
+                if (freezeRemainingMs <= 0) { isFrozen = false; freezeRemainingMs = 0; }
+            }
+            if (isSlowMo) {
+                slowMoRemainingMs -= TICK_MS;
+                if (slowMoRemainingMs <= 0) { isSlowMo = false; slowMoRemainingMs = 0; }
+            }
+            if (doubleBonus) {
+                doubleBonusRemainingMs -= TICK_MS;
+                if (doubleBonusRemainingMs <= 0) { doubleBonus = false; doubleBonusRemainingMs = 0; }
+            }
+            const speedFactor = isSlowMo ? 0.4 : 1.0;
+            if (!isFrozen) {
+                const deltaSeconds = (TICK_MS / 1000) * speedFactor;
+                time = Math.max(0, Number((time - deltaSeconds).toFixed(3)));
+                timerCircle.textContent = time.toFixed(1);
+                if (time <= 1.0) {
+                    panicTickCounter++;
+                    if (panicTickCounter % 4 === 0 && time > 0) playSynthEffect("tick");
+                } else {
+                    panicTickCounter = 0;
+                }
+            }
+            updateTimerVisuals();
+            if (time <= 0) {
+                gameOver();
+                return;
+            }
+            for (let i = activeButtons.length - 1; i >= 0; i--) {
+                const btn = activeButtons[i];
+                const rem = Number(btn.dataset.remainingMs) - TICK_MS * speedFactor;
+                const tot = Number(btn.dataset.totalMs) || baseButtonDuration;
+                btn.dataset.remainingMs = rem;
+                const ringCircle = btn.querySelector(".btn-expiry-ring circle");
+                if (ringCircle) {
+                    const frac = Math.max(0, Math.min(1, rem / tot));
+                    ringCircle.style.strokeDashoffset = (BTN_RING_CIRCUMFERENCE * (1 - frac)).toFixed(1);
+                }
+                if (rem <= 0) removeButton(btn);
+            }
+            while (activeButtons.length < 5) {
+                createButton(getNextBalancedCategory());
+            }
+        }, TICK_MS);
+    }
+
+    function renderButtonInner(btn, type, valueText) {
+        let contentHtml = "";
+        if (type === "bomb") contentHtml = SPECIAL_SVGS.bomb + "BOMB";
+        else if (type === "ice") contentHtml = SPECIAL_SVGS.ice + "FREEZE";
+        else if (type === "clock") contentHtml = SPECIAL_SVGS.clock + "SLOW";
+        else if (type === "gold") contentHtml = SPECIAL_SVGS.gold + "2X TIME";
+        else contentHtml = valueText;
+        btn.innerHTML = contentHtml;
+    }
+
+    function createButton(forcedCategoryOrConfig = null, initialPenaltyMs = 0) {
+        let type = "green";
+        let key = "";
+        let valueStr = "";
+        const isSavedObject = forcedCategoryOrConfig && typeof forcedCategoryOrConfig === "object";
+        if (isSavedObject) {
+            type = forcedCategoryOrConfig.action;
+            key = forcedCategoryOrConfig.key;
+            valueStr = forcedCategoryOrConfig.value;
+        } else {
+            const maxGreens = isDesktop ? 3 : 2;
+            const maxReds = isDesktop ? 2 : 3;
+            const category = (forcedCategoryOrConfig === "green" || forcedCategoryOrConfig === "red")
+                ? forcedCategoryOrConfig
+                : getNextBalancedCategory();
+            const greenSlotsCount = activeButtons.filter(b =>
+                ["green", "gold", "ice", "clock"].includes(b.dataset.action)
+            ).length;
+            const redSlotsCount = activeButtons.filter(b =>
+                ["red", "bomb"].includes(b.dataset.action)
+            ).length;
+            if (category === "green" && greenSlotsCount >= maxGreens) return;
+            if (category === "red" && redSlotsCount >= maxReds) return;
+            type = category;
+            const hasSpecialOnScreen = activeButtons.some(b =>
+                ["gold", "ice", "bomb", "clock"].includes(b.dataset.action)
+            );
+            const canSpawnPowerup = !hasSpecialOnScreen && normalSpawnsSinceLastSpecial >= 8 && time < 3.0;
+            const canSpawnBomb = !hasSpecialOnScreen && normalSpawnsSinceLastSpecial >= 8;
+            if (type === "green" && canSpawnPowerup) {
+                const rand = Math.random();
+                if (rand < 0.008 && !isSlowMo) type = "clock";
+                else if (rand < 0.017 && !isFrozen) type = "ice";
+                else if (rand < 0.027 && !doubleBonus) type = "gold";
+            } else if (type === "red" && canSpawnBomb) {
+                if (Math.random() < 0.014) type = "bomb";
+            }
+            if (["gold", "ice", "bomb", "clock"].includes(type)) normalSpawnsSinceLastSpecial = 0;
+            else normalSpawnsSinceLastSpecial++;
+            const freeArrows = arrows.filter(a => !activeButtons.some(b => b.dataset.key === a));
+            key = freeArrows.length > 0
+                ? freeArrows[Math.floor(Math.random() * freeArrows.length)]
+                : arrows[Math.floor(Math.random() * arrows.length)];
+        }
+        const btn = document.createElement("button");
+        btn.classList.add("button-circle");
+        let valueText = "";
+        if (type === "green") {
+            btn.classList.add("green");
+            const greenOptions = isDesktop ? [0.420, 0.450, 0.500, 0.550] : [0.290, 0.300, 0.320, 0.350];
+            const value = isSavedObject ? Number(valueStr) : greenOptions[Math.floor(Math.random() * greenOptions.length)];
+            btn.dataset.value = value;
+            valueText = "+" + value.toFixed(3);
+        } else if (type === "red") {
+            btn.classList.add("red");
+            const redOptions = [0.4, 0.5, 0.6, 0.7];
+            const value = isSavedObject ? Number(valueStr) : redOptions[Math.floor(Math.random() * redOptions.length)];
+            btn.dataset.value = value;
+            valueText = "-" + value.toFixed(1);
+        } else if (type === "ice") {
+            btn.classList.add("ice");
+        } else if (type === "clock") {
+            btn.classList.add("clock");
+        } else if (type === "bomb") {
+            btn.classList.add("bomb");
+        } else {
+            btn.classList.add("gold");
+            valueText = "2X";
+        }
+        let durationMs = baseButtonDuration;
+        if (type === "green" && overdriveRemainingMs > 0) {
+            durationMs = Math.round(baseButtonDuration * 0.80);
+        }
+        const effectiveRemMs = Math.max(240, durationMs - initialPenaltyMs);
+        btn.dataset.key = key;
+        btn.dataset.action = type;
+        btn.dataset.totalMs = isSavedObject ? (forcedCategoryOrConfig.totalMs || durationMs) : durationMs;
+        btn.dataset.remainingMs = isSavedObject ? forcedCategoryOrConfig.remainingMs : effectiveRemMs;
+        renderButtonInner(btn, type, valueText);
+        let x = 0;
+        let y = 0;
+        const isPositiveType = ["green", "gold", "ice", "clock"].includes(type);
+        const currentCategory = isPositiveType ? "green" : "red";
+        if (isSavedObject) {
+            x = forcedCategoryOrConfig.left;
+            y = forcedCategoryOrConfig.top;
+        } else {
+            const btnSize = isDesktop ? (isPositiveType ? 175 : 145) : 108;
+            const minCenterDist = isDesktop ? 195 : 142;
+            const minBtnDist = isDesktop ? 170 : 124;
+            const minSameColorDist = isDesktop ? 250 : (isPositiveType ? 235 : 185);
+            const minHistoryDist = isDesktop ? 145 : 175;
+            const minJumpFromLastRemoved = isDesktop ? 180 : Math.min(window.innerWidth, window.innerHeight) * 0.45;
+            const margin = 14;
+            let valid = false;
+            let attempts = 0;
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            const cornerBlockX = window.innerWidth * 0.14;
+            const cornerBlockY = window.innerHeight * 0.16;
+
+            while (!valid && attempts < 300) {
+                attempts++;
+                if (lastRemovedPos && attempts < 170) {
+                    const targetX = window.innerWidth - btnSize - lastRemovedPos.x;
+                    const targetY = window.innerHeight - btnSize - lastRemovedPos.y + 40;
+                    const jitterX = (Math.random() - 0.5) * (window.innerWidth * 0.45);
+                    const jitterY = (Math.random() - 0.5) * (window.innerHeight * 0.45);
+                    x = Math.min(window.innerWidth - btnSize - margin, Math.max(margin, targetX + jitterX));
 y = Math.min(window.innerHeight - btnSize - margin, Math.max(76, targetY + jitterY));
 } else {
 x = margin + Math.random() * (window.innerWidth - btnSize - margin * 2);
@@ -1886,6 +1903,12 @@ if (valid) {
 const distCenter = Math.hypot(btnCenterX - centerX, btnCenterY - centerY);
 if (distCenter < minCenterDist) valid = false;
 }
+if (valid && lastRemovedPos && attempts < 240) {
+const distFromRemoved = Math.hypot(x - lastRemovedPos.x, y - lastRemovedPos.y);
+if (distFromRemoved < minJumpFromLastRemoved) {
+valid = false;
+}
+}
 if (valid) {
 for (const existing of activeButtons) {
 const ex = parseFloat(existing.style.left);
@@ -1897,13 +1920,13 @@ valid = false;
 break;
 }
 const exIsPos = ["green", "gold", "ice", "clock"].includes(existing.dataset.action);
-if (exIsPos === isPositiveType && dist < minSameColorDist && attempts < 190) {
+if (exIsPos === isPositiveType && dist < minSameColorDist && attempts < 230) {
 valid = false;
 break;
 }
 }
 }
-if (valid && attempts < 200) {
+if (valid && attempts < 250) {
 for (const prev of recentSpawnCoords) {
 if (Math.hypot(x - prev.x, y - prev.y) < minHistoryDist) {
 valid = false;
@@ -1911,7 +1934,7 @@ break;
 }
 }
 }
-if (valid && attempts < 160) {
+if (valid && attempts < 180) {
 const sec = getScreenSector(btnCenterX, btnCenterY);
 if (sectorLastCategory[sec] === currentCategory) {
 valid = false;
@@ -1922,7 +1945,7 @@ if (!valid) return;
 const chosenSector = getScreenSector(x + btnSize / 2, y + btnSize / 2);
 sectorLastCategory[chosenSector] = currentCategory;
 recentSpawnCoords.push({ x, y, category: currentCategory });
-if (recentSpawnCoords.length > 10) recentSpawnCoords.shift();
+if (recentSpawnCoords.length > 8) recentSpawnCoords.shift();
 }
 btn.style.left = x + "px";
 btn.style.top = y + "px";
@@ -1932,6 +1955,7 @@ activateButton(btn);
 };
 game.appendChild(btn);
 activeButtons.push(btn);
+}
 }
 function spawnStars(x, y, mode) {
 let count = 12;
@@ -2112,6 +2136,8 @@ function activateButton(btn) {
         const oldY = parseFloat(btn.style.top);
         if (!Number.isNaN(oldX) && !Number.isNaN(oldY)) {
             lastRemovedPos = { x: oldX, y: oldY };
+            recentSpawnCoords.push({ x: oldX, y: oldY, category: btn.dataset.action });
+            if (recentSpawnCoords.length > 8) recentSpawnCoords.shift();
         }
         const index = activeButtons.indexOf(btn);
         if (index > -1) activeButtons.splice(index, 1);
@@ -2266,7 +2292,6 @@ enterHomeScreen();
 });
 }
 runStartupSequence();
-}
 (function initTimeTapProgressionV2() {
 const SUPABASE_URL = "https://jnhkktvtxbsfbrafsnig.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaGtrdHZ0eGJzZmJyYWZzbmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NTMzNjAsImV4cCI6MjExMTAyOTM2MH0.xRde38jj8K1cBpbXIIDyc14OMSsjRVUMkqTEvwDq2Tw";
