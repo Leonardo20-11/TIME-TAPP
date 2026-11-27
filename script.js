@@ -2,7 +2,7 @@ function initTimeTapGame() {
     const SUPABASE_URL ="https://jnhkktvtxbsfbrafsnig.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaGtrdHZ0eGJzZmJyYWZzbmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NTMzNjAsImV4cCI6MjExMTAyOTM2MH0.xRde38jj8K1cBpbXIIDyc14OMSsjRVUMkqTEvwDq2Tw";
 
-const onboardingScreen = document.getElementById("onboardingScreen");
+    const onboardingScreen = document.getElementById("onboardingScreen");
     const usernameInput = document.getElementById("usernameInput");
     const onboardingErrorMsg = document.getElementById("onboardingErrorMsg");
     const saveProfileBtn = document.getElementById("saveProfileBtn");
@@ -377,11 +377,7 @@ recordModeBtn.textContent = "RECORD";
 recordModeBtn.addEventListener("click", () => {
 playSynthEffect("click");
 chooseLeaderboardModal.style.display = "none";
-
-
-
 openLeaderboardByMode("record", currentLeaderboardPlatform);
-
 });
 const comboModeBtn = document.createElement("button");
 comboModeBtn.className = "lb-choice-btn lb-choice-combo";
@@ -389,11 +385,7 @@ comboModeBtn.textContent = "COMBO";
 comboModeBtn.addEventListener("click", () => {
 playSynthEffect("click");
 chooseLeaderboardModal.style.display = "none";
-
-
-
 openLeaderboardByMode("combo", currentLeaderboardPlatform);
-
 });
 actions.appendChild(recordModeBtn);
 actions.appendChild(comboModeBtn);
@@ -412,9 +404,9 @@ titleEl.textContent = platform === "pc" ? "PC LEADERBOARD" : "MOBILE LEADERBOARD
 }
 if (switchBtn) {
 if (platform === "pc") {
-switchBtn.innerHTML = '<span class="dev-icon-phone"></span> VIEW MOBILE';
+switchBtn.innerHTML = ' VIEW MOBILE';
 } else {
-switchBtn.innerHTML = '<span class="dev-icon-pc"></span> VIEW COMPUTER';
+switchBtn.innerHTML = ' VIEW COMPUTER';
 }
 }
 }
@@ -490,82 +482,6 @@ row.appendChild(posEl);
 row.appendChild(userInfo);
 row.appendChild(scoreBox);
 return row;
-}
-async function openDesktopSplitLeaderboard(platform, focusMode = "record") {
-if (!leaderboardModal || !leaderboardListContainer) return;
-currentLeaderboardPlatform = platform;
-ensureLeaderboardBackButton();
-const platLabel = platform === "pc" ? "COMPUTER" : "MOBILE";
-const headerTitle = leaderboardModal.querySelector(".fullscreen-header h2");
-if (headerTitle) {
-headerTitle.textContent = platLabel + " TOP 50";
-}
-leaderboardModal.style.display = "flex";
-await syncPlayerToCloud(playerUsername);
-if (yourRankBanner) yourRankBanner.style.display = "none";
-leaderboardListContainer.className = "leaderboard-split-desktop";
-leaderboardListContainer.removeAttribute("style");
-leaderboardListContainer.innerHTML = "";
-const loadingEl = document.createElement("div");
-loadingEl.className = "lb-loading";
-loadingEl.textContent = "LOADING " + platLabel + " TOP 50...";
-leaderboardListContainer.appendChild(loadingEl);
-try {
-const [resRec, resCom] = await Promise.all([
-fetch(SUPABASE_URL + "/rest/v1/players?select=username,equipped_color,equipped_font,equipped_symbol,record&platform=eq." + platform + "&order=record.desc", { headers: sbHeaders() }),
-fetch(SUPABASE_URL + "/rest/v1/players?select=username,equipped_color,equipped_font,equipped_symbol,best_combo&platform=eq." + platform + "&order=best_combo.desc", { headers: sbHeaders() })
-]);
-if (!resRec.ok || !resCom.ok) throw new Error("Fetch failed");
-const rawRec = await resRec.json();
-const rawCom = await resCom.json();
-const recPlayers = Array.isArray(rawRec) ? rawRec.filter(p => p && p.username && !containsProfanity(p.username)) : [];
-const comPlayers = Array.isArray(rawCom) ? rawCom.filter(p => p && p.username && !containsProfanity(p.username)) : [];
-leaderboardListContainer.innerHTML = "";
-const myLocalCosmetics = getCurrentEquippedCosmetics();
-const myDevicePlat = isDesktop ? "pc" : "mobile";
-const columns = [
-{ title: "TOP 50 COMBO", field: "best_combo", list: comPlayers, isFocused: focusMode === "combo" },
-{ title: "TOP 50 RECORD", field: "record", list: recPlayers, isFocused: focusMode === "record" }
-];
-columns.forEach(col => {
-const colWrap = document.createElement("div");
-colWrap.className = "lb-split-column" + (col.isFocused ? " lb-col-focused" : "");
-const colHeader = document.createElement("div");
-colHeader.className = "lb-split-col-title";
-colHeader.textContent = col.title;
-colWrap.appendChild(colHeader);
-const myIdx = col.list.findIndex(p => p.username === playerUsername && myDevicePlat === platform);
-const rankMini = document.createElement("div");
-rankMini.className = "your-rank-banner lb-split-rank-banner";
-if (myIdx >= 0) {
-rankMini.textContent = "YOUR RANK: #" + (myIdx + 1) + " / " + col.list.length;
-} else {
-rankMini.textContent = myDevicePlat === platform ? "PLAY A RUN TO ENTER!" : platLabel + " RANKING";
-}
-colWrap.appendChild(rankMini);
-const scrollList = document.createElement("div");
-scrollList.className = "lb-split-scroll";
-if (col.list.length === 0) {
-const emptyEl = document.createElement("div");
-emptyEl.className = "lb-loading";
-emptyEl.textContent = "NO PLAYERS YET!";
-scrollList.appendChild(emptyEl);
-} else {
-col.list.slice(0, 50).forEach((p, idx) => {
-const isMe = p.username === playerUsername && myDevicePlat === platform;
-scrollList.appendChild(buildLeaderboardRowElement(p, idx, col.field, isMe, myLocalCosmetics));
-});
-}
-colWrap.appendChild(scrollList);
-leaderboardListContainer.appendChild(colWrap);
-});
-} catch (e) {
-leaderboardListContainer.innerHTML = "";
-const errEl = document.createElement("div");
-errEl.className = "lb-loading";
-errEl.textContent = "CONNECTION ERROR";
-leaderboardListContainer.appendChild(errEl);
-}
 }
 async function openLeaderboardByMode(mode, platform = currentLeaderboardPlatform) {
 currentLeaderboardMode = mode;
@@ -957,37 +873,37 @@ settingsModal.style.display = "none";
 });
 }
 const activeButtons = [];
-    const arrows = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
-    let baseButtonDuration = isDesktop ? 1650 : 620;
-    let baseSpawnDelay = isDesktop ? 210 : 180;
-
-    const recentSpawnCoords = [];
-    const sectorLastCategory = new Array(8).fill(null);
-    const SPAWN_PATTERN = isDesktop
-        ? ["green", "red", "green", "green", "red"]
-        : ["red", "green", "red", "green", "red"];
-    let spawnPatternIndex = 0;
-    let lastRemovedPos = null;
-
-    function getScreenSector(x, y) {
-        const col = Math.min(3, Math.max(0, Math.floor((x / window.innerWidth) * 4)));
-        const row = y < window.innerHeight / 2 ? 0 : 1;
-        return row * 4 + col;
-    }
-
-    function getNextBalancedCategory() {
-        const maxGreens = isDesktop ? 3 : 2;
-        const maxReds = isDesktop ? 2 : 3;
-        const greenSlots = activeButtons.filter(b => ["green", "gold", "ice", "clock"].includes(b.dataset.action)).length;
-        const redSlots = activeButtons.filter(b => ["red", "bomb"].includes(b.dataset.action)).length;
-
-        if (greenSlots >= maxGreens) return "red";
-        if (redSlots >= maxReds) return "green";
-
-        const nextCat = SPAWN_PATTERN[spawnPatternIndex % SPAWN_PATTERN.length];
-        spawnPatternIndex++;
-        return nextCat;
-    }
+const arrows = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
+let baseButtonDuration = isDesktop ? 1650 : 620;
+let baseSpawnDelay = isDesktop ? 210 : 180;
+// 6 zone dello schermo: 0=Alto-Sx, 1=Alto-Dx, 2=Centro-Sx, 3=Centro-Dx, 4=Basso-Sx, 5=Basso-Dx
+const recentSpawnCoords = [];
+const zoneLastCategory = new Array(6).fill(null);
+const SPAWN_PATTERN = isDesktop
+? ["green", "red", "green", "green", "red"]
+: ["red", "green", "red", "green", "red"];
+let spawnPatternIndex = 0;
+let lastRemovedPos = null;
+let lastGreenPos = null;
+function getScreenZone6(x, y) {
+const col = x < window.innerWidth / 2 ? 0 : 1;
+const h = window.innerHeight;
+let row = 1;
+if (y < h * 0.36) row = 0;
+else if (y > h * 0.64) row = 2;
+return row * 2 + col;
+}
+function getNextBalancedCategory() {
+const maxGreens = isDesktop ? 3 : 2;
+const maxReds = isDesktop ? 2 : 3;
+const greenSlots = activeButtons.filter(b => ["green", "gold", "ice", "clock"].includes(b.dataset.action)).length;
+const redSlots = activeButtons.filter(b => ["red", "bomb"].includes(b.dataset.action)).length;
+if (greenSlots >= maxGreens) return "red";
+if (redSlots >= maxReds) return "green";
+const nextCat = SPAWN_PATTERN[spawnPatternIndex % SPAWN_PATTERN.length];
+spawnPatternIndex++;
+return nextCat;
+}
 let audioCtx = null;
 function ensureAudioContext() {
 try {
@@ -1199,8 +1115,7 @@ void game.offsetWidth;
 game.classList.add("screen-shake");
 }
 function triggerMaxCapFeedback() {
-if (navigator
-.vibrate) {
+if (navigator.vibrate) {
 try { navigator.vibrate(35); } catch (e) {}
 }
 if (timerCircle) {
@@ -1680,208 +1595,216 @@ timerCircle.classList.remove("timer-panic");
 }
 }
 function startGame(isRestored = false) {
-        running = true;
-        if (!isRestored) {
-            pauseCooldownRemainingMs = 0;
-            normalSpawnsSinceLastSpecial = 8;
-            spawnPatternIndex = 0;
-            recentSpawnCoords.length = 0;
-            sectorLastCategory.fill(null);
-            lastRemovedPos = null;
-            const staggerOffsets = isDesktop
-                ? new Array(0, 140, 280, 420, 560)
-                : new Array(0, 90, 180, 270, 360);
-            for (let i = 0; i < 5; i++) {
-                const cat = getNextBalancedCategory();
-                createButton(cat, staggerOffsets[i]);
-            }
-        }
-        updatePauseButtonUI();
-        updateTimerVisuals();
-        const TICK_MS = 50;
-        clearInterval(gameLoopInterval);
-        gameLoopInterval = setInterval(() => {
-            if (!running || isPaused) return;
-            if (pauseCooldownRemainingMs > 0) {
-                pauseCooldownRemainingMs = Math.max(0, pauseCooldownRemainingMs - TICK_MS);
-                updatePauseButtonUI();
-            }
-            if (overdriveRemainingMs > 0) {
-                overdriveRemainingMs = Math.max(0, overdriveRemainingMs - TICK_MS);
-                feverMusicTimer += TICK_MS;
-                if (feverMusicTimer >= 165) {
-                    feverMusicTimer = 0;
-                    playFeverRushBeat();
-                }
-            } else {
-                feverMusicTimer = 0;
-            }
-            if (isFrozen) {
-                freezeRemainingMs -= TICK_MS;
-                if (freezeRemainingMs <= 0) { isFrozen = false; freezeRemainingMs = 0; }
-            }
-            if (isSlowMo) {
-                slowMoRemainingMs -= TICK_MS;
-                if (slowMoRemainingMs <= 0) { isSlowMo = false; slowMoRemainingMs = 0; }
-            }
-            if (doubleBonus) {
-                doubleBonusRemainingMs -= TICK_MS;
-                if (doubleBonusRemainingMs <= 0) { doubleBonus = false; doubleBonusRemainingMs = 0; }
-            }
-            const speedFactor = isSlowMo ? 0.4 : 1.0;
-            if (!isFrozen) {
-                const deltaSeconds = (TICK_MS / 1000) * speedFactor;
-                time = Math.max(0, Number((time - deltaSeconds).toFixed(3)));
-                timerCircle.textContent = time.toFixed(1);
-                if (time <= 1.0) {
-                    panicTickCounter++;
-                    if (panicTickCounter % 4 === 0 && time > 0) playSynthEffect("tick");
-                } else {
-                    panicTickCounter = 0;
-                }
-            }
-            updateTimerVisuals();
-            if (time <= 0) {
-                gameOver();
-                return;
-            }
-            for (let i = activeButtons.length - 1; i >= 0; i--) {
-                const btn = activeButtons[i];
-                const rem = Number(btn.dataset.remainingMs) - TICK_MS * speedFactor;
-                const tot = Number(btn.dataset.totalMs) || baseButtonDuration;
-                btn.dataset.remainingMs = rem;
-                const ringCircle = btn.querySelector(".btn-expiry-ring circle");
-                if (ringCircle) {
-                    const frac = Math.max(0, Math.min(1, rem / tot));
-                    ringCircle.style.strokeDashoffset = (BTN_RING_CIRCUMFERENCE * (1 - frac)).toFixed(1);
-                }
-                if (rem <= 0) removeButton(btn);
-            }
-            while (activeButtons.length < 5) {
-                createButton(getNextBalancedCategory());
-            }
-        }, TICK_MS);
-    }
-
-    function renderButtonInner(btn, type, valueText) {
-        let contentHtml = "";
-        if (type === "bomb") contentHtml = SPECIAL_SVGS.bomb + "BOMB";
-        else if (type === "ice") contentHtml = SPECIAL_SVGS.ice + "FREEZE";
-        else if (type === "clock") contentHtml = SPECIAL_SVGS.clock + "SLOW";
-        else if (type === "gold") contentHtml = SPECIAL_SVGS.gold + "2X TIME";
-        else contentHtml = valueText;
-        btn.innerHTML = contentHtml;
-    }
-
-    function createButton(forcedCategoryOrConfig = null, initialPenaltyMs = 0) {
-        let type = "green";
-        let key = "";
-        let valueStr = "";
-        const isSavedObject = forcedCategoryOrConfig && typeof forcedCategoryOrConfig === "object";
-        if (isSavedObject) {
-            type = forcedCategoryOrConfig.action;
-            key = forcedCategoryOrConfig.key;
-            valueStr = forcedCategoryOrConfig.value;
-        } else {
-            const maxGreens = isDesktop ? 3 : 2;
-            const maxReds = isDesktop ? 2 : 3;
-            const category = (forcedCategoryOrConfig === "green" || forcedCategoryOrConfig === "red")
-                ? forcedCategoryOrConfig
-                : getNextBalancedCategory();
-            const greenSlotsCount = activeButtons.filter(b =>
-                ["green", "gold", "ice", "clock"].includes(b.dataset.action)
-            ).length;
-            const redSlotsCount = activeButtons.filter(b =>
-                ["red", "bomb"].includes(b.dataset.action)
-            ).length;
-            if (category === "green" && greenSlotsCount >= maxGreens) return;
-            if (category === "red" && redSlotsCount >= maxReds) return;
-            type = category;
-            const hasSpecialOnScreen = activeButtons.some(b =>
-                ["gold", "ice", "bomb", "clock"].includes(b.dataset.action)
-            );
-            const canSpawnPowerup = !hasSpecialOnScreen && normalSpawnsSinceLastSpecial >= 8 && time < 3.0;
-            const canSpawnBomb = !hasSpecialOnScreen && normalSpawnsSinceLastSpecial >= 8;
-            if (type === "green" && canSpawnPowerup) {
-                const rand = Math.random();
-                if (rand < 0.008 && !isSlowMo) type = "clock";
-                else if (rand < 0.017 && !isFrozen) type = "ice";
-                else if (rand < 0.027 && !doubleBonus) type = "gold";
-            } else if (type === "red" && canSpawnBomb) {
-                if (Math.random() < 0.014) type = "bomb";
-            }
-            if (["gold", "ice", "bomb", "clock"].includes(type)) normalSpawnsSinceLastSpecial = 0;
-            else normalSpawnsSinceLastSpecial++;
-            const freeArrows = arrows.filter(a => !activeButtons.some(b => b.dataset.key === a));
-            key = freeArrows.length > 0
-                ? freeArrows[Math.floor(Math.random() * freeArrows.length)]
-                : arrows[Math.floor(Math.random() * arrows.length)];
-        }
-        const btn = document.createElement("button");
-        btn.classList.add("button-circle");
-        let valueText = "";
-        if (type === "green") {
-            btn.classList.add("green");
-            const greenOptions = isDesktop ? [0.420, 0.450, 0.500, 0.550] : [0.290, 0.300, 0.320, 0.350];
-            const value = isSavedObject ? Number(valueStr) : greenOptions[Math.floor(Math.random() * greenOptions.length)];
-            btn.dataset.value = value;
-            valueText = "+" + value.toFixed(3);
-        } else if (type === "red") {
-            btn.classList.add("red");
-            const redOptions = [0.4, 0.5, 0.6, 0.7];
-            const value = isSavedObject ? Number(valueStr) : redOptions[Math.floor(Math.random() * redOptions.length)];
-            btn.dataset.value = value;
-            valueText = "-" + value.toFixed(1);
-        } else if (type === "ice") {
-            btn.classList.add("ice");
-        } else if (type === "clock") {
-            btn.classList.add("clock");
-        } else if (type === "bomb") {
-            btn.classList.add("bomb");
-        } else {
-            btn.classList.add("gold");
-            valueText = "2X";
-        }
-        let durationMs = baseButtonDuration;
-        if (type === "green" && overdriveRemainingMs > 0) {
-            durationMs = Math.round(baseButtonDuration * 0.80);
-        }
-        const effectiveRemMs = Math.max(240, durationMs - initialPenaltyMs);
-        btn.dataset.key = key;
-        btn.dataset.action = type;
-        btn.dataset.totalMs = isSavedObject ? (forcedCategoryOrConfig.totalMs || durationMs) : durationMs;
-        btn.dataset.remainingMs = isSavedObject ? forcedCategoryOrConfig.remainingMs : effectiveRemMs;
-        renderButtonInner(btn, type, valueText);
-        let x = 0;
-        let y = 0;
-        const isPositiveType = ["green", "gold", "ice", "clock"].includes(type);
-        const currentCategory = isPositiveType ? "green" : "red";
-        if (isSavedObject) {
-            x = forcedCategoryOrConfig.left;
-            y = forcedCategoryOrConfig.top;
-        } else {
-            const btnSize = isDesktop ? (isPositiveType ? 175 : 145) : 108;
-            const minCenterDist = isDesktop ? 195 : 142;
-            const minBtnDist = isDesktop ? 170 : 124;
-            const minSameColorDist = isDesktop ? 250 : (isPositiveType ? 235 : 185);
-            const minHistoryDist = isDesktop ? 145 : 175;
-            const minJumpFromLastRemoved = isDesktop ? 180 : Math.min(window.innerWidth, window.innerHeight) * 0.45;
-            const margin = 14;
-            let valid = false;
-            let attempts = 0;
-            const centerX = window.innerWidth / 2;
-            const centerY = window.innerHeight / 2;
-            const cornerBlockX = window.innerWidth * 0.14;
-            const cornerBlockY = window.innerHeight * 0.16;
-
-            while (!valid && attempts < 300) {
-                attempts++;
-                if (lastRemovedPos && attempts < 170) {
-                    const targetX = window.innerWidth - btnSize - lastRemovedPos.x;
-                    const targetY = window.innerHeight - btnSize - lastRemovedPos.y + 40;
-                    const jitterX = (Math.random() - 0.5) * (window.innerWidth * 0.45);
-                    const jitterY = (Math.random() - 0.5) * (window.innerHeight * 0.45);
-                    x = Math.min(window.innerWidth - btnSize - margin, Math.max(margin, targetX + jitterX));
+running = true;
+if (!isRestored) {
+pauseCooldownRemainingMs = 0;
+normalSpawnsSinceLastSpecial = 8;
+spawnPatternIndex = 0;
+recentSpawnCoords.length = 0;
+zoneLastCategory.fill(null);
+lastRemovedPos = null;
+lastGreenPos = null;
+const staggerOffsets = isDesktop
+? new Array(0, 140, 280, 420, 560)
+: new Array(0, 90, 180, 270, 360);
+for (let i = 0; i < 5; i++) {
+const cat = getNextBalancedCategory();
+createButton(cat, staggerOffsets[i]);
+}
+}
+updatePauseButtonUI();
+updateTimerVisuals();
+const TICK_MS = 50;
+clearInterval(gameLoopInterval);
+gameLoopInterval = setInterval(() => {
+if (!running || isPaused) return;
+if (pauseCooldownRemainingMs > 0) {
+pauseCooldownRemainingMs = Math.max(0, pauseCooldownRemainingMs - TICK_MS);
+updatePauseButtonUI();
+}
+if (overdriveRemainingMs > 0) {
+overdriveRemainingMs = Math.max(0, overdriveRemainingMs - TICK_MS);
+feverMusicTimer += TICK_MS;
+if (feverMusicTimer >= 165) {
+feverMusicTimer = 0;
+playFeverRushBeat();
+}
+} else {
+feverMusicTimer = 0;
+}
+if (isFrozen) {
+freezeRemainingMs -= TICK_MS;
+if (freezeRemainingMs <= 0) { isFrozen = false; freezeRemainingMs = 0; }
+}
+if (isSlowMo) {
+slowMoRemainingMs -= TICK_MS;
+if (slowMoRemainingMs <= 0) { isSlowMo = false; slowMoRemainingMs = 0; }
+}
+if (doubleBonus) {
+doubleBonusRemainingMs -= TICK_MS;
+if (doubleBonusRemainingMs <= 0) { doubleBonus = false; doubleBonusRemainingMs = 0; }
+}
+const speedFactor = isSlowMo ? 0.4 : 1.0;
+if (!isFrozen) {
+const deltaSeconds = (TICK_MS / 1000) * speedFactor;
+time = Math.max(0, Number((time - deltaSeconds).toFixed(3)));
+timerCircle.textContent = time.toFixed(1);
+if (time <= 1.0) {
+panicTickCounter++;
+if (panicTickCounter % 4 === 0 && time > 0) playSynthEffect("tick");
+} else {
+panicTickCounter = 0;
+}
+}
+updateTimerVisuals();
+if (time <= 0) {
+gameOver();
+return;
+}
+for (let i = activeButtons.length - 1; i >= 0; i--) {
+const btn = activeButtons[i];
+const rem = Number(btn.dataset.remainingMs) - TICK_MS * speedFactor;
+const tot = Number(btn.dataset.totalMs) || baseButtonDuration;
+btn.dataset.remainingMs = rem;
+const ringCircle = btn.querySelector(".btn-expiry-ring circle");
+if (ringCircle) {
+const frac = Math.max(0, Math.min(1, rem / tot));
+ringCircle.style.strokeDashoffset = (BTN_RING_CIRCUMFERENCE * (1 - frac)).toFixed(1);
+}
+if (rem <= 0) removeButton(btn);
+}
+while (activeButtons.length < 5) {
+createButton(getNextBalancedCategory());
+}
+}, TICK_MS);
+}
+function renderButtonInner(btn, type, valueText) {
+let contentHtml = "";
+if (type === "bomb") contentHtml = SPECIAL_SVGS.bomb + "BOMB";
+else if (type === "ice") contentHtml = SPECIAL_SVGS.ice + "FREEZE";
+else if (type === "clock") contentHtml = SPECIAL_SVGS.clock + "SLOW";
+else if (type === "gold") contentHtml = SPECIAL_SVGS.gold + "2X TIME";
+else contentHtml = valueText;
+btn.innerHTML = contentHtml;
+}
+function createButton(forcedCategoryOrConfig = null, initialPenaltyMs = 0) {
+let type = "green";
+let key = "";
+let valueStr = "";
+const isSavedObject = forcedCategoryOrConfig && typeof forcedCategoryOrConfig === "object";
+if (isSavedObject) {
+type = forcedCategoryOrConfig.action;
+key = forcedCategoryOrConfig.key;
+valueStr = forcedCategoryOrConfig.value;
+} else {
+const maxGreens = isDesktop ? 3 : 2;
+const maxReds = isDesktop ? 2 : 3;
+const category = (forcedCategoryOrConfig === "green" || forcedCategoryOrConfig === "red")
+? forcedCategoryOrConfig
+: getNextBalancedCategory();
+const greenSlotsCount = activeButtons.filter(b =>
+["green", "gold", "ice", "clock"].includes(b.dataset.action)
+).length;
+const redSlotsCount = activeButtons.filter(b =>
+["red", "bomb"].includes(b.dataset.action)
+).length;
+if (category === "green" && greenSlotsCount >= maxGreens) return;
+if (category === "red" && redSlotsCount >= maxReds) return;
+type = category;
+const hasSpecialOnScreen = activeButtons.some(b =>
+["gold", "ice", "bomb", "clock"].includes(b.dataset.action)
+);
+const canSpawnPowerup = !hasSpecialOnScreen && normalSpawnsSinceLastSpecial >= 8 && time < 3.0;
+const canSpawnBomb = !hasSpecialOnScreen && normalSpawnsSinceLastSpecial >= 8;
+if (type === "green" && canSpawnPowerup) {
+const rand = Math.random();
+if (rand < 0.008 && !isSlowMo) type = "clock";
+else if (rand < 0.017 && !isFrozen) type = "ice";
+else if (rand < 0.027 && !doubleBonus) type = "gold";
+} else if (type === "red" && canSpawnBomb) {
+if (Math.random() < 0.014) type = "bomb";
+}
+if (["gold", "ice", "bomb", "clock"].includes(type)) normalSpawnsSinceLastSpecial = 0;
+else normalSpawnsSinceLastSpecial++;
+const freeArrows = arrows.filter(a => !activeButtons.some(b => b.dataset.key === a));
+key = freeArrows.length > 0
+? freeArrows[Math.floor(Math.random() * freeArrows.length)]
+: arrows[Math.floor(Math.random() * arrows.length)];
+}
+const btn = document.createElement("button");
+btn.classList.add("button-circle");
+let valueText = "";
+if (type === "green") {
+btn.classList.add("green");
+const greenOptions = isDesktop ? [0.420, 0.450, 0.500, 0.550] : [0.290, 0.300, 0.320, 0.350];
+const value = isSavedObject ? Number(valueStr) : greenOptions[Math.floor(Math.random() * greenOptions.length)];
+btn.dataset.value = value;
+valueText = "+" + value.toFixed(3);
+} else if (type === "red") {
+btn.classList.add("red");
+const redOptions = [0.4, 0.5, 0.6, 0.7];
+const value = isSavedObject ? Number(valueStr) : redOptions[Math.floor(Math.random() * redOptions.length)];
+btn.dataset.value = value;
+valueText = "-" + value.toFixed(1);
+} else if (type === "ice") {
+btn.classList.add("ice");
+} else if (type === "clock") {
+btn.classList.add("clock");
+} else if (type === "bomb") {
+btn.classList.add("bomb");
+} else {
+btn.classList.add("gold");
+valueText = "2X";
+}
+let durationMs = baseButtonDuration;
+if (type === "green" && overdriveRemainingMs > 0) {
+durationMs = Math.round(baseButtonDuration * 0.80);
+}
+const effectiveRemMs = Math.max(240, durationMs - initialPenaltyMs);
+btn.dataset.key = key;
+btn.dataset.action = type;
+btn.dataset.totalMs = isSavedObject ? (forcedCategoryOrConfig.totalMs || durationMs) : durationMs;
+btn.dataset.remainingMs = isSavedObject ? forcedCategoryOrConfig.remainingMs : effectiveRemMs;
+renderButtonInner(btn, type, valueText);
+let x = 0;
+let y = 0;
+const isPositiveType = ["green", "gold", "ice", "clock"].includes(type);
+const currentCategory = isPositiveType ? "green" : "red";
+if (isSavedObject) {
+x = forcedCategoryOrConfig.left;
+y = forcedCategoryOrConfig.top;
+} else {
+const btnSize = isDesktop ? (isPositiveType ? 175 : 145) : 108;
+const minCenterDist = isDesktop ? 195 : 138;
+const minBtnDist = isDesktop ? 170 : 122;
+const minSameColorDist = isDesktop ? 250 : (isPositiveType ? 225 : 175);
+const minHistoryDist = isDesktop ? 145 : 165;
+const minJumpFromLastRemoved = isDesktop ? 180 : Math.min(window.innerWidth, window.innerHeight) * 0.42;
+const minJumpFromLastGreen = isDesktop ? 220 : Math.max(window.innerWidth, window.innerHeight) * 0.46;
+const margin = 14;
+let valid = false;
+let attempts = 0;
+const centerX = window.innerWidth / 2;
+const centerY = window.innerHeight / 2;
+const cornerBlockX = window.innerWidth * 0.14;
+const cornerBlockY = window.innerHeight * 0.16;
+// Zone già occupate dai pulsanti attualmente sullo schermo (così i 5 pulsanti sono sempre sparsi in zone diverse)
+const occupiedZones = new Set(
+activeButtons.map(b => {
+const bx = parseFloat(b.style.left) + (b.offsetWidth || btnSize) / 2;
+const by = parseFloat(b.style.top) + (b.offsetHeight || btnSize) / 2;
+return getScreenZone6(bx, by);
+})
+);
+while (!valid && attempts < 340) {
+attempts++;
+const refPos = (isPositiveType && lastGreenPos) ? lastGreenPos : lastRemovedPos;
+if (refPos && attempts < 190) {
+const targetX = window.innerWidth - btnSize - refPos.x;
+const targetY = window.innerHeight - btnSize - refPos.y + 40;
+const jitterX = (Math.random() - 0.5) * (window.innerWidth * 0.50);
+const jitterY = (Math.random() - 0.5) * (window.innerHeight * 0.50);
+x = Math.min(window.innerWidth - btnSize - margin, Math.max(margin, targetX + jitterX));
 y = Math.min(window.innerHeight - btnSize - margin, Math.max(76, targetY + jitterY));
 } else {
 x = margin + Math.random() * (window.innerWidth - btnSize - margin * 2);
@@ -1890,6 +1813,8 @@ y = 76 + Math.random() * (window.innerHeight - btnSize - 76 - margin);
 valid = true;
 const btnCenterX = x + btnSize / 2;
 const btnCenterY = y + btnSize / 2;
+const zone = getScreenZone6(btnCenterX, btnCenterY);
+// 1. Esclude angoli su desktop
 if (isDesktop) {
 const inLeft = btnCenterX < cornerBlockX;
 const inRight = btnCenterX > window.innerWidth - cornerBlockX;
@@ -1899,16 +1824,34 @@ if ((inLeft || inRight) && (inTop || inBottom)) {
 valid = false;
 }
 }
+// 2. Mai sopra il timer centrale
 if (valid) {
 const distCenter = Math.hypot(btnCenterX - centerX, btnCenterY - centerY);
 if (distCenter < minCenterDist) valid = false;
 }
-if (valid && lastRemovedPos && attempts < 240) {
+// 3. Una zona per pulsante (sparsi in Alto, Centro e Basso, mai ammassati tutti sotto o tutti sopra)
+if (valid && occupiedZones.has(zone) && attempts < 260) {
+valid = false;
+}
+// 4. Alternanza obbligatoria Verde <-> Rosso in ogni zona (un verde non può apparire dove c'era prima un verde)
+if (valid && zoneLastCategory[zone] === currentCategory && attempts < 260) {
+valid = false;
+}
+// 5. Se è un verde, deve saltare dall'altra parte dello schermo rispetto all'ultimo verde
+if (valid && isPositiveType && lastGreenPos && attempts < 280) {
+const distGreen = Math.hypot(x - lastGreenPos.x, y - lastGreenPos.y);
+if (distGreen < minJumpFromLastGreen) {
+valid = false;
+}
+}
+// 6. Lontano dall'ultimo pulsante sparito/toccato
+if (valid && lastRemovedPos && attempts < 260) {
 const distFromRemoved = Math.hypot(x - lastRemovedPos.x, y - lastRemovedPos.y);
 if (distFromRemoved < minJumpFromLastRemoved) {
 valid = false;
 }
 }
+// 7. Mai sovrapposto e mai due dello stesso colore vicini
 if (valid) {
 for (const existing of activeButtons) {
 const ex = parseFloat(existing.style.left);
@@ -1920,13 +1863,14 @@ valid = false;
 break;
 }
 const exIsPos = ["green", "gold", "ice", "clock"].includes(existing.dataset.action);
-if (exIsPos === isPositiveType && dist < minSameColorDist && attempts < 230) {
+if (exIsPos === isPositiveType && dist < minSameColorDist && attempts < 260) {
 valid = false;
 break;
 }
 }
 }
-if (valid && attempts < 250) {
+// 8. Mai nello stesso punto degli ultimi 8 pulsanti
+if (valid && attempts < 280) {
 for (const prev of recentSpawnCoords) {
 if (Math.hypot(x - prev.x, y - prev.y) < minHistoryDist) {
 valid = false;
@@ -1934,16 +1878,13 @@ break;
 }
 }
 }
-if (valid && attempts < 180) {
-const sec = getScreenSector(btnCenterX, btnCenterY);
-if (sectorLastCategory[sec] === currentCategory) {
-valid = false;
-}
-}
 }
 if (!valid) return;
-const chosenSector = getScreenSector(x + btnSize / 2, y + btnSize / 2);
-sectorLastCategory[chosenSector] = currentCategory;
+const chosenZone = getScreenZone6(x + btnSize / 2, y + btnSize / 2);
+zoneLastCategory[chosenZone] = currentCategory;
+if (isPositiveType) {
+lastGreenPos = { x, y };
+}
 recentSpawnCoords.push({ x, y, category: currentCategory });
 if (recentSpawnCoords.length > 8) recentSpawnCoords.shift();
 }
@@ -1955,7 +1896,6 @@ activateButton(btn);
 };
 game.appendChild(btn);
 activeButtons.push(btn);
-}
 }
 function spawnStars(x, y, mode) {
 let count = 12;
@@ -2134,8 +2074,12 @@ function activateButton(btn) {
         if (!btn) return;
         const oldX = parseFloat(btn.style.left);
         const oldY = parseFloat(btn.style.top);
+        const isPos = ["green", "gold", "ice", "clock"].includes(btn.dataset.action);
         if (!Number.isNaN(oldX) && !Number.isNaN(oldY)) {
             lastRemovedPos = { x: oldX, y: oldY };
+            if (isPos) {
+                lastGreenPos = { x: oldX, y: oldY };
+            }
             recentSpawnCoords.push({ x: oldX, y: oldY, category: btn.dataset.action });
             if (recentSpawnCoords.length > 8) recentSpawnCoords.shift();
         }
@@ -2206,14 +2150,14 @@ function activateButton(btn) {
         setPlayerUsername: (newName, oldName = "") => {
             playerUsername = newName;
             localStorage.setItem("timeTapUsername", playerUsername);
-            refreshAllProfileAndRankUI();
-            syncPlayerToCloud(playerUsername, oldName);
-        },
-        refreshXPBar: (fromXP) => {
-            storedBonusXP = Number(localStorage.getItem("storedBonusXP")) || 0;
-            refreshAllProfileAndRankUI(fromXP);
-            checkAndTriggerRankUpCelebration();
-        },
+refreshAllProfileAndRankUI();
+syncPlayerToCloud(playerUsername, oldName);
+},
+refreshXPBar: (fromXP) => {
+storedBonusXP = Number(localStorage.getItem("storedBonusXP")) || 0;
+refreshAllProfileAndRankUI(fromXP);
+checkAndTriggerRankUpCelebration();
+},
 getCurrentXP: () => calculateTotalXP(),
 reviveRun: () => reviveRunWithInventoryToken(),
 applyRunXpMultiplier: (mult) => {
@@ -2292,8 +2236,9 @@ enterHomeScreen();
 });
 }
 runStartupSequence();
+}
 (function initTimeTapProgressionV2() {
-const SUPABASE_URL = "https://jnhkktvtxbsfbrafsnig.supabase.co";
+const SUPABASE_URL = "supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaGtrdHZ0eGJzZmJyYWZzbmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NTMzNjAsImV4cCI6MjExMTAyOTM2MH0.xRde38jj8K1cBpbXIIDyc14OMSsjRVUMkqTEvwDq2Tw";
 const STATE_KEY = "timeTapProgressionState_v3";
 const MAX_ITEM_STACK = 10;
@@ -2474,234 +2419,231 @@ saveState(state);
 updateAllAlertDots();
 }
 }
-  function scaleMissionTarget(baseVal) {
-        return isDesktopDevice ? Math.max(1, Math.round(baseVal * 0.6)) : baseVal;
-    }
-
-    function fmtShortK(n) {
-        if (n >= 1000000) return (n / 1000000).toLocaleString("it-IT") + "M";
-        if (n >= 1000) return Math.round(n / 1000) + "K";
-        return String(n);
-    }
-
-    function getMissionsCatalog(state) {
-        const wGamesTarget = scaleMissionTarget(40);
-        const wScoreMin = scaleMissionTarget(800000);
-        const g50 = scaleMissionTarget(50);
-        const c150 = scaleMissionTarget(150);
-        const s250k = scaleMissionTarget(250000);
-        const tot3m = scaleMissionTarget(3000000);
-        const g150 = scaleMissionTarget(150);
-        const c250 = scaleMissionTarget(250);
-        const s600k = scaleMissionTarget(600000);
-        const tot10m = scaleMissionTarget(10000000);
-        const g300 = scaleMissionTarget(300);
-        const c360 = scaleMissionTarget(360);
-        const s1m = scaleMissionTarget(1000000);
-        const tot25m = scaleMissionTarget(25000000);
-        const c540 = scaleMissionTarget(540);
-        const g500 = scaleMissionTarget(500);
-        const s1_5m = scaleMissionTarget(1500000);
-        const c720 = scaleMissionTarget(720);
-        const tot50m = scaleMissionTarget(50000000);
-        const s2_2m = scaleMissionTarget(2200000);
-        const c900 = scaleMissionTarget(900);
-        const g800 = scaleMissionTarget(800);
-
-        return [
-            {
-                id: "w_40_games",
-                type: "WEEKLY",
-                title: t("CAMPIONE SETTIMANALE", "WEEKLY CHAMPION"),
-                desc: t("Gioca " + wGamesTarget + " partite ognuna da almeno " + fmtShortK(wScoreMin) + " punti", "Play " + wGamesTarget + " games with at least " + fmtShortK(wScoreMin) + " points each"),
-                progress: state.weekly800kGames || 0,
-                target: wGamesTarget,
-                rewardType: "xp_and_chest",
-                rewardAmount: 500000,
-                chestCount: 1,
-                rewardLabel: t("+500K XP & 1 CASSA", "+500K XP & 1 CHEST")
-            },
-            {
-                id: "m_games_50",
-                type: "MONTHLY",
-                title: t("RISCALDAMENTO", "WARM UP"),
-                desc: t("Gioca " + g50 + " partite questo mese", "Play " + g50 + " games this month"),
-                progress: state.monthlyGames,
-                target: g50,
-                rewardType: "xp",
-                rewardAmount: 75000,
-                chestCount: 0,
-                rewardLabel: "+75.000 XP"
-            },
-            {
-                id: "m_combo_150",
-                type: "MONTHLY",
-                title: t("MANO FERMA", "STEADY HAND"),
-                desc: t("Raggiungi Combo " + c150 + " in una partita", "Reach " + c150 + " Combo in one run"),
-                progress: state.monthlyBestCombo,
-                target: c150,
-                rewardType: "xp",
-                rewardAmount: 100000,
-                chestCount: 0,
-                rewardLabel: "+100.000 XP"
-            },
-            {
-                id: "m_score_250k",
-                type: "MONTHLY",
-                title: t("SCALATORE", "CLIMBER"),
-                desc: t("Fai " + s250k.toLocaleString("it-IT") + " punti in una partita", "Score " + s250k.toLocaleString("en-US") + " points in one run"),
-                progress: state.monthlyBestScore,
-                target: s250k,
-                rewardType: "xp",
-                rewardAmount: 120000,
-                chestCount: 0,
-                rewardLabel: "+120.000 XP"
-            },
-            {
-                id: "m_total_3m",
-                type: "MONTHLY",
-                title: t("ACCUMULATORE", "ACCUMULATOR"),
-                desc: t("Accumula " + tot3m.toLocaleString("it-IT") + " punti nel mese", "Accumulate " + tot3m.toLocaleString("en-US") + " score this month"),
-                progress: state.monthlyTotalScore,
-                target: tot3m,
-                rewardType: "xp",
-                rewardAmount: 150000,
-                chestCount: 0,
-                rewardLabel: "+150.000 XP"
-            },
-            {
-                id: "m_games_150",
-                type: "MONTHLY",
-                title: t("GIOCATORE ASSIDUO", "DEDICATED PLAYER"),
-                desc: t("Gioca " + g150 + " partite questo mese", "Play " + g150 + " games this month"),
-                progress: state.monthlyGames,
-                target: g150,
-                rewardType: "xp",
-                rewardAmount: 200000,
-                chestCount: 0,
-                rewardLabel: "+200.000 XP"
-            },
-            {
-                id: "m_combo_250",
-                type: "MONTHLY",
-                title: t("RITMO PERFETTO", "PERFECT RHYTHM"),
-                desc: t("Raggiungi Combo " + c250 + " in una partita", "Reach " + c250 + " Combo in one run"),
-                progress: state.monthlyBestCombo,
-                target: c250,
-                rewardType: "xp",
-                rewardAmount: 250000,
-                chestCount: 0,
-                rewardLabel: "+250.000 XP"
-            },
-            {
-                id: "m_score_600k",
-                type: "MONTHLY",
-                title: t("CECCHINO VELOCE", "SPEED SNIPER"),
-                desc: t("Fai " + s600k.toLocaleString("it-IT") + " punti in una partita", "Score " + s600k.toLocaleString("en-US") + " points in one run"),
-                progress: state.monthlyBestScore,
-                target: s600k,
-                rewardType: "xp",
-                rewardAmount: 300000,
-                chestCount: 0,
-                rewardLabel: "+300.000 XP"
-            },
-            {
-                id: "m_total_10m",
-                type: "MONTHLY",
-                title: t("BANCHIERE D'ORO", "GOLD BANKER"),
-                desc: t("Accumula " + tot10m.toLocaleString("it-IT") + " punti nel mese", "Accumulate " + tot10m.toLocaleString("en-US") + " score this month"),
-                progress: state.monthlyTotalScore,
-                target: tot10m,
-                rewardType: "xp",
-                rewardAmount: 400000,
-                chestCount: 0,
-                rewardLabel: "+400.000 XP"
-            },
-            {
-                id: "m_games_300",
-                type: "MONTHLY",
-                title: t("INSTANCABILE", "RELENTLESS"),
-                desc: t("Gioca " + g300 + " partite questo mese", "Play " + g300 + " games this month"),
-                progress: state.monthlyGames,
-                target: g300,
-                rewardType: "chest",
-                rewardAmount: 0,
-                chestCount: 1,
-                rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
-            },
-            {
-                id: "m_combo_360",
-                type: "MONTHLY",
-                title: t("DOPPIA ESPLOSIONE", "DOUBLE EXPLOSION"),
-                desc: t("Raggiungi Combo " + c360 + " in una partita", "Reach " + c360 + " Combo in one run"),
-                progress: state.monthlyBestCombo,
-                target: c360,
-                rewardType: "xp",
-                rewardAmount: 500000,
-                chestCount: 0,
-                rewardLabel: "+500.000 XP"
-            },
-            {
-                id: "m_score_1m",
-                type: "MONTHLY",
-                title: t("MILIONARIO SINGOLO", "SINGLE MILLIONAIRE"),
-                desc: t("Fai " + s1m.toLocaleString("it-IT") + " punti in una partita", "Score " + s1m.toLocaleString("en-US") + " points in one run"),
-                progress: state.monthlyBestScore,
-                target: s1m,
-                rewardType: "chest",
-                rewardAmount: 0,
-                chestCount: 1,
-                rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
-            },
-            {
-                id: "m_total_25m",
-                type: "MONTHLY",
-                title: t("IMPERO DI PUNTI", "SCORE EMPIRE"),
-                desc: t("Accumula " + tot25m.toLocaleString("it-IT") + " punti nel mese", "Accumulate " + tot25m.toLocaleString("en-US") + " score this month"),
-                progress: state.monthlyTotalScore,
-                target: tot25m,
-                rewardType: "xp",
-                rewardAmount: 700000,
-                chestCount: 0,
-                rewardLabel: "+700.000 XP"
-            },
-            {
-                id: "m_combo_540",
-                type: "MONTHLY",
-                title: t("RIFLESSI SUPERNOVA", "SUPERNOVA REFLEXES"),
-                desc: t("Raggiungi Combo " + c540 + " (3x Esplosione!)", "Reach " + c540 + " Combo (3x Explosion!)"),
-                progress: state.monthlyBestCombo,
-                target: c540,
-                rewardType: "chest",
-                rewardAmount: 0,
-                chestCount: 1,
-                rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
-            },
-            {
-                id: "m_games_500",
-                type: "MONTHLY",
-                title: t("MARATONA D'ACCIAIO", "STEEL MARATHON"),
-                desc: t("Gioca " + g500 + " partite questo mese", "Play " + g500 + " games this month"),
-                progress: state.monthlyGames,
-                target: g500,
-                rewardType: "xp",
-                rewardAmount: 900000,
-                chestCount: 0,
-                rewardLabel: "+900.000 XP"
-            },
-            {
-                id: "m_score_1_5m",
-                type: "MONTHLY",
-                title: t("LEGGENDA VIVENTE", "LIVING LEGEND"),
-                desc: t("Fai " + s1_5m.toLocaleString("it-IT") + " punti in una partita", "Score " + s1_5m.toLocaleString("en-US") + " points in one run"),
-                progress: state.monthlyBestScore,
-                target: s1_5m,
-                rewardType: "xp_and_chest",
-                rewardAmount: 500000,
-                chestCount: 1,
-                rewardLabel: t("+500K XP & 1 CASSA", "+500K XP & 1 CHEST")
-            },
-            {
+function scaleMissionTarget(baseVal) {
+return isDesktopDevice ? Math.max(1, Math.round(baseVal * 0.6)) : baseVal;
+}
+function fmtShortK(n) {
+if (n >= 1000000) return (n / 1000000).toLocaleString("it-IT") + "M";
+if (n >= 1000) return Math.round(n / 1000) + "K";
+return String(n);
+}
+function getMissionsCatalog(state) {
+const wGamesTarget = scaleMissionTarget(40);
+const wScoreMin = scaleMissionTarget(800000);
+const g50 = scaleMissionTarget(50);
+const c150 = scaleMissionTarget(150);
+const s250k = scaleMissionTarget(250000);
+const tot3m = scaleMissionTarget(3000000);
+const g150 = scaleMissionTarget(150);
+const c250 = scaleMissionTarget(250);
+const s600k = scaleMissionTarget(600000);
+const tot10m = scaleMissionTarget(10000000);
+const g300 = scaleMissionTarget(300);
+const c360 = scaleMissionTarget(360);
+const s1m = scaleMissionTarget(1000000);
+const tot25m = scaleMissionTarget(25000000);
+const c540 = scaleMissionTarget(540);
+const g500 = scaleMissionTarget(500);
+const s1_5m = scaleMissionTarget(1500000);
+const c720 = scaleMissionTarget(720);
+const tot50m = scaleMissionTarget(50000000);
+const s2_2m = scaleMissionTarget(2200000);
+const c900 = scaleMissionTarget(900);
+const g800 = scaleMissionTarget(800);
+return [
+{
+id: "w_40_games",
+type: "WEEKLY",
+title: t("CAMPIONE SETTIMANALE", "WEEKLY CHAMPION"),
+desc: t("Gioca " + wGamesTarget + " partite ognuna da almeno " + fmtShortK(wScoreMin) + " punti", "Play " + wGamesTarget + " games with at least " + fmtShortK(wScoreMin) + " points each"),
+progress: state.weekly800kGames || 0,
+target: wGamesTarget,
+rewardType: "xp_and_chest",
+rewardAmount: 500000,
+chestCount: 1,
+rewardLabel: t("+500K XP & 1 CASSA", "+500K XP & 1 CHEST")
+},
+{
+id: "m_games_50",
+type: "MONTHLY",
+title: t("RISCALDAMENTO", "WARM UP"),
+desc: t("Gioca " + g50 + " partite questo mese", "Play " + g50 + " games this month"),
+progress: state.monthlyGames,
+target: g50,
+rewardType: "xp",
+rewardAmount: 75000,
+chestCount: 0,
+rewardLabel: "+75.000 XP"
+},
+{
+id: "m_combo_150",
+type: "MONTHLY",
+title: t("MANO FERMA", "STEADY HAND"),
+desc: t("Raggiungi Combo " + c150 + " in una partita", "Reach " + c150 + " Combo in one run"),
+progress: state.monthlyBestCombo,
+target: c150,
+rewardType: "xp",
+rewardAmount: 100000,
+chestCount: 0,
+rewardLabel: "+100.000 XP"
+},
+{
+id: "m_score_250k",
+type: "MONTHLY",
+title: t("SCALATORE", "CLIMBER"),
+desc: t("Fai " + s250k.toLocaleString("it-IT") + " punti in una partita", "Score " + s250k.toLocaleString("en-US") + " points in one run"),
+progress: state.monthlyBestScore,
+target: s250k,
+rewardType: "xp",
+rewardAmount: 120000,
+chestCount: 0,
+rewardLabel: "+120.000 XP"
+},
+{
+id: "m_total_3m",
+type: "MONTHLY",
+title: t("ACCUMULATORE", "ACCUMULATOR"),
+desc: t("Accumula " + tot3m.toLocaleString("it-IT") + " punti nel mese", "Accumulate " + tot3m.toLocaleString("en-US") + " score this month"),
+progress: state.monthlyTotalScore,
+target: tot3m,
+rewardType: "xp",
+rewardAmount: 150000,
+chestCount: 0,
+rewardLabel: "+150.000 XP"
+},
+{
+id: "m_games_150",
+type: "MONTHLY",
+title: t("GIOCATORE ASSIDUO", "DEDICATED PLAYER"),
+desc: t("Gioca " + g150 + " partite questo mese", "Play " + g150 + " games this month"),
+progress: state.monthlyGames,
+target: g150,
+rewardType: "xp",
+rewardAmount: 200000,
+chestCount: 0,
+rewardLabel: "+200.000 XP"
+},
+{
+id: "m_combo_250",
+type: "MONTHLY",
+title: t("RITMO PERFETTO", "PERFECT RHYTHM"),
+desc: t("Raggiungi Combo " + c250 + " in una partita", "Reach " + c250 + " Combo in one run"),
+progress: state.monthlyBestCombo,
+target: c250,
+rewardType: "xp",
+rewardAmount: 250000,
+chestCount: 0,
+rewardLabel: "+250.000 XP"
+},
+{
+id: "m_score_600k",
+type: "MONTHLY",
+title: t("CECCHINO VELOCE", "SPEED SNIPER"),
+desc: t("Fai " + s600k.toLocaleString("it-IT") + " punti in una partita", "Score " + s600k.toLocaleString("en-US") + " points in one run"),
+progress: state.monthlyBestScore,
+target: s600k,
+rewardType: "xp",
+rewardAmount: 300000,
+chestCount: 0,
+rewardLabel: "+300.000 XP"
+},
+{
+id: "m_total_10m",
+type: "MONTHLY",
+title: t("BANCHIERE D'ORO", "GOLD BANKER"),
+desc: t("Accumula " + tot10m.toLocaleString("it-IT") + " punti nel mese", "Accumulate " + tot10m.toLocaleString("en-US") + " score this month"),
+progress: state.monthlyTotalScore,
+target: tot10m,
+rewardType: "xp",
+rewardAmount: 400000,
+chestCount: 0,
+rewardLabel: "+400.000 XP"
+},
+{
+id: "m_games_300",
+type: "MONTHLY",
+title: t("INSTANCABILE", "RELENTLESS"),
+desc: t("Gioca " + g300 + " partite questo mese", "Play " + g300 + " games this month"),
+progress: state.monthlyGames,
+target: g300,
+rewardType: "chest",
+rewardAmount: 0,
+chestCount: 1,
+rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
+},
+{
+id: "m_combo_360",
+type: "MONTHLY",
+title: t("DOPPIA ESPLOSIONE", "DOUBLE EXPLOSION"),
+desc: t("Raggiungi Combo " + c360 + " in una partita", "Reach " + c360 + " Combo in one run"),
+progress: state.monthlyBestCombo,
+target: c360,
+rewardType: "xp",
+rewardAmount: 500000,
+chestCount: 0,
+rewardLabel: "+500.000 XP"
+},
+{
+id: "m_score_1m",
+type: "MONTHLY",
+title: t("MILIONARIO SINGOLO", "SINGLE MILLIONAIRE"),
+desc: t("Fai " + s1m.toLocaleString("it-IT") + " punti in una partita", "Score " + s1m.toLocaleString("en-US") + " points in one run"),
+progress: state.monthlyBestScore,
+target: s1m,
+rewardType: "chest",
+rewardAmount: 0,
+chestCount: 1,
+rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
+},
+{
+id: "m_total_25m",
+type: "MONTHLY",
+title: t("IMPERO DI PUNTI", "SCORE EMPIRE"),
+desc: t("Accumula " + tot25m.toLocaleString("it-IT") + " punti nel mese", "Accumulate " + tot25m.toLocaleString("en-US") + " score this month"),
+progress: state.monthlyTotalScore,
+target: tot25m,
+rewardType: "xp",
+rewardAmount: 700000,
+chestCount: 0,
+rewardLabel: "+700.000 XP"
+},
+{
+id: "m_combo_540",
+type: "MONTHLY",
+title: t("RIFLESSI SUPERNOVA", "SUPERNOVA REFLEXES"),
+desc: t("Raggiungi Combo " + c540 + " (3x Esplosione!)", "Reach " + c540 + " Combo (3x Explosion!)"),
+progress: state.monthlyBestCombo,
+target: c540,
+rewardType: "chest",
+rewardAmount: 0,
+chestCount: 1,
+rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
+},
+{
+id: "m_games_500",
+type: "MONTHLY",
+title: t("MARATONA D'ACCIAIO", "STEEL MARATHON"),
+desc: t("Gioca " + g500 + " partite questo mese", "Play " + g500 + " games this month"),
+progress: state.monthlyGames,
+target: g500,
+rewardType: "xp",
+rewardAmount: 900000,
+chestCount: 0,
+rewardLabel: "+900.000 XP"
+},
+{
+id: "m_score_1_5m",
+type: "MONTHLY",
+title: t("LEGGENDA VIVENTE", "LIVING LEGEND"),
+desc: t("Fai " + s1_5m.toLocaleString("it-IT") + " punti in una partita", "Score " + s1_5m.toLocaleString("en-US") + " points in one run"),
+progress: state.monthlyBestScore,
+target: s1_5m,
+rewardType: "xp_and_chest",
+rewardAmount: 500000,
+chestCount: 1,
+rewardLabel: t("+500K XP & 1 CASSA", "+500K XP & 1 CHEST")
+},
+{
 id: "m_combo_720",
 type: "MONTHLY",
 title: t("FURIA QUADRUPLE", "QUADRUPLE FURY"),
@@ -3499,7 +3441,8 @@ setTimeout(() => { if (toast.parentNode) toast.remove(); }, 2600);
 function findNextRivalAbove(list, field, currentVal) {
 for (let i = list.length - 1; i >= 0; i--) {
 const val = Number(list[i][field] || 0);
-if (val > currentVal) return { username: list[i].username, value: val, diff: val - currentVal };
+if (val > currentVal) return { username: list[i].username, value:
+val, diff: val - currentVal };
 }
 return null;
 }
@@ -3657,7 +3600,6 @@ document.addEventListener("DOMContentLoaded", initTimeTapGame);
 } else {
 initTimeTapGame();
 }
-
 
 
    
