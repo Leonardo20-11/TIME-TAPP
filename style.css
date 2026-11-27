@@ -1424,20 +1424,28 @@ background: linear-gradient(180deg, #fbbf24 0%, #b45309 100%);
 box-shadow: 0 7px 0 #78350f;
 }
 @media (min-width: 768px) {
-#score { font-size: 28px; }
-#combo { font-size: 22px; }
-.timer-wrapper { width: 275px; height: 275px; }
-#timerCircle { width: 242px; height: 242px; font-size: 86px; }
-.button-circle {
-width: 165px;
-height: 165px;
-border-width: 5px;
-border-color: rgba(255, 255, 255, 0.85);
-font-size: 42px !important;
-}
-.special-svg-icon { width: 72px; height: 72px; }
-.special-subtag { font-size: 18px; }
-.button-circle .value { font-size: 42px !important; margin-top: 0; }
+    #score { font-size: 28px; }
+    #combo { font-size: 22px; }
+    .timer-wrapper { width: 200px; height: 200px; }
+    #timerCircle { width: 174px; height: 174px; font-size: 62px; }
+    .button-circle {
+        width: 145px;
+        height: 145px;
+        border-width: 5px;
+        border-color: rgba(255, 255, 255, 0.85);
+        font-size: 38px !important;
+    }
+    .button-circle.green,
+    .button-circle.gold,
+    .button-circle.ice,
+    .button-circle.clock {
+        width: 175px;
+        height: 175px;
+        font-size: 44px !important;
+    }
+    .special-svg-icon { width: 68px; height: 68px; }
+    .special-subtag { font-size: 17px; }
+    .button-circle .value { font-size: 44px !important; margin-top: 0; }
 }
 /* --- CLASSIFICA ARCADE ANIMATA TOP 50 --- */
 .leaderboard-trigger {
@@ -3424,4 +3432,328 @@ letter-spacing: 1px;
 
 .emoji-insert-pill:active {
     transform: translateY(2px) scale(0.94);
+}
+.platform-select-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 22px;
+    padding: 24px;
+    max-width: 540px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.platform-big-btn {
+    width: 100%;
+    font-family: 'Lilita One', 'Fredoka', sans-serif;
+    padding: 28px 20px;
+    border-radius: 30px;
+    border: 4px solid rgba(255, 255, 255, 0.85);
+    color: #ffffff;
+    font-size: clamp(28px, 6vw, 40px);
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    -webkit-text-stroke: 2.2px #0f172a;
+    paint-order: stroke fill;
+    text-shadow: 0 5px 0 #0f172a;
+    transition: transform 0.1s ease;
+}
+
+.platform-big-btn:active {
+    transform: translateY(6px);
+}
+
+.platform-pc-btn {
+    background: linear-gradient(180deg, #38bdf8 0%, #1d4ed8 100%);
+    box-shadow: inset 0 6px 0 rgba(255, 255, 255, 0.45), 0 10px 0 #1e3a8a, 0 18px 28px rgba(0, 0, 0, 0.45);
+}
+
+.platform-mobile-btn {
+    background: linear-gradient(180deg, #4ade80 0%, #15803d 100%);
+    box-shadow: inset 0 6px 0 rgba(255, 255, 255, 0.45), 0 10px 0 #14532d, 0 18px 28px rgba(0, 0, 0, 0.45);
+}
+
+/* --- VISTA DOPPIA AFFIANCATA SU COMPUTER (RECORD A SINISTRA, COMBO A DESTRA) --- */
+.leaderboard-split-body {
+    flex: 1;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    padding: 14px 24px 28px;
+    width: 100%;
+    max-width: 1320px;
+    margin: 0 auto;
+    overflow: hidden;
+}
+
+.lb-split-column {
+    display: flex;
+    flex-direction: column;
+    background: rgba(15, 23, 42, 0.55);
+    border: 3px solid rgba(255, 255, 255, 0.25);
+    border-radius: 28px;
+    overflow: hidden;
+    height: 100%;
+}
+
+.lb-split-col-header {
+    padding: 12px 16px;
+    text-align: center;
+    font-size: 24px;
+    color: #ffffff;
+    -webkit-text-stroke: 1.8px #0f172a;
+    paint-order: stroke fill;
+    border-bottom: 3px solid rgba(255, 255, 255, 0.22);
+    flex-shrink: 0;
+}
+
+.lb-split-col-header.record-col-hdr {
+    background: linear-gradient(180deg, #fde047 0%, #d97706 100%);
+}
+
+.lb-split-col-header.combo-col-hdr {
+    background: linear-gradient(180deg, #fb7185 0%, #be123c 100%);
+}
+
+.lb-split-col-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 14px 36px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* --- EDITOR EMOJI NEL NOME & FIX COLORI SFUMATI IN CLASSIFICA --- */
+.custom-name-emoji-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.emoji-bar-label {
+    font-size: 11px;
+    color: #fde047;
+    letter-spacing: 0.6px;
+}
+
+.unlocked-emoji-picker-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    margin: 4px 0;
+}
+
+.emoji-insert-pill {
+    font-size: 20px;
+    padding: 5px 10px;
+    border-radius: 12px;
+    border: 2px solid #fde047;
+    background: rgba(15, 23, 42, 0.85);
+    cursor: pointer;
+    box-shadow: 0 3px 0 #020617;
+    transition: transform 0.1s ease;
+}
+
+.emoji-insert-pill:active {
+    transform: translateY(2px) scale(0.94);
+}
+
+.lb-username.rainbow-master-text,
+.lb-username.name-style-inferno,
+.lb-username.name-style-amethyst,
+.lb-username.name-style-diamond {
+    -webkit-text-stroke: 0px transparent !important;
+    text-shadow: none !important;
+    display: inline-block;
+}
+
+@media (min-width: 768px) {
+    #score { font-size: 28px; }
+    #combo { font-size: 22px; }
+    .timer-wrapper { width: 200px; height: 200px; }
+    #timerCircle { width: 174px; height: 174px; font-size: 62px; }
+    .button-circle {
+        width: 145px;
+        height: 145px;
+        border-width: 5px;
+        border-color: rgba(255, 255, 255, 0.85);
+        font-size: 38px !important;
+    }
+    .button-circle.green,
+    .button-circle.gold,
+    .button-circle.ice,
+    .button-circle.clock {
+        width: 175px;
+        height: 175px;
+        font-size: 44px !important;
+    }
+    .special-svg-icon { width: 68px; height: 68px; }
+    .special-subtag { font-size: 17px; }
+    .button-circle .value { font-size: 44px !important; margin-top: 0; }
+}
+.lb-device-switch-row {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.lb-device-switch-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-radius: 14px;
+    border: 2.5px solid #fde047;
+    background: rgba(15, 23, 42, 0.78);
+    color: #fde047;
+    font-family: 'Lilita One', sans-serif;
+    font-size: 14px;
+    letter-spacing: 0.8px;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #020617;
+    transition: transform 0.1s ease;
+}
+
+.lb-device-switch-btn:active {
+    transform: translateY(3px);
+}
+
+/* Icona CSS Computer */
+.dev-icon-pc {
+    width: 18px;
+    height: 13px;
+    border: 2px solid #38bdf8;
+    border-radius: 3px;
+    position: relative;
+    display: inline-block;
+    background: rgba(56, 189, 248, 0.25);
+}
+
+.dev-icon-pc::after {
+    content: "";
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 10px;
+    height: 2px;
+    background: #38bdf8;
+}
+
+/* Icona CSS Telefono */
+.dev-icon-phone {
+    width: 11px;
+    height: 18px;
+    border: 2px solid #4ade80;
+    border-radius: 3px;
+    position: relative;
+    display: inline-block;
+    background: rgba(74, 222, 128, 0.25);
+}
+
+.dev-icon-phone::after {
+    content: "";
+    position: absolute;
+    bottom: 1px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: #4ade80;
+}
+
+.lb-back-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    border: 3px solid #ffffff;
+    background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
+    color: #ffffff;
+    font-family: 'Lilita One', sans-serif;
+    font-size: 22px;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #075985;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.lb-back-btn:active {
+    transform: translateY(3px);
+}
+
+/* --- DOPPIA CLASSIFICA AFFIANCATA SU COMPUTER (COMBO A SINISTRA, RECORD A DESTRA) --- */
+.leaderboard-split-desktop {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    padding: 18px 28px 26px;
+    width: 100%;
+    max-width: 1320px;
+    margin: 0 auto;
+    overflow: hidden;
+}
+
+.lb-split-column {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    background: rgba(15, 23, 42, 0.55);
+    border: 3.5px solid rgba(255, 255, 255, 0.3);
+    border-radius: 28px;
+    padding: 14px 16px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+}
+
+.lb-split-column.lb-col-focused {
+    border-color: #fde047;
+    box-shadow: 0 0 24px rgba(253, 224, 71, 0.35), 0 10px 24px rgba(0, 0, 0, 0.4);
+}
+
+.lb-split-col-title {
+    text-align: center;
+    font-size: 25px;
+    color: #fde047;
+    -webkit-text-stroke: 2px #0f172a;
+    paint-order: stroke fill;
+    margin-bottom: 6px;
+    flex-shrink: 0;
+}
+
+.lb-split-rank-banner {
+    width: 100% !important;
+    margin: 4px 0 12px !important;
+    font-size: 16px !important;
+    padding: 8px 12px !important;
+    flex-shrink: 0;
+}
+
+.lb-split-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-right: 6px;
+}
+
+/* Fix scorrimento anche nella classifica singola su telefono */
+.leaderboard-list-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
 }
