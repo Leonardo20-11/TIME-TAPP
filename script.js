@@ -2,7 +2,7 @@ function initTimeTapGame() {
     const SUPABASE_URL ="https://jnhkktvtxbsfbrafsnig.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaGtrdHZ0eGJzZmJyYWZzbmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NTMzNjAsImV4cCI6MjExMTAyOTM2MH0.xRde38jj8K1cBpbXIIDyc14OMSsjRVUMkqTEvwDq2Tw";
 
- const onboardingScreen = document.getElementById("onboardingScreen");
+const onboardingScreen = document.getElementById("onboardingScreen");
     const usernameInput = document.getElementById("usernameInput");
     const onboardingErrorMsg = document.getElementById("onboardingErrorMsg");
     const saveProfileBtn = document.getElementById("saveProfileBtn");
@@ -872,19 +872,40 @@ playSynthEffect("click");
 settingsModal.style.display = "none";
 });
 }
-// --- GESTIONE PULSANTI VERDI E ROSSI (5 TOTALI: 3 VERDI, 2 ROSSI, SPARSI E ASINCRONI) ---
+// --- GESTIONE PULSANTI VERDI E ROSSI (5 TOTALI: 3 VERDI, 2 ROSSI, ZERO MUCCHI E ENTRATA CALMA) ---
 const activeButtons = [];
 const arrows = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
-let baseButtonDuration = isDesktop ? 1650 : 620;
+let baseButtonDuration = isDesktop ? 1650 : 700;
 let baseSpawnDelay = isDesktop ? 210 : 180;
 const MAX_TOTAL_BUTTONS = 5;
 const TARGET_GREEN_COUNT = 3;
 const TARGET_RED_COUNT = 2;
+const RESPAWN_CALM_DELAY_MS = 220;
 const recentSpawnCoords = [];
 const SPAWN_PATTERN = ["green", "red", "green", "red", "green"];
 let spawnPatternIndex = 0;
 const lastPosByCategory = { green: null, red: null };
 let lastAnySpawnPos = null;
+let pendingSpawnTimers = [];
+let twoGreensOnBottom = true;
+function clearPendingSpawns() {
+while (pendingSpawnTimers.length > 0) {
+clearTimeout(pendingSpawnTimers.pop());
+}
+}
+function scheduleCalmSpawn(delayMs = RESPAWN_CALM_DELAY_MS) {
+if (!running || isPaused) return;
+if (activeButtons.length + pendingSpawnTimers.length >= MAX_TOTAL_BUTTONS) return;
+const tid = setTimeout(() => {
+const idx = pendingSpawnTimers.indexOf(tid);
+if (idx > -1) pendingSpawnTimers.splice(idx, 1);
+if (!running || isPaused) return;
+if (activeButtons.length < MAX_TOTAL_BUTTONS) {
+createButton(getNextBalancedCategory());
+}
+}, delayMs);
+pendingSpawnTimers.push(tid);
+}
 function getNextBalancedCategory() {
 const greenSlots = activeButtons.filter(b =>
 ["green", "gold", "ice", "clock"].includes(b.dataset.action)
@@ -1156,6 +1177,7 @@ pauseBtn.textContent = "II";
 function pauseGame() {
 if (!running || isPaused || isResumingCountdown || pauseCooldownRemainingMs > 0) return;
 isPaused = true;
+clearPendingSpawns();
 savePausedGameState();
 activeButtons.forEach(b => { b.style.visibility = "hidden"; });
 if (pauseOverlay) pauseOverlay.style.display = "flex";
@@ -1184,7 +1206,8 @@ function resumeGame() {
 if (!isPaused || isResumingCountdown) return;
 runResumeCountdown(() => {
 isPaused = false;
-activeButtons.forEach(b => { b.style.visibility = "visible"; });
+activeButtons.forEach(b => { b.style.visibility
+= "visible"; });
 clearSavedPausedState();
 pauseCooldownRemainingMs = PAUSE_COOLDOWN_MS;
 updatePauseButtonUI();
@@ -1300,6 +1323,7 @@ pauseCooldownRemainingMs = 0;
 secondChanceUsed = false;
 updatePauseButtonUI();
 clearInterval(gameLoopInterval);
+clearPendingSpawns();
 while (activeButtons.length > 0) {
 const b = activeButtons.shift();
 if (b && b.parentNode) b.remove();
@@ -1590,6 +1614,7 @@ timerCircle.classList.remove("timer-panic");
 }
 function startGame(isRestored = false) {
 running = true;
+clearPendingSpawns();
 if (!isRestored) {
 pauseCooldownRemainingMs = 0;
 normalSpawnsSinceLastSpecial = 8;
@@ -1598,9 +1623,10 @@ recentSpawnCoords.length = 0;
 lastPosByCategory.green = null;
 lastPosByCategory.red = null;
 lastAnySpawnPos = null;
+twoGreensOnBottom = Math.random() < 0.65;
 const staggerOffsets = isDesktop
-            ? new Array(0, 260, 520, 780, 1040)
-            : new Array(0, 110, 220, 330, 440);
+? new Array(0, 220, 440, 660, 880)
+: new Array(0, 90, 180, 270, 360);
 for (let i = 0; i < MAX_TOTAL_BUTTONS; i++) {
 const cat = getNextBalancedCategory();
 createButton(cat, staggerOffsets[i]);
@@ -1676,8 +1702,8 @@ ringCircle.style.strokeDashoffset = (BTN_RING_CIRCUMFERENCE * (1 - frac)).toFixe
 }
 if (rem <= 0) removeButton(btn);
 }
-while (activeButtons.length < MAX_TOTAL_BUTTONS) {
-createButton(getNextBalancedCategory());
+if (activeButtons.length + pendingSpawnTimers.length < MAX_TOTAL_BUTTONS) {
+scheduleCalmSpawn(RESPAWN_CALM_DELAY_MS);
 }
 }, TICK_MS);
 }
@@ -1762,10 +1788,10 @@ let durationMs = baseButtonDuration;
 if (type === "green" && overdriveRemainingMs > 0) {
 durationMs = Math.round(baseButtonDuration * 0.80);
 }
-// Variazione casuale della durata per ogni singolo pulsante così non scompaiono mai insieme
-const jitterFactor = isSavedObject ? 1.0 : (0.78 + Math.random() * 0.52);
+// Durata base 700ms su telefono con leggero sfasamento asincrono
+const jitterFactor = isSavedObject ? 1.0 : (0.90 + Math.random() * 0.25);
 const individualTotalMs = Math.round(durationMs * jitterFactor);
-const effectiveRemMs = Math.max(240, individualTotalMs - initialPenaltyMs);
+const effectiveRemMs = Math.max(260, individualTotalMs - initialPenaltyMs);
 btn.dataset.key = key;
 btn.dataset.action = type;
 btn.dataset.totalMs = isSavedObject ? (forcedCategoryOrConfig.totalMs || individualTotalMs) : individualTotalMs;
@@ -1780,40 +1806,65 @@ x = forcedCategoryOrConfig.left;
 y = forcedCategoryOrConfig.top;
 } else {
 const btnSize = isDesktop ? (isPositiveType ? 175 : 145) : 108;
-const minCenterDist = isDesktop ? 195 : 138;
-const minBtnDist = isDesktop ? 185 : 126;
-const minSameColorDist = isDesktop ? 310 : 215;
-const minHistoryDist = isDesktop ? 210 : 185;
-const alignTolerance = isDesktop ? 115 : 85;
-const margin = 14;
-const topHudMargin = 76;
+const minCenterDist = isDesktop ? 220 : 162;
+const minBtnDist = isDesktop ? 195 : 126;
+const minSameColorDist = isDesktop ? 320 : 185;
+const minHistoryDist = isDesktop ? 185 : 135;
+const margin = 12;
+const topHudMargin = 78;
+const bottomSafeMargin = 16;
 const screenW = window.innerWidth;
 const screenH = window.innerHeight;
 const centerX = screenW / 2;
 const centerY = screenH / 2;
 const cornerBlockX = screenW * 0.14;
 const cornerBlockY = screenH * 0.16;
+// Quota rigida tra metà superiore e metà inferiore per impedire mucchi
+const maxTopCat = isPositiveType ? (twoGreensOnBottom ? 1 : 2) : 1;
+const maxBottomCat = isPositiveType ? (twoGreensOnBottom ? 2 : 1) : 1;
+let topSameCount = 0;
+let bottomSameCount = 0;
+for (const existing of activeButtons) {
+const exIsPos = ["green", "gold", "ice", "clock"].includes(existing.dataset.action);
+if (exIsPos === isPositiveType) {
+const exTop = parseFloat(existing.style.top) || 0;
+const exSz = existing.offsetWidth || btnSize;
+if (exTop + exSz / 2 < centerY) topSameCount++;
+else bottomSameCount++;
+}
+}
+let requiredHalf = "any";
+if (topSameCount >= maxTopCat && bottomSameCount < maxBottomCat) {
+requiredHalf = "bottom";
+} else if (bottomSameCount >= maxBottomCat && topSameCount < maxTopCat) {
+requiredHalf = "top";
+}
 const prevCatPos = lastPosByCategory[currentCategory];
 const refPos = prevCatPos || lastAnySpawnPos;
 let valid = false;
 let attempts = 0;
-while (!valid && attempts < 500) {
+while (!valid && attempts < 600) {
 attempts++;
-// Nei primi tentativi forza il lato opposto dello schermo rispetto all'ultimo spawn
-if (refPos && attempts < 240) {
+let minY = topHudMargin;
+let maxY = screenH - btnSize - bottomSafeMargin;
+if (requiredHalf === "top") {
+maxY = Math.max(minY + 10, centerY - btnSize - 18);
+} else if (requiredHalf === "bottom") {
+minY = Math.min(maxY - 10, centerY + 18);
+}
+y = minY + Math.random() * Math.max(6, maxY - minY);
+if (refPos && attempts < 260) {
 const targetRightHalf = refPos.cx < centerX;
 const halfStartX = targetRightHalf ? centerX : margin;
 const halfEndX = targetRightHalf ? (screenW - btnSize - margin) : (centerX - btnSize);
-const safeSpanX = Math.max(10, halfEndX - halfStartX);
+const safeSpanX = Math.max(8, halfEndX - halfStartX);
 x = halfStartX + Math.random() * safeSpanX;
 } else {
-x = margin + Math.random() * Math.max(10, screenW - btnSize - margin * 2);
+x = margin + Math.random() * Math.max(8, screenW - btnSize - margin * 2);
 }
-y = topHudMargin + Math.random() * Math.max(10, screenH - btnSize - topHudMargin - margin);
 valid = true;
 const btnCenterX = x + btnSize / 2;
 const btnCenterY = y + btnSize / 2;
-// 1. Esclude i 4 angoli estremi su computer
 if (isDesktop) {
 const inLeft = btnCenterX < cornerBlockX;
 const inRight = btnCenterX > screenW - cornerBlockX;
@@ -1823,12 +1874,10 @@ if ((inLeft || inRight) && (inTop || inBottom)) {
 valid = false;
 }
 }
-// 2. Mai sopra il timer centrale
 if (valid) {
 const distCenter = Math.hypot(btnCenterX - centerX, btnCenterY - centerY);
 if (distCenter < minCenterDist) valid = false;
 }
-// 3. Mai sovrapposti, niente mucchi di stesso colore e mai in linea orizzontale o verticale
 if (valid) {
 for (const existing of activeButtons) {
 const ex = parseFloat(existing.style.left);
@@ -1843,32 +1892,30 @@ break;
 }
 const exIsPos = ["green", "gold", "ice", "clock"].includes(existing.dataset.action);
 if (exIsPos === isPositiveType) {
-if (dist < minSameColorDist && attempts < 380) {
+if (dist < minSameColorDist) {
 valid = false;
 break;
 }
-if ((Math.abs(btnCenterX - exCenterX) < alignTolerance || Math.abs(btnCenterY - exCenterY) < alignTolerance) && attempts < 360) {
-valid = false;
-break;
+
+const exIsPos = ["green", "gold", "ice", "clock"].includes(existing.dataset.action);
+                    if (exIsPos === isPositiveType) {
+                        if (dist < minSameColorDist) {
+                            valid = false;
+                            break;
+                        }
+                        if (Math.abs(btnCenterX - exCenterX) < (isDesktop ? 135 : 95)) {
+                            valid = false;
+                            break;
+                        }
+                        if (Math.abs(btnCenterY - exCenterY) < (isDesktop ? 90 : 55) && attempts < 520) {
+                            valid = false;
+                            break;
+                        }
+                    }
 }
 }
 }
-}
-// 4. Impedisce concentrazioni solo sopra o solo sotto di un singolo colore
-if (valid && attempts < 340) {
-const sameCatButtons = activeButtons.filter(b =>
-(["green", "gold", "ice", "clock"].includes(b.dataset.action)) === isPositiveType
-);
-if (sameCatButtons.length >= 2) {
-const allTop = sameCatButtons.every(b => parseFloat(b.style.top) < centerY);
-const allBottom = sameCatButtons.every(b => parseFloat(b.style.top) >= centerY);
-if ((allTop && btnCenterY < centerY) || (allBottom && btnCenterY >= centerY)) {
-valid = false;
-}
-}
-}
-// 5. Mai nello stesso punto o a un millimetro da dove era appena apparso/sparito un pulsante
-if (valid && attempts < 400) {
+if (valid && attempts < 420) {
 for (const prev of recentSpawnCoords) {
 if (Math.hypot(btnCenterX - prev.cx, btnCenterY - prev.cy) < minHistoryDist) {
 valid = false;
@@ -1888,7 +1935,7 @@ category: currentCategory
 lastPosByCategory[currentCategory] = newPosObj;
 lastAnySpawnPos = newPosObj;
 recentSpawnCoords.push(newPosObj);
-if (recentSpawnCoords.length > 10) recentSpawnCoords.shift();
+if (recentSpawnCoords.length > 8) recentSpawnCoords.shift();
 }
 btn.style.left = x + "px";
 btn.style.top = y + "px";
@@ -2087,13 +2134,13 @@ category: cat
 lastPosByCategory[cat] = removedPos;
 lastAnySpawnPos = removedPos;
 recentSpawnCoords.push(removedPos);
-if (recentSpawnCoords.length > 10) recentSpawnCoords.shift();
+if (recentSpawnCoords.length > 8) recentSpawnCoords.shift();
 }
 const index = activeButtons.indexOf(btn);
 if (index > -1) activeButtons.splice(index, 1);
 if (btn.parentNode) btn.remove();
-if (running) {
-createButton(getNextBalancedCategory());
+if (running && !isPaused) {
+scheduleCalmSpawn(RESPAWN_CALM_DELAY_MS);
 }
 }
 function animateScoreCounter(element, targetValue, onComplete) {
@@ -2125,6 +2172,7 @@ pauseCooldownRemainingMs = 0;
 updatePauseButtonUI();
 clearSavedPausedState();
 clearInterval(gameLoopInterval);
+clearPendingSpawns();
 timerCircle.classList.remove("timer-panic", "timer-frozen", "timer-slowmo", "timer-max-cap");
 game.classList.remove("slowmo-active", "overdrive-active");
 while (activeButtons.length > 0) {
@@ -2425,10 +2473,11 @@ function scaleMissionTarget(baseVal) {
 return isDesktopDevice ? Math.max(1, Math.round(baseVal * 0.6)) : baseVal;
 }
 function fmtShortK(n) {
-if (n >= 1000000) return (n / 1000000).toLocaleString("it-IT") + "M";
-if (n >= 1000) return Math.round(n / 1000) + "K";
-return String(n);
+    if (n >= 1000000) return (n / 1000000).toLocaleString("it-IT") + "M";
+    if (n >= 1000) return Math.round(n / 1000) + "K";
+    return String(n);
 }
+
 function getMissionsCatalog(state) {
     const wGamesTarget = scaleMissionTarget(40);
     const wScoreMin = scaleMissionTarget(800000);
@@ -2672,8 +2721,8 @@ function getMissionsCatalog(state) {
         },
         {
             id: "m_score_2_2m",
-            type: "MONTHLY",
-            title: t("DIVINITÀ DEL TEMPO", "TIME DEITY"),
+type: "MONTHLY",
+title: t("DIVINITÀ DEL TEMPO", "TIME DEITY"),
 desc: t("Fai " + s2_2m.toLocaleString("it-IT") + " punti in una partita", "Score " + s2_2m.toLocaleString("en-US") + " points in one run"),
 progress: state.monthlyBestScore,
 target: s2_2m,
