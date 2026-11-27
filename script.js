@@ -2,7 +2,7 @@ function initTimeTapGame() {
     const SUPABASE_URL ="https://jnhkktvtxbsfbrafsnig.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaGtrdHZ0eGJzZmJyYWZzbmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NTMzNjAsImV4cCI6MjExMTAyOTM2MH0.xRde38jj8K1cBpbXIIDyc14OMSsjRVUMkqTEvwDq2Tw";
 
-const onboardingScreen = document.getElementById("onboardingScreen");
+    const onboardingScreen = document.getElementById("onboardingScreen");
     const usernameInput = document.getElementById("usernameInput");
     const onboardingErrorMsg = document.getElementById("onboardingErrorMsg");
     const saveProfileBtn = document.getElementById("saveProfileBtn");
@@ -138,10 +138,10 @@ const onboardingScreen = document.getElementById("onboardingScreen");
     let feverNoteStep = 0;
     let pauseCooldownRemainingMs = 0;
     let gameLoopInterval = null;
-    let spawnAccumulatorMs = 0;
     let messageTimeout = null;
     let panicTickCounter = 0;
     let lastKnownXP = 0;
+    let lastDisplayedTimeStr = "";
 
     let playerUsername = localStorage.getItem("timeTapUsername") || "";
     let record = Number(localStorage.getItem("record")) || 0;
@@ -403,11 +403,7 @@ if (titleEl) {
 titleEl.textContent = platform === "pc" ? "PC LEADERBOARD" : "MOBILE LEADERBOARD";
 }
 if (switchBtn) {
-if (platform === "pc") {
-switchBtn.innerHTML = 'VIEW MOBILE';
-} else {
-switchBtn.innerHTML = 'VIEW COMPUTER';
-}
+switchBtn.textContent = platform === "pc" ? "VIEW MOBILE" : "VIEW COMPUTER";
 }
 }
 function ensureLeaderboardBackButton() {
@@ -542,10 +538,12 @@ yourRankBanner.textContent = myDevicePlat === platform ? "PLAY A RUN TO ENTER TH
 }
 }
 const myLocalCosmetics = getCurrentEquippedCosmetics();
+const frag = document.createDocumentFragment();
 allPlayers.slice(0, 50).forEach((p, idx) => {
 const isMe = p.username === playerUsername && myDevicePlat === platform;
-leaderboardListContainer.appendChild(buildLeaderboardRowElement(p, idx, field, isMe, myLocalCosmetics));
+frag.appendChild(buildLeaderboardRowElement(p, idx, field, isMe, myLocalCosmetics));
 });
+leaderboardListContainer.appendChild(frag);
 } catch (e) {
 leaderboardListContainer.innerHTML = "";
 const errEl = document.createElement("div");
@@ -761,7 +759,8 @@ setTimeout(() => {
 const cx = 15 + Math.random() * 70;
 const cy = 15 + Math.random() * 55;
 playSynthEffect("milestone");
-for (let p = 0; p < 22; p++) {
+const frag = document.createDocumentFragment();
+for (let p = 0; p < 18; p++) {
 const dot = document.createElement("span");
 dot.className = "fw-particle";
 const col = colors[Math.floor(Math.random() * colors.length)];
@@ -772,13 +771,14 @@ dot.style.background = col;
 dot.style.boxShadow = "0 0 10px " + col;
 dot.style.left = cx + "%";
 dot.style.top = cy + "%";
-const angle = (Math.PI * 2 * p) / 22 + (Math.random() * 0.25);
+const angle = (Math.PI * 2 * p) / 18 + (Math.random() * 0.25);
 const dist = 60 + Math.random() * 110;
 dot.style.setProperty("--dx", (Math.cos(angle) * dist) + "px");
 dot.style.setProperty("--dy", (Math.sin(angle) * dist) + "px");
-targetContainer.appendChild(dot);
-setTimeout(() => dot.remove(), 1150);
+frag.appendChild(dot);
+setTimeout(() => { if (dot.parentNode) dot.remove(); }, 1150);
 }
+targetContainer.appendChild(frag);
 }, b * 320);
 }
 }
@@ -872,22 +872,19 @@ playSynthEffect("click");
 settingsModal.style.display = "none";
 });
 }
-// --- GESTIONE PULSANTI VERDI E ROSSI (5 TOTALI: 3 VERDI, 2 ROSSI, ZERO MUCCHI E ENTRATA CALMA) ---
+// --- GESTIONE PULSANTI VERDI E ROSSI (5 TOTALI: 3 VERDI, 2 ROSSI, SCAMBIO POSIZIONE E ZERO LAG) ---
 const activeButtons = [];
 const arrows = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
-let baseButtonDuration = isDesktop ? 1650 : 700;
-let baseSpawnDelay = isDesktop ? 210 : 180;
+let baseButtonDuration = isDesktop ? 1650 : 750;
 const MAX_TOTAL_BUTTONS = 5;
 const TARGET_GREEN_COUNT = 3;
 const TARGET_RED_COUNT = 2;
 const RESPAWN_CALM_DELAY_MS = 220;
-const recentSpawnCoords = [];
-const SPAWN_PATTERN = ["green", "red", "green", "red", "green"];
+const recentSameColorCoords = { green: [], red: [] };
+const vacatedSpotsByColor = { green: [], red: [] };
+const SPAWN_PATTERN = new Array("green", "red", "green", "red", "green");
 let spawnPatternIndex = 0;
-const lastPosByCategory = { green: null, red: null };
-let lastAnySpawnPos = null;
 let pendingSpawnTimers = [];
-let twoGreensOnBottom = true;
 function clearPendingSpawns() {
 while (pendingSpawnTimers.length > 0) {
 clearTimeout(pendingSpawnTimers.pop());
@@ -907,12 +904,16 @@ createButton(getNextBalancedCategory());
 pendingSpawnTimers.push(tid);
 }
 function getNextBalancedCategory() {
-const greenSlots = activeButtons.filter(b =>
-["green", "gold", "ice", "clock"].includes(b.dataset.action)
-).length;
-const redSlots = activeButtons.filter(b =>
-["red", "bomb"].includes(b.dataset.action)
-).length;
+let greenSlots = 0;
+let redSlots = 0;
+for (let i = 0; i < activeButtons.length; i++) {
+const act = activeButtons[i].dataset.action;
+if (act === "green" || act === "gold" || act === "ice" || act === "clock") {
+greenSlots++;
+} else {
+redSlots++;
+}
+}
 if (greenSlots >= TARGET_GREEN_COUNT) return "red";
 if (redSlots >= TARGET_RED_COUNT) return "green";
 const nextCat = SPAWN_PATTERN[spawnPatternIndex % SPAWN_PATTERN.length];
@@ -1113,7 +1114,7 @@ el.style.left = x + "px";
 el.style.top = y + "px";
 el.style.color = color;
 game.appendChild(el);
-setTimeout(() => el.remove(), 600);
+setTimeout(() => { if (el.parentNode) el.remove(); }, 580);
 }
 function spawnTapRipple(x, y, color) {
 const ripple = document.createElement("div");
@@ -1122,12 +1123,13 @@ ripple.style.left = x + "px";
 ripple.style.top = y + "px";
 ripple.style.borderColor = color;
 game.appendChild(ripple);
-setTimeout(() => ripple.remove(), 460);
+setTimeout(() => { if (ripple.parentNode) ripple.remove(); }, 440);
 }
 function triggerScreenShake() {
 game.classList.remove("screen-shake");
-void game.offsetWidth;
-game.classList.add("screen-shake");
+requestAnimationFrame(() => {
+if (running) game.classList.add("screen-shake");
+});
 }
 function triggerMaxCapFeedback() {
 if (navigator.vibrate) {
@@ -1135,8 +1137,9 @@ try { navigator.vibrate(35); } catch (e) {}
 }
 if (timerCircle) {
 timerCircle.classList.remove("timer-max-cap");
-void timerCircle.offsetWidth;
-timerCircle.classList.add("timer-max-cap");
+requestAnimationFrame(() => {
+if (running) timerCircle.classList.add("timer-max-cap");
+});
 }
 }
 function savePausedGameState() {
@@ -1206,11 +1209,13 @@ function resumeGame() {
 if (!isPaused || isResumingCountdown) return;
 runResumeCountdown(() => {
 isPaused = false;
-activeButtons.forEach(b => { b.style.visibility
-= "visible"; });
+activeButtons.forEach(b => { b.style.visibility = "visible"; });
 clearSavedPausedState();
 pauseCooldownRemainingMs = PAUSE_COOLDOWN_MS;
 updatePauseButtonUI();
+if (activeButtons.length < MAX_TOTAL_BUTTONS) {
+scheduleCalmSpawn(RESPAWN_CALM_DELAY_MS);
+}
 });
 }
 function reviveRunWithInventoryToken() {
@@ -1220,6 +1225,7 @@ secondChanceUsed = true;
 time = 3.0;
 isFrozen = false;
 isSlowMo = false;
+lastDisplayedTimeStr = "";
 if (timerCircle) timerCircle.textContent = time.toFixed(1);
 updateTimerVisuals();
 running = true;
@@ -1321,6 +1327,7 @@ doubleBonus = false;
 overdriveRemainingMs = 0;
 pauseCooldownRemainingMs = 0;
 secondChanceUsed = false;
+lastDisplayedTimeStr = "";
 updatePauseButtonUI();
 clearInterval(gameLoopInterval);
 clearPendingSpawns();
@@ -1423,6 +1430,7 @@ slowMoRemainingMs = saved.slowMoRemainingMs || 0;
 overdriveRemainingMs = saved.overdriveRemainingMs || 0;
 pauseCooldownRemainingMs = 0;
 secondChanceUsed = false;
+lastDisplayedTimeStr = "";
 stopHomeSymphony();
 if (window.ttProgressionEngine) window.ttProgressionEngine.onRunStart();
 if (menu) menu.style.display = "none";
@@ -1503,6 +1511,7 @@ maxComboRun = 0;
 overdriveRemainingMs = 0;
 pauseCooldownRemainingMs = 0;
 secondChanceUsed = false;
+lastDisplayedTimeStr = "";
 updatePauseButtonUI();
 normalSpawnsSinceLastSpecial = 8;
 if (timerCircle) timerCircle.textContent = time.toFixed(1);
@@ -1612,21 +1621,156 @@ timerCircle.style.boxShadow = "inset 0 6px 0 rgba(255, 255, 255, 0.32), 0 11px 0
 timerCircle.classList.remove("timer-panic");
 }
 }
+// Calcolo istantaneo e leggero delle coordinate con scambio tra verdi e rossi
+function computeFastSwapPosition(isPositiveType, currentCategory, oppositeCategory, btnSize) {
+const minCenterDist = isDesktop ? 225 : 162;
+const minBtnDist = isDesktop ? 198 : 130;
+const minSameColorDist = isDesktop ? 310 : 185;
+const minSameHistoryDist = isDesktop ? 240 : 175;
+const colAlignTol = isDesktop ? 120 : 82;
+const rowAlignTol = isDesktop ? 85 : 52;
+const margin = 12;
+const topHudMargin = 78;
+const bottomSafeMargin = 16;
+const screenW = window.innerWidth;
+const screenH = window.innerHeight;
+const centerX = screenW / 2;
+const centerY = screenH / 2;
+const cornerBlockX = screenW * 0.14;
+const cornerBlockY = screenH * 0.16;
+const minX = margin;
+const maxX = Math.max(margin + 4, screenW - btnSize - margin);
+const minY = topHudMargin;
+const maxY = Math.max(topHudMargin + 4, screenH - btnSize - bottomSafeMargin);
+const swapPool = vacatedSpotsByColor[oppositeCategory];
+const swapTarget = swapPool.length > 0 ? swapPool[swapPool.length - 1] : null;
+const sameHistory = recentSameColorCoords[currentCategory];
+const activeInfo = activeButtons.map(b => {
+const bx = parseFloat(b.style.left) || 0;
+const by = parseFloat(b.style.top) || 0;
+const bSz = Number(b.dataset.btnSize) || btnSize;
+const bPos = b.dataset.isPos === "1";
+return {
+cx: bx + bSz / 2,
+cy: by + bSz / 2,
+isPos: bPos,
+inTopHalf: (by + bSz / 2) < centerY
+};
+});
+const maxPerHalf = isPositiveType ? 2 : 1;
+let topSameCount = 0;
+let bottomSameCount = 0;
+for (let i = 0; i < activeInfo.length; i++) {
+if (activeInfo[i].isPos === isPositiveType) {
+if (activeInfo[i].inTopHalf) topSameCount++;
+else bottomSameCount++;
+}
+}
+function evaluateCandidate(cxCandidate, cyCandidate, strictMode) {
+if (isDesktop) {
+const inLeft = cxCandidate < cornerBlockX;
+const inRight = cxCandidate > screenW - cornerBlockX;
+const inTop = cyCandidate < cornerBlockY;
+const inBottom = cyCandidate > screenH - cornerBlockY;
+if ((inLeft || inRight) && (inTop || inBottom)) return false;
+}
+if (Math.hypot(cxCandidate - centerX, cyCandidate - centerY) < minCenterDist) {
+return false;
+}
+const inTop = cyCandidate < centerY;
+if (inTop && topSameCount >= maxPerHalf) return false;
+if (!inTop && bottomSameCount >= maxPerHalf) return false;
+for (let i = 0; i < activeInfo.length; i++) {
+const ex = activeInfo[i];
+const dist = Math.hypot(cxCandidate - ex.cx, cyCandidate - ex.cy);
+if (dist < minBtnDist) return false;
+if (ex.isPos === isPositiveType) {
+if (dist < minSameColorDist) return false;
+if (strictMode) {
+if (Math.abs(cxCandidate - ex.cx) < colAlignTol) return false;
+if (Math.abs(cyCandidate - ex.cy) < rowAlignTol) return false;
+}
+}
+}
+if (strictMode) {
+for (let j = 0; j < sameHistory.length; j++) {
+if (Math.hypot(cxCandidate - sameHistory[j].cx, cyCandidate - sameHistory[j].cy) < minSameHistoryDist) {
+return false;
+}
+}
+}
+return true;
+}
+// Fase 1: prova vicino alla posizione liberata dal colore opposto (scambio diretto)
+if (swapTarget) {
+const spread = isDesktop ? 115 : 75;
+for (let t = 0; t < 24; t++) {
+const rx = Math.max(minX, Math.min(maxX, swapTarget.x + (Math.random() * 2 - 1) * spread));
+const ry = Math.max(minY, Math.min(maxY, swapTarget.y + (Math.random() * 2 - 1) * spread));
+const cx = rx + btnSize / 2;
+const cy = ry + btnSize / 2;
+if (evaluateCandidate(cx, cy, true)) {
+swapPool.pop();
+return { x: rx, y: ry, cx, cy };
+}
+}
+}
+// Fase 2: campionamento casuale veloce con vincoli completi
+for (let t = 0; t < 65; t++) {
+const rx = minX + Math.random() * (maxX - minX);
+const ry = minY + Math.random() * (maxY - minY);
+const cx = rx + btnSize / 2;
+const cy = ry + btnSize / 2;
+if (evaluateCandidate(cx, cy, true)) {
+return { x: rx, y: ry, cx, cy };
+}
+}
+// Fase 3: fallback garantito (evita sempre sovrapposizioni, timer e mucchi 3-in-1-metà)
+for (let t = 0; t < 60; t++) {
+const rx = minX + Math.random() * (maxX - minX);
+const ry = minY + Math.random() * (maxY - minY);
+const cx = rx + btnSize / 2;
+const cy = ry + btnSize / 2;
+if (evaluateCandidate(cx, cy, false)) {
+return { x: rx, y: ry, cx, cy };
+}
+}
+// Fase 4: scansione a griglia deterministica garantita al 100%
+const stepX = Math.max(24, (maxX - minX) / 6);
+const stepY = Math.max(24, (maxY - minY) / 8);
+for (let gx = minX; gx <= maxX; gx += stepX) {
+for (let gy = minY; gy <= maxY; gy += stepY) {
+const cx = gx + btnSize / 2;
+const cy = gy + btnSize / 2;
+if (evaluateCandidate(cx, cy, false)) {
+return { x: gx, y: gy, cx, cy };
+}
+}
+}
+const fallbackX = minX + Math.random() * (maxX - minX);
+const fallbackY = (topSameCount > bottomSameCount) ? maxY : minY;
+return {
+x: fallbackX,
+y: fallbackY,
+cx: fallbackX + btnSize / 2,
+cy: fallbackY + btnSize / 2
+};
+}
 function startGame(isRestored = false) {
 running = true;
 clearPendingSpawns();
+lastDisplayedTimeStr = "";
 if (!isRestored) {
 pauseCooldownRemainingMs = 0;
 normalSpawnsSinceLastSpecial = 8;
 spawnPatternIndex = 0;
-recentSpawnCoords.length = 0;
-lastPosByCategory.green = null;
-lastPosByCategory.red = null;
-lastAnySpawnPos = null;
-twoGreensOnBottom = Math.random() < 0.65;
+recentSameColorCoords.green.length = 0;
+recentSameColorCoords.red.length = 0;
+vacatedSpotsByColor.green.length = 0;
+vacatedSpotsByColor.red.length = 0;
 const staggerOffsets = isDesktop
 ? new Array(0, 220, 440, 660, 880)
-: new Array(0, 90, 180, 270, 360);
+: new Array(0, 95, 190, 285, 380);
 for (let i = 0; i < MAX_TOTAL_BUTTONS; i++) {
 const cat = getNextBalancedCategory();
 createButton(cat, staggerOffsets[i]);
@@ -1677,7 +1821,11 @@ const speedFactor = isSlowMo ? 0.4 : 1.0;
 if (!isFrozen) {
 const deltaSeconds = (TICK_MS / 1000) * speedFactor;
 time = Math.max(0, Number((time - deltaSeconds).toFixed(3)));
-timerCircle.textContent = time.toFixed(1);
+const formattedT = time.toFixed(1);
+if (formattedT !== lastDisplayedTimeStr) {
+lastDisplayedTimeStr = formattedT;
+timerCircle.textContent = formattedT;
+}
 if (time <= 1.0) {
 panicTickCounter++;
 if (panicTickCounter % 4 === 0 && time > 0) playSynthEffect("tick");
@@ -1692,6 +1840,7 @@ return;
 }
 for (let i = activeButtons.length - 1; i >= 0; i--) {
 const btn = activeButtons[i];
+if (!btn || btn.dataset.consumed === "1") continue;
 const rem = Number(btn.dataset.remainingMs) - TICK_MS * speedFactor;
 const tot = Number(btn.dataset.totalMs) || baseButtonDuration;
 btn.dataset.remainingMs = rem;
@@ -1700,7 +1849,9 @@ if (ringCircle) {
 const frac = Math.max(0, Math.min(1, rem / tot));
 ringCircle.style.strokeDashoffset = (BTN_RING_CIRCUMFERENCE * (1 - frac)).toFixed(1);
 }
-if (rem <= 0) removeButton(btn);
+if (rem <= 0) {
+removeButton(btn);
+}
 }
 if (activeButtons.length + pendingSpawnTimers.length < MAX_TOTAL_BUTTONS) {
 scheduleCalmSpawn(RESPAWN_CALM_DELAY_MS);
@@ -1730,12 +1881,13 @@ if (activeButtons.length >= MAX_TOTAL_BUTTONS) return;
 const category = (forcedCategoryOrConfig === "green" || forcedCategoryOrConfig === "red")
 ? forcedCategoryOrConfig
 : getNextBalancedCategory();
-const greenSlotsCount = activeButtons.filter(b =>
-["green", "gold", "ice", "clock"].includes(b.dataset.action)
-).length;
-const redSlotsCount = activeButtons.filter(b =>
-["red", "bomb"].includes(b.dataset.action)
-).length;
+let greenSlotsCount = 0;
+let redSlotsCount = 0;
+for (let i = 0; i < activeButtons.length; i++) {
+const a = activeButtons[i].dataset.action;
+if (a === "green" || a === "gold" || a === "ice" || a === "clock") greenSlotsCount++;
+else redSlotsCount++;
+}
 if (category === "green" && greenSlotsCount >= TARGET_GREEN_COUNT) return;
 if (category === "red" && redSlotsCount >= TARGET_RED_COUNT) return;
 type = category;
@@ -1760,6 +1912,7 @@ key = freeArrows.length > 0
 : arrows[Math.floor(Math.random() * arrows.length)];
 }
 const btn = document.createElement("button");
+btn.type = "button";
 btn.classList.add("button-circle");
 let valueText = "";
 if (type === "green") {
@@ -1788,197 +1941,95 @@ let durationMs = baseButtonDuration;
 if (type === "green" && overdriveRemainingMs > 0) {
 durationMs = Math.round(baseButtonDuration * 0.80);
 }
-// Durata base 700ms su telefono con leggero sfasamento asincrono
+// Durata 750ms su telefono con leggero sfasamento asincrono
 const jitterFactor = isSavedObject ? 1.0 : (0.90 + Math.random() * 0.25);
 const individualTotalMs = Math.round(durationMs * jitterFactor);
 const effectiveRemMs = Math.max(260, individualTotalMs - initialPenaltyMs);
+const isPositiveType = (type === "green" || type === "gold" || type === "ice" || type === "clock");
+const currentCategory = isPositiveType ? "green" : "red";
+const oppositeCategory = isPositiveType ? "red" : "green";
+// Pulsanti verdi leggermente più grandi dei rossi
+const btnSize = isDesktop ? (isPositiveType ? 184 : 145) : (isPositiveType ? 118 : 106);
 btn.dataset.key = key;
 btn.dataset.action = type;
+btn.dataset.isPos = isPositiveType ? "1" : "0";
+btn.dataset.btnSize = String(btnSize);
 btn.dataset.totalMs = isSavedObject ? (forcedCategoryOrConfig.totalMs || individualTotalMs) : individualTotalMs;
 btn.dataset.remainingMs = isSavedObject ? forcedCategoryOrConfig.remainingMs : effectiveRemMs;
+btn.style.width = btnSize + "px";
+btn.style.height = btnSize + "px";
+btn.style.touchAction = "none";
+btn.style.userSelect = "none";
 renderButtonInner(btn, type, valueText);
 let x = 0;
 let y = 0;
-const isPositiveType = ["green", "gold", "ice", "clock"].includes(type);
-const currentCategory = isPositiveType ? "green" : "red";
 if (isSavedObject) {
 x = forcedCategoryOrConfig.left;
 y = forcedCategoryOrConfig.top;
 } else {
-const btnSize = isDesktop ? (isPositiveType ? 175 : 145) : 108;
-const minCenterDist = isDesktop ? 220 : 162;
-const minBtnDist = isDesktop ? 195 : 126;
-const minSameColorDist = isDesktop ? 320 : 185;
-const minHistoryDist = isDesktop ? 185 : 135;
-const margin = 12;
-const topHudMargin = 78;
-const bottomSafeMargin = 16;
-const screenW = window.innerWidth;
-const screenH = window.innerHeight;
-const centerX = screenW / 2;
-const centerY = screenH / 2;
-const cornerBlockX = screenW * 0.14;
-const cornerBlockY = screenH * 0.16;
-// Quota rigida tra metà superiore e metà inferiore per impedire mucchi
-const maxTopCat = isPositiveType ? (twoGreensOnBottom ? 1 : 2) : 1;
-const maxBottomCat = isPositiveType ? (twoGreensOnBottom ? 2 : 1) : 1;
-let topSameCount = 0;
-let bottomSameCount = 0;
-for (const existing of activeButtons) {
-const exIsPos = ["green", "gold", "ice", "clock"].includes(existing.dataset.action);
-if (exIsPos === isPositiveType) {
-const exTop = parseFloat(existing.style.top) || 0;
-const exSz = existing.offsetWidth || btnSize;
-if (exTop + exSz / 2 < centerY) topSameCount++;
-else bottomSameCount++;
-}
-}
-let requiredHalf = "any";
-if (topSameCount >= maxTopCat && bottomSameCount < maxBottomCat) {
-requiredHalf = "bottom";
-} else if (bottomSameCount >= maxBottomCat && topSameCount < maxTopCat) {
-requiredHalf = "top";
-}
-const prevCatPos = lastPosByCategory[currentCategory];
-const refPos = prevCatPos || lastAnySpawnPos;
-let valid = false;
-let attempts = 0;
-while (!valid && attempts < 600) {
-attempts++;
-let minY = topHudMargin;
-let maxY = screenH - btnSize - bottomSafeMargin;
-if (requiredHalf === "top") {
-maxY = Math.max(minY + 10, centerY - btnSize - 18);
-} else if (requiredHalf === "bottom") {
-minY = Math.min(maxY - 10, centerY + 18);
-}
-y = minY + Math.random() * Math.max(6, maxY - minY);
-if (refPos && attempts < 260) {
-const targetRightHalf = refPos.cx < centerX;
-const halfStartX = targetRightHalf ? centerX : margin;
-const halfEndX = targetRightHalf ? (screenW - btnSize - margin) : (centerX - btnSize);
-const safeSpanX = Math.max(8, halfEndX - halfStartX);
-x = halfStartX + Math.random() * safeSpanX;
-} else {
-x = margin + Math.random() * Math.max(8, screenW - btnSize - margin * 2);
-}
-valid = true;
-const btnCenterX = x + btnSize / 2;
-const btnCenterY = y + btnSize / 2;
-if (isDesktop) {
-const inLeft = btnCenterX < cornerBlockX;
-const inRight = btnCenterX > screenW - cornerBlockX;
-const inTop = btnCenterY < cornerBlockY;
-const inBottom = btnCenterY > screenH - cornerBlockY;
-if ((inLeft || inRight) && (inTop || inBottom)) {
-valid = false;
-}
-}
-if (valid) {
-const distCenter = Math.hypot(btnCenterX - centerX, btnCenterY - centerY);
-if (distCenter < minCenterDist) valid = false;
-}
-if (valid) {
-for (const existing of activeButtons) {
-const ex = parseFloat(existing.style.left);
-const ey = parseFloat(existing.style.top);
-const exSize = existing.offsetWidth || btnSize;
-const exCenterX = ex + exSize / 2;
-const exCenterY = ey + exSize / 2;
-const dist = Math.hypot(btnCenterX - exCenterX, btnCenterY - exCenterY);
-if (dist < minBtnDist) {
-valid = false;
-break;
-}
-const exIsPos = ["green", "gold", "ice", "clock"].includes(existing.dataset.action);
-if (exIsPos === isPositiveType) {
-if (dist < minSameColorDist) {
-valid = false;
-break;
-}
-
-const exIsPos = ["green", "gold", "ice", "clock"].includes(existing.dataset.action);
-                    if (exIsPos === isPositiveType) {
-                        if (dist < minSameColorDist) {
-                            valid = false;
-                            break;
-                        }
-                        if (Math.abs(btnCenterX - exCenterX) < (isDesktop ? 135 : 95)) {
-                            valid = false;
-                            break;
-                        }
-                        if (Math.abs(btnCenterY - exCenterY) < (isDesktop ? 90 : 55) && attempts < 520) {
-                            valid = false;
-                            break;
-                        }
-                    }
-}
-}
-}
-if (valid && attempts < 420) {
-for (const prev of recentSpawnCoords) {
-if (Math.hypot(btnCenterX - prev.cx, btnCenterY - prev.cy) < minHistoryDist) {
-valid = false;
-break;
-}
-}
-}
-}
-if (!valid) return;
-const newPosObj = {
-x,
-y,
-cx: x + btnSize / 2,
-cy: y + btnSize / 2,
+const pos = computeFastSwapPosition(isPositiveType, currentCategory, oppositeCategory, btnSize);
+x = pos.x;
+y = pos.y;
+recentSameColorCoords[currentCategory].push({
+x: pos.x,
+y: pos.y,
+cx: pos.cx,
+cy: pos.cy,
 category: currentCategory
-};
-lastPosByCategory[currentCategory] = newPosObj;
-lastAnySpawnPos = newPosObj;
-recentSpawnCoords.push(newPosObj);
-if (recentSpawnCoords.length > 8) recentSpawnCoords.shift();
+});
+if (recentSameColorCoords[currentCategory].length > 5) {
+recentSameColorCoords[currentCategory].shift();
+}
 }
 btn.style.left = x + "px";
 btn.style.top = y + "px";
-btn.onpointerdown = (e) => {
-e.preventDefault();
+const onTapHandler = (e) => {
+if (e.cancelable) e.preventDefault();
+e.stopPropagation();
 activateButton(btn);
 };
+btn.addEventListener("pointerdown", onTapHandler, { passive: false });
 game.appendChild(btn);
 activeButtons.push(btn);
 }
 function spawnStars(x, y, mode) {
-let count = 12;
+let count = isDesktop ? 12 : 7;
 let colors = ["#4ade80", "#bbf7d0", "#ffffff"];
 let isDiamond = false;
-if (mode === "gold") { count = 20; colors = ["#fde047", "#f59e0b", "#ffffff"]; isDiamond = true; }
-else if (mode === "ice") { count = 20; colors = ["#ffffff", "#bae6fd", "#38bdf8", "#0284c7"]; isDiamond = true; }
-else if (mode === "clock") { count = 18; colors = ["#f5d0fe", "#c084fc", "#fde047"]; isDiamond = true; }
-else if (mode === "bomb") { count = 24; colors = ["#ef4444", "#f97316", "#facc15", "#1e293b"]; }
+if (mode === "gold") { count = isDesktop ? 18 : 10; colors = ["#fde047", "#f59e0b", "#ffffff"]; isDiamond = true; }
+else if (mode === "ice") { count = isDesktop ? 18 : 10; colors = ["#ffffff", "#bae6fd", "#38bdf8", "#0284c7"]; isDiamond = true; }
+else if (mode === "clock") { count = isDesktop ? 16 : 9; colors = ["#f5d0fe", "#c084fc", "#fde047"]; isDiamond = true; }
+else if (mode === "bomb") { count = isDesktop ? 20 : 12; colors = ["#ef4444", "#f97316", "#facc15", "#1e293b"]; }
+const frag = document.createDocumentFragment();
 for (let i = 0; i < count; i++) {
 const spark = document.createElement("span");
 spark.className = "fx-spark" + (isDiamond ? " diamond" : "");
-const size = (6 + Math.random() * 7).toFixed(0) + "px";
+const size = (6 + Math.random() * 6).toFixed(0) + "px";
 const color = colors[Math.floor(Math.random() * colors.length)];
 spark.style.width = size;
 spark.style.height = size;
 spark.style.background = color;
 spark.style.boxShadow = "0 0 8px " + color;
 const angle = (Math.PI * 2 * i) / count + (Math.random() * 0.4);
-const radius = 22 + Math.random() * 42;
+const radius = 22 + Math.random() * 40;
 spark.style.left = x + "px";
 spark.style.top = y + "px";
 spark.style.setProperty("--dx", (Math.cos(angle) * radius) + "px");
 spark.style.setProperty("--dy", (Math.sin(angle) * radius) + "px");
-game.appendChild(spark);
-setTimeout(() => spark.remove(), 480);
+frag.appendChild(spark);
+setTimeout(() => { if (spark.parentNode) spark.remove(); }, 460);
 }
+game.appendChild(frag);
 }
 function activateButton(btn) {
-if (!btn.parentNode || !running || isPaused) return;
+if (!btn || btn.dataset.consumed === "1" || !btn.parentNode || !running || isPaused) return;
+btn.dataset.consumed = "1";
 const action = btn.dataset.action;
-const rect = btn.getBoundingClientRect();
-const centerX = rect.left + rect.width / 2;
-const centerY = rect.top + rect.height / 2;
+const bx = parseFloat(btn.style.left) || 0;
+const by = parseFloat(btn.style.top) || 0;
+const bSz = Number(btn.dataset.btnSize) || (isDesktop ? 175 : 114);
+const centerX = bx + bSz / 2;
+const centerY = by + bSz / 2;
 if (action === "green") {
 const wasCritical = time <= 0.6 && !isFrozen;
 const value = Number(btn.dataset.value);
@@ -2000,8 +2051,9 @@ window.ttProgressionEngine.onGreenHit(score, comboCount);
 }
 if (timerCircle) {
 timerCircle.classList.remove("timer-bounce");
-void timerCircle.offsetWidth;
-timerCircle.classList.add("timer-bounce");
+requestAnimationFrame(() => {
+if (running) timerCircle.classList.add("timer-bounce");
+});
 }
 spawnTapRipple(centerX, centerY, doubleBonus ? "#fde047" : "#4ade80");
 spawnStars(centerX, centerY, "green");
@@ -2045,6 +2097,7 @@ spawnTapRipple(centerX, centerY, "#ef4444");
 spawnFloatingText(centerX, centerY, "-" + value.toFixed(1) + "s", "#f87171");
 if (time <= 0) {
 time = 0;
+lastDisplayedTimeStr = "0.0";
 timerCircle.textContent = "0.0";
 removeButton(btn);
 gameOver();
@@ -2075,6 +2128,7 @@ spawnTapRipple(centerX, centerY, "#ef4444");
 spawnStars(centerX, centerY, "bomb");
 spawnFloatingText(centerX, centerY, "BOOM!", "#ef4444");
 time = 0;
+lastDisplayedTimeStr = "0.0";
 timerCircle.textContent = "0.0";
 removeButton(btn);
 gameOver();
@@ -2088,7 +2142,9 @@ spawnStars(centerX, centerY, "gold");
 spawnFloatingText(centerX, centerY, isDesktop ? "2X TIME 1.7s!" : "2X TIME 1s!", "#facc15");
 showMessage("2X TIME!", "Double time!");
 }
-timerCircle.textContent = time.toFixed(1);
+const formattedT = time.toFixed(1);
+lastDisplayedTimeStr = formattedT;
+timerCircle.textContent = formattedT;
 scoreText.textContent = "SCORE: " + fmtNum(score);
 comboText.textContent = "COMBO " + comboCount;
 comboText.classList.toggle("combo-fire", comboCount >= 10);
@@ -2108,8 +2164,6 @@ showMessage("LEGENDARY!", "Legendary!");
 function showMessage(text, spokenText = "") {
 clearTimeout(messageTimeout);
 specialMessage.textContent = text;
-specialMessage.style.display = "none";
-void specialMessage.offsetWidth;
 specialMessage.style.display = "block";
 if (spokenText) speakEnglish(spokenText, 1.08, 1.12);
 messageTimeout = setTimeout(() => {
@@ -2120,9 +2174,9 @@ function removeButton(btn) {
 if (!btn) return;
 const oldX = parseFloat(btn.style.left);
 const oldY = parseFloat(btn.style.top);
-const isPos = ["green", "gold", "ice", "clock"].includes(btn.dataset.action);
+const isPos = btn.dataset.isPos === "1";
 const cat = isPos ? "green" : "red";
-const size = btn.offsetWidth || (isDesktop ? (isPos ? 175 : 145) : 108);
+const size = Number(btn.dataset.btnSize) || (isDesktop ? (isPos ? 184 : 145) : (isPos ? 118 : 106));
 if (!Number.isNaN(oldX) && !Number.isNaN(oldY)) {
 const removedPos = {
 x: oldX,
@@ -2131,10 +2185,14 @@ cx: oldX + size / 2,
 cy: oldY + size / 2,
 category: cat
 };
-lastPosByCategory[cat] = removedPos;
-lastAnySpawnPos = removedPos;
-recentSpawnCoords.push(removedPos);
-if (recentSpawnCoords.length > 8) recentSpawnCoords.shift();
+vacatedSpotsByColor[cat].push(removedPos);
+if (vacatedSpotsByColor[cat].length > 4) {
+vacatedSpotsByColor[cat].shift();
+}
+recentSameColorCoords[cat].push(removedPos);
+if (recentSameColorCoords[cat].length > 5) {
+recentSameColorCoords[cat].shift();
+}
 }
 const index = activeButtons.indexOf(btn);
 if (index > -1) activeButtons.splice(index, 1);
@@ -2191,182 +2249,195 @@ else if (pauseCooldownRemainingMs <= 0) { playSynthEffect("click"); pauseGame();
 }
 });
 window.ttCoreBridge = {
-playXpSound: () => playSynthEffect("xpclaim"),
-playClick: () => playSynthEffect("click"),
-playNewRecord: () => playSynthEffect("newrecord"),
-speak: (txt) => speakEnglish(txt, 1.08, 1.15),
-fireworks: (container) => launchFireworksShow(container),
-syncCloudNow: () => syncPlayerToCloud(playerUsername),
-setPlayerUsername: (newName, oldName = "") => {
-playerUsername = newName;
-localStorage.setItem("timeTapUsername", playerUsername);
-refreshAllProfileAndRankUI();
-syncPlayerToCloud(playerUsername, oldName);
-},
-refreshXPBar: (fromXP) => {
-storedBonusXP = Number(localStorage.getItem("storedBonusXP")) || 0;
-refreshAllProfileAndRankUI(fromXP);
-checkAndTriggerRankUpCelebration();
-},
-getCurrentXP: () => calculateTotalXP(),
-reviveRun: () => reviveRunWithInventoryToken(),
-applyRunXpMultiplier: (mult) => {
-if (runXpBoostApplied || lastRunBaseEarnedXP <= 0) return 0;
-runXpBoostApplied = true;
-const before = calculateTotalXP();
-const extraXP = Math.round(lastRunBaseEarnedXP * (mult - 1));
-storedBonusXP += extraXP;
-localStorage.setItem("storedBonusXP", storedBonusXP);
-const after = calculateTotalXP();
-if (xpEarnedBadge) {
-xpEarnedBadge.textContent = "+" + fmtNum(lastRunBaseEarnedXP + extraXP) + " XP (BOOSTED!)";
-}
-const { nextTier: nAfter } = getCurrentAndNextTier(after);
-if (goXpProgressText) {
-goXpProgressText.textContent = nAfter
-? fmtNum(after) + " / " + fmtNum(nAfter.xpRequired) + " XP"
-: fmtNum(after) + " XP";
-}
-if (goXpBarFill) {
-goXpBarFill.style.width = computeSegmentPercent(after).toFixed(1) + "%";
-}
-refreshAllProfileAndRankUI(before);
-return extraXP;
-}
+    playXpSound: () => playSynthEffect("xpclaim"),
+    playClick: () => playSynthEffect("click"),
+    playNewRecord: () => playSynthEffect("newrecord"),
+    speak: (txt) => speakEnglish(txt, 1.08, 1.15),
+    fireworks: (container) => launchFireworksShow(container),
+    syncCloudNow: () => syncPlayerToCloud(playerUsername),
+    setPlayerUsername: (newName, oldName = "") => {
+        playerUsername = newName;
+        localStorage.setItem("timeTapUsername", playerUsername);
+        refreshAllProfileAndRankUI();
+        syncPlayerToCloud(playerUsername, oldName);
+    },
+    refreshXPBar: (fromXP) => {
+        storedBonusXP = Number(localStorage.getItem("storedBonusXP")) || 0;
+        refreshAllProfileAndRankUI(fromXP);
+        checkAndTriggerRankUpCelebration();
+    },
+    getCurrentXP: () => calculateTotalXP(),
+    reviveRun: () => reviveRunWithInventoryToken(),
+    applyRunXpMultiplier: (mult) => {
+        if (runXpBoostApplied || lastRunBaseEarnedXP <= 0) return 0;
+        runXpBoostApplied = true;
+        const before = calculateTotalXP();
+        const extraXP = Math.round(lastRunBaseEarnedXP * (mult - 1));
+        storedBonusXP += extraXP;
+        localStorage.setItem("storedBonusXP", storedBonusXP);
+        const after = calculateTotalXP();
+        if (xpEarnedBadge) {
+            xpEarnedBadge.textContent = "+" + fmtNum(lastRunBaseEarnedXP + extraXP) + " XP (BOOSTED!)";
+        }
+        const { nextTier: nAfter } = getCurrentAndNextTier(after);
+        if (goXpProgressText) {
+            goXpProgressText.textContent = nAfter
+                ? fmtNum(after) + " / " + fmtNum(nAfter.xpRequired) + " XP"
+                : fmtNum(after) + " XP";
+        }
+        if (goXpBarFill) {
+            goXpBarFill.style.width = computeSegmentPercent(after).toFixed(1) + "%";
+        }
+        refreshAllProfileAndRankUI(before);
+        return extraXP;
+    }
 };
+
 function enterHomeScreen() {
-refreshAllProfileAndRankUI();
-if (menu) menu.style.display = "flex";
-syncPlayerToCloud(playerUsername);
-checkAndTriggerRankUpCelebration();
-startHomeSymphony();
+    refreshAllProfileAndRankUI();
+    if (menu) menu.style.display = "flex";
+    syncPlayerToCloud(playerUsername);
+    checkAndTriggerRankUpCelebration();
+    startHomeSymphony();
 }
+
 async function runStartupSequence() {
-if (onboardingScreen) onboardingScreen.style.display = "none";
-if (!playerUsername || containsProfanity(playerUsername)) {
-playerUsername = await generateUniqueProUsername();
-localStorage.setItem("timeTapUsername", playerUsername);
+    if (onboardingScreen) onboardingScreen.style.display = "none";
+    if (!playerUsername || containsProfanity(playerUsername)) {
+        playerUsername = await generateUniqueProUsername();
+        localStorage.setItem("timeTapUsername", playerUsername);
+    }
+    enterHomeScreen();
 }
-enterHomeScreen();
-}
+
 if (saveProfileBtn && usernameInput) {
-saveProfileBtn.addEventListener("click", async () => {
-if (playerUsername) return;
-const chosen = sanitizeUsernameKey(usernameInput.value);
-if (chosen.length < 2) {
-showErrorBox(onboardingErrorMsg, "USE AT LEAST 2 LETTERS/NUMBERS!");
-usernameInput.focus();
-return;
+    saveProfileBtn.addEventListener("click", async () => {
+        if (playerUsername) return;
+        const chosen = sanitizeUsernameKey(usernameInput.value);
+        if (chosen.length < 2) {
+            showErrorBox(onboardingErrorMsg, "USE AT LEAST 2 LETTERS/NUMBERS!");
+            usernameInput.focus();
+            return;
+        }
+        if (containsProfanity(chosen)) {
+            playSynthEffect("red");
+            showErrorBox(onboardingErrorMsg, "OFFENSIVE USERNAME NOT ALLOWED!");
+            usernameInput.focus();
+            return;
+        }
+        saveProfileBtn.disabled = true;
+        saveProfileBtn.textContent = "CHECKING...";
+        const isFree = await checkUsernameAvailable(chosen);
+        saveProfileBtn.disabled = false;
+        saveProfileBtn.textContent = "START PLAYING";
+        if (!isFree) {
+            playSynthEffect("red");
+            showErrorBox(onboardingErrorMsg, "USERNAME ALREADY IN USE!");
+            usernameInput.focus();
+            return;
+        }
+        hideErrorBox(onboardingErrorMsg);
+        playerUsername = chosen;
+        localStorage.setItem("timeTapUsername", playerUsername);
+        initAudio();
+        playSynthEffect("newrecord");
+        await syncPlayerToCloud(playerUsername);
+        if (onboardingScreen) onboardingScreen.style.display = "none";
+        enterHomeScreen();
+    });
 }
-if (containsProfanity(chosen)) {
-playSynthEffect("red");
-showErrorBox(onboardingErrorMsg, "OFFENSIVE USERNAME NOT ALLOWED!");
-usernameInput.focus();
-return;
-}
-saveProfileBtn.disabled = true;
-saveProfileBtn.textContent = "CHECKING...";
-const isFree = await checkUsernameAvailable(chosen);
-saveProfileBtn.disabled = false;
-saveProfileBtn.textContent = "START PLAYING";
-if (!isFree) {
-playSynthEffect("red");
-showErrorBox(onboardingErrorMsg, "USERNAME ALREADY IN USE!");
-usernameInput.focus();
-return;
-}
-hideErrorBox(onboardingErrorMsg);
-playerUsername = chosen;
-localStorage.setItem("timeTapUsername", playerUsername);
-initAudio();
-playSynthEffect("newrecord");
-await syncPlayerToCloud(playerUsername);
-if (onboardingScreen) onboardingScreen.style.display = "none";
-enterHomeScreen();
-});
-}
+
 runStartupSequence();
 }
+
 (function initTimeTapProgressionV2() {
-const SUPABASE_URL = "https://jnhkktvtxbsfbrafsnig.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaGtrdHZ0eGJzZmJyYWZzbmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NTMzNjAsImV4cCI6MjExMTAyOTM2MH0.xRde38jj8K1cBpbXIIDyc14OMSsjRVUMkqTEvwDq2Tw";
-const STATE_KEY = "timeTapProgressionState_v3";
-const MAX_ITEM_STACK = 10;
-const ROMAN_NUMERALS = ["", "I", "II", "III", "IV", "V"];
-const isDesktopDevice = window.innerWidth >= 768;
-const userLang = (navigator.language || navigator.userLanguage || "").toLowerCase();
-const userTz = (Intl.DateTimeFormat().resolvedOptions().timeZone || "").toLowerCase();
-const USE_ITALIAN = userLang.startsWith("it") || userTz.includes("rome");
-function t(itText, enText) {
-return USE_ITALIAN ? itText : enText;
-}
-function clampItemStack(val) {
-return Math.min(MAX_ITEM_STACK, Math.max(0, Number(val) || 0));
-}
-const NAME_STYLES_CATALOG = [
-{ id: "default", name: "CLASSIC WHITE", category: "COLOR", rarity: "COMMON", cssClass: "", prefix: "", free: true },
-{ id: "col_gold", name: "ROYAL GOLD", category: "COLOR", rarity: "COMMON", cssClass: "name-style-gold", prefix: "", free: false },
-{ id: "col_emerald", name: "EMERALD NEON", category: "COLOR", rarity: "COMMON", cssClass: "name-style-emerald", prefix: "", free: false },
-{ id: "col_cyan", name: "CYBER CYAN", category: "COLOR", rarity: "RARE", cssClass: "name-style-cyan", prefix: "", free: false },
-{ id: "col_amethyst", name: "AMETHYST GLOW", category: "COLOR", rarity: "RARE", cssClass: "name-style-amethyst", prefix: "", free: false },
-{ id: "col_inferno", name: "INFERNO FLAME", category: "COLOR", rarity: "EPIC", cssClass: "name-style-inferno", prefix: "", free: false },
-{ id: "col_diamond", name: "DIAMOND SHINE", category: "COLOR", rarity: "EPIC", cssClass: "name-style-diamond", prefix: "", free: false },
-{ id: "col_rainbow", name: "PRISM RAINBOW", category: "COLOR", rarity: "LEGENDARY", cssClass: "rainbow-master-text", prefix: "", free: false },
-{ id: "font_chubby", name: "CHUBBY TITAN", category: "FONT", rarity: "COMMON", cssClass: "name-font-chubby", prefix: "", free: false },
-{ id: "font_bubble", name: "BUBBLE POP", category: "FONT", rarity: "RARE", cssClass: "name-font-bubble", prefix: "", free: false },
-{ id: "font_arcade", name: "BOUNCE POP", category: "FONT", rarity: "RARE", cssClass: "name-font-arcade", prefix: "", free: false },
-{ id: "font_wide", name: "WIDE BLOCK", category: "FONT", rarity: "RARE", cssClass: "name-font-wide", prefix: "", free: false },
-{ id: "font_pixel", name: "RETRO PIXEL", category: "FONT", rarity: "EPIC", cssClass: "name-font-pixel", prefix: "", free: false },
-{ id: "font_mono", name: "HACKER CODE", category: "FONT", rarity: "EPIC", cssClass: "name-font-mono", prefix: "", free: false },
-{ id: "font_italic", name: "SPEED SLANT", category: "FONT", rarity: "EPIC", cssClass: "name-font-italic-script", prefix: "", free: false },
-{ id: "font_serif", name: "IMPERIAL SERIF", category: "FONT", rarity: "LEGENDARY", cssClass: "name-font-serif", prefix: "", free: false },
-{ id: "font_gothic", name: "ROYAL GOTHIC", category: "FONT", rarity: "LEGENDARY", cssClass: "name-font-gothic", prefix: "", free: false },
-{ id: "sym_star", name: "STAR BADGE", category: "SYMBOL", rarity: "COMMON", cssClass: "", prefix: "★ ", free: false },
-{ id: "sym_bolt", name: "THUNDER BOLT", category: "SYMBOL", rarity: "RARE", cssClass: "", prefix: "⚡ ", free: false },
-{ id: "sym_fire", name: "FIRE FACE", category: "SYMBOL", rarity: "RARE", cssClass: "", prefix: "🔥 ", free: false },
-{ id: "sym_cool", name: "COOL SHADES", category: "SYMBOL", rarity: "RARE", cssClass: "", prefix: "😎 ", free: false },
-{ id: "sym_devil", name: "DEVIL GRIN", category: "SYMBOL", rarity: "EPIC", cssClass: "", prefix: "😈 ", free: false },
-{ id: "sym_alien", name: "ALIEN PRO", category: "SYMBOL", rarity: "EPIC", cssClass: "", prefix: "👾 ", free: false },
-{ id: "sym_skull", name: "SKULL BOSS", category: "SYMBOL", rarity: "EPIC", cssClass: "", prefix: "💀 ", free: false },
-{ id: "sym_crown", name: "ROYAL CROWN", category: "SYMBOL", rarity: "LEGENDARY", cssClass: "", prefix: "👑 ", free: false }
-];
-function getCurrentMonthKey() {
-const d = new Date();
-return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
-}
-function getCurrentWeekKey() {
-const d = new Date();
-const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-const dayNum = date.getUTCDay() || 7;
-date.setUTCDate(date.getUTCDate() + 4 - dayNum);
-const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
-return date.getUTCFullYear() + "-W" + String(weekNo).padStart(2, "0");
-}
-function getTodayDateKey() {
-const d = new Date();
-return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-}
-function getPreviousMonthKey(monthKey) {
-const [y, m] = monthKey.split("-").map(Number);
-if (m === 1) return (y - 1) + "-12";
-return y + "-" + String(m - 1).padStart(2, "0");
-}
-function loadState() {
-const curMonth = getCurrentMonthKey();
-const curWeek = getCurrentWeekKey();
-let state = {
-monthKey: curMonth,
-weekKey: curWeek,
-lastDailyClaimDate: "",
-weeklyGames: 0,
-weeklyBestScore: 0,
-weekly800kGames: 0,
-monthlyGames: 0,
-monthlyBestCombo: 0,
-monthlyBestScore: 0,
-monthlyTotalScore: 0,
-claimedIds: {},
+    const SUPABASE_URL = "https://jnhkktvtxbsfbrafsnig.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaGtrdHZ0eGJzZmJyYWZzbmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NTMzNjAsImV4cCI6MjExMTAyOTM2MH0.xRde38jj8K1cBpbXIIDyc14OMSsjRVUMkqTEvwDq2Tw";
+    const STATE_KEY = "timeTapProgressionState_v3";
+    const MAX_ITEM_STACK = 10;
+    const ROMAN_NUMERALS = ["", "I", "II", "III", "IV", "V"];
+    const isDesktopDevice = window.innerWidth >= 768;
+    const userLang = (navigator.language || navigator.userLanguage || "").toLowerCase();
+    const userTz = (Intl.DateTimeFormat().resolvedOptions().timeZone || "").toLowerCase();
+    const USE_ITALIAN = userLang.startsWith("it") || userTz.includes("rome");
+
+    function t(itText, enText) {
+        return USE_ITALIAN ? itText : enText;
+    }
+
+    function clampItemStack(val) {
+        return Math.min(MAX_ITEM_STACK, Math.max(0, Number(val) || 0));
+    }
+
+    const NAME_STYLES_CATALOG = [
+        { id: "default", name: "CLASSIC WHITE", category: "COLOR", rarity: "COMMON", cssClass: "", prefix: "", free: true },
+        { id: "col_gold", name: "ROYAL GOLD", category: "COLOR", rarity: "COMMON", cssClass: "name-style-gold", prefix: "", free: false },
+        { id: "col_emerald", name: "EMERALD NEON", category: "COLOR", rarity: "COMMON", cssClass: "name-style-emerald", prefix: "", free: false },
+        { id: "col_cyan", name: "CYBER CYAN", category: "COLOR", rarity: "RARE", cssClass: "name-style-cyan", prefix: "", free: false },
+        { id: "col_amethyst", name: "AMETHYST GLOW", category: "COLOR", rarity: "RARE", cssClass: "name-style-amethyst", prefix: "", free: false },
+        { id: "col_inferno", name: "INFERNO FLAME", category: "COLOR", rarity: "EPIC", cssClass: "name-style-inferno", prefix: "", free: false },
+        { id: "col_diamond", name: "DIAMOND SHINE", category: "COLOR", rarity: "EPIC", cssClass: "name-style-diamond", prefix: "", free: false },
+        { id: "col_rainbow", name: "PRISM RAINBOW", category: "COLOR", rarity: "LEGENDARY", cssClass: "rainbow-master-text", prefix: "", free: false },
+        { id: "font_chubby", name: "CHUBBY TITAN", category: "FONT", rarity: "COMMON", cssClass: "name-font-chubby", prefix: "", free: false },
+        { id: "font_bubble", name: "BUBBLE POP", category: "FONT", rarity: "RARE", cssClass: "name-font-bubble", prefix: "", free: false },
+        { id: "font_arcade", name: "BOUNCE POP", category: "FONT", rarity: "RARE", cssClass: "name-font-arcade", prefix: "", free: false },
+        { id: "font_wide", name: "WIDE BLOCK", category: "FONT", rarity: "RARE", cssClass: "name-font-wide", prefix: "", free: false },
+        { id: "font_pixel", name: "RETRO PIXEL", category: "FONT", rarity: "EPIC", cssClass: "name-font-pixel", prefix: "", free: false },
+        { id: "font_mono", name: "HACKER CODE", category: "FONT", rarity: "EPIC", cssClass: "name-font-mono", prefix: "", free: false },
+        { id: "font_italic", name: "SPEED SLANT", category: "FONT", rarity: "EPIC", cssClass: "name-font-italic-script", prefix: "", free: false },
+        { id: "font_serif", name: "IMPERIAL SERIF", category: "FONT", rarity: "LEGENDARY", cssClass: "name-font-serif", prefix: "", free: false },
+        { id: "font_gothic", name: "ROYAL GOTHIC", category: "FONT", rarity: "LEGENDARY", cssClass: "name-font-gothic", prefix: "", free: false },
+        { id: "sym_star", name: "STAR BADGE", category: "SYMBOL", rarity: "COMMON", cssClass: "", prefix: "★ ", free: false },
+        { id: "sym_bolt", name: "THUNDER BOLT", category: "SYMBOL", rarity: "RARE", cssClass: "", prefix: "⚡ ", free: false },
+        { id: "sym_fire", name: "FIRE FACE", category: "SYMBOL", rarity: "RARE", cssClass: "", prefix: "🔥 ", free: false },
+        { id: "sym_cool", name: "COOL SHADES", category: "SYMBOL", rarity: "RARE", cssClass: "", prefix: "😎 ", free: false },
+        { id: "sym_devil", name: "DEVIL GRIN", category: "SYMBOL", rarity: "EPIC", cssClass: "", prefix: "😈 ", free: false },
+        { id: "sym_alien", name: "ALIEN PRO", category: "SYMBOL", rarity: "EPIC", cssClass: "", prefix: "👾 ", free: false },
+        { id: "sym_skull", name: "SKULL BOSS", category: "SYMBOL", rarity: "EPIC", cssClass: "", prefix: "💀 ", free: false },
+        { id: "sym_crown", name: "ROYAL CROWN", category: "SYMBOL", rarity: "LEGENDARY", cssClass: "", prefix: "👑 ", free: false }
+    ];
+
+    function getCurrentMonthKey() {
+        const d = new Date();
+        return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+    }
+
+    function getCurrentWeekKey() {
+        const d = new Date();
+        const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+        const dayNum = date.getUTCDay() || 7;
+        date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+        const weekNo = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+        return date.getUTCFullYear() + "-W" + String(weekNo).padStart(2, "0");
+    }
+
+    function getTodayDateKey() {
+        const d = new Date();
+        return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    }
+
+    function getPreviousMonthKey(monthKey) {
+        const [y, m] = monthKey.split("-").map(Number);
+        if (m === 1) return (y - 1) + "-12";
+        return y + "-" + String(m - 1).padStart(2, "0");
+    }
+
+    function loadState() {
+        const curMonth = getCurrentMonthKey();
+        const curWeek = getCurrentWeekKey();
+        let state = {
+            monthKey: curMonth,
+            weekKey: curWeek,
+            lastDailyClaimDate: "",
+            weeklyGames: 0,
+            weeklyBestScore: 0,
+            weekly800kGames: 0,
+            monthlyGames: 0,
+            monthlyBestCombo: 0,
+            monthlyBestScore: 0,
+            monthlyTotalScore: 0,
+            claimedIds: {},
 masterStreak: 0,
 lastCompletedMonthKey: "",
 activeMaestroRank: 0,
@@ -2473,254 +2544,252 @@ function scaleMissionTarget(baseVal) {
 return isDesktopDevice ? Math.max(1, Math.round(baseVal * 0.6)) : baseVal;
 }
 function fmtShortK(n) {
-    if (n >= 1000000) return (n / 1000000).toLocaleString("it-IT") + "M";
-    if (n >= 1000) return Math.round(n / 1000) + "K";
-    return String(n);
+if (n >= 1000000) return (n / 1000000).toLocaleString("it-IT") + "M";
+if (n >= 1000) return Math.round(n / 1000) + "K";
+return String(n);
 }
-
 function getMissionsCatalog(state) {
-    const wGamesTarget = scaleMissionTarget(40);
-    const wScoreMin = scaleMissionTarget(800000);
-    const g50 = scaleMissionTarget(50);
-    const c150 = scaleMissionTarget(150);
-    const s250k = scaleMissionTarget(250000);
-    const tot3m = scaleMissionTarget(3000000);
-    const g150 = scaleMissionTarget(150);
-    const c250 = scaleMissionTarget(250);
-    const s600k = scaleMissionTarget(600000);
-    const tot10m = scaleMissionTarget(10000000);
-    const g300 = scaleMissionTarget(300);
-    const c360 = scaleMissionTarget(360);
-    const s1m = scaleMissionTarget(1000000);
-    const tot25m = scaleMissionTarget(25000000);
-    const c540 = scaleMissionTarget(540);
-    const g500 = scaleMissionTarget(500);
-    const s1_5m = scaleMissionTarget(1500000);
-    const c720 = scaleMissionTarget(720);
-    const tot50m = scaleMissionTarget(50000000);
-    const s2_2m = scaleMissionTarget(2200000);
-    const c900 = scaleMissionTarget(900);
-    const g800 = scaleMissionTarget(800);
-
-    return [
-        {
-            id: "w_40_games",
-            type: "WEEKLY",
-            title: t("CAMPIONE SETTIMANALE", "WEEKLY CHAMPION"),
-            desc: t("Gioca " + wGamesTarget + " partite ognuna da almeno " + fmtShortK(wScoreMin) + " punti", "Play " + wGamesTarget + " games with at least " + fmtShortK(wScoreMin) + " points each"),
-            progress: state.weekly800kGames || 0,
-            target: wGamesTarget,
-            rewardType: "xp_and_chest",
-            rewardAmount: 500000,
-            chestCount: 1,
-            rewardLabel: t("+500K XP & 1 CASSA", "+500K XP & 1 CHEST")
-        },
-        {
-            id: "m_games_50",
-            type: "MONTHLY",
-            title: t("RISCALDAMENTO", "WARM UP"),
-            desc: t("Gioca " + g50 + " partite questo mese", "Play " + g50 + " games this month"),
-            progress: state.monthlyGames,
-            target: g50,
-            rewardType: "xp",
-            rewardAmount: 75000,
-            chestCount: 0,
-            rewardLabel: "+75.000 XP"
-        },
-        {
-            id: "m_combo_150",
-            type: "MONTHLY",
-            title: t("MANO FERMA", "STEADY HAND"),
-            desc: t("Raggiungi Combo " + c150 + " in una partita", "Reach " + c150 + " Combo in one run"),
-            progress: state.monthlyBestCombo,
-            target: c150,
-            rewardType: "xp",
-            rewardAmount: 100000,
-            chestCount: 0,
-            rewardLabel: "+100.000 XP"
-        },
-        {
-            id: "m_score_250k",
-            type: "MONTHLY",
-            title: t("SCALATORE", "CLIMBER"),
-            desc: t("Fai " + s250k.toLocaleString("it-IT") + " punti in una partita", "Score " + s250k.toLocaleString("en-US") + " points in one run"),
-            progress: state.monthlyBestScore,
-            target: s250k,
-            rewardType: "xp",
-            rewardAmount: 120000,
-            chestCount: 0,
-            rewardLabel: "+120.000 XP"
-        },
-        {
-            id: "m_total_3m",
-            type: "MONTHLY",
-            title: t("ACCUMULATORE", "ACCUMULATOR"),
-            desc: t("Accumula " + tot3m.toLocaleString("it-IT") + " punti nel mese", "Accumulate " + tot3m.toLocaleString("en-US") + " score this month"),
-            progress: state.monthlyTotalScore,
-            target: tot3m,
-            rewardType: "xp",
-            rewardAmount: 150000,
-            chestCount: 0,
-            rewardLabel: "+150.000 XP"
-        },
-        {
-            id: "m_games_150",
-            type: "MONTHLY",
-            title: t("GIOCATORE ASSIDUO", "DEDICATED PLAYER"),
-            desc: t("Gioca " + g150 + " partite questo mese", "Play " + g150 + " games this month"),
-            progress: state.monthlyGames,
-            target: g150,
-            rewardType: "xp",
-            rewardAmount: 200000,
-            chestCount: 0,
-            rewardLabel: "+200.000 XP"
-        },
-        {
-            id: "m_combo_250",
-            type: "MONTHLY",
-            title: t("RITMO PERFETTO", "PERFECT RHYTHM"),
-            desc: t("Raggiungi Combo " + c250 + " in una partita", "Reach " + c250 + " Combo in one run"),
-            progress: state.monthlyBestCombo,
-            target: c250,
-            rewardType: "xp",
-            rewardAmount: 250000,
-            chestCount: 0,
-            rewardLabel: "+250.000 XP"
-        },
-        {
-            id: "m_score_600k",
-            type: "MONTHLY",
-            title: t("CECCHINO VELOCE", "SPEED SNIPER"),
-            desc: t("Fai " + s600k.toLocaleString("it-IT") + " punti in una partita", "Score " + s600k.toLocaleString("en-US") + " points in one run"),
-            progress: state.monthlyBestScore,
-            target: s600k,
-            rewardType: "xp",
-            rewardAmount: 300000,
-            chestCount: 0,
-            rewardLabel: "+300.000 XP"
-        },
-        {
-            id: "m_total_10m",
-            type: "MONTHLY",
-            title: t("BANCHIERE D'ORO", "GOLD BANKER"),
-            desc: t("Accumula " + tot10m.toLocaleString("it-IT") + " punti nel mese", "Accumulate " + tot10m.toLocaleString("en-US") + " score this month"),
-            progress: state.monthlyTotalScore,
-            target: tot10m,
-            rewardType: "xp",
-            rewardAmount: 400000,
-            chestCount: 0,
-            rewardLabel: "+400.000 XP"
-        },
-        {
-            id: "m_games_300",
-            type: "MONTHLY",
-            title: t("INSTANCABILE", "RELENTLESS"),
-            desc: t("Gioca " + g300 + " partite questo mese", "Play " + g300 + " games this month"),
-            progress: state.monthlyGames,
-            target: g300,
-            rewardType: "chest",
-            rewardAmount: 0,
-            chestCount: 1,
-            rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
-        },
-        {
-            id: "m_combo_360",
-            type: "MONTHLY",
-            title: t("DOPPIA ESPLOSIONE", "DOUBLE EXPLOSION"),
-            desc: t("Raggiungi Combo " + c360 + " in una partita", "Reach " + c360 + " Combo in one run"),
-            progress: state.monthlyBestCombo,
-            target: c360,
-            rewardType: "xp",
-            rewardAmount: 500000,
-            chestCount: 0,
-            rewardLabel: "+500.000 XP"
-        },
-        {
-            id: "m_score_1m",
-            type: "MONTHLY",
-            title: t("MILIONARIO SINGOLO", "SINGLE MILLIONAIRE"),
-            desc: t("Fai " + s1m.toLocaleString("it-IT") + " punti in una partita", "Score " + s1m.toLocaleString("en-US") + " points in one run"),
-            progress: state.monthlyBestScore,
-            target: s1m,
-            rewardType: "chest",
-            rewardAmount: 0,
-            chestCount: 1,
-            rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
-        },
-        {
-            id: "m_total_25m",
-            type: "MONTHLY",
-            title: t("IMPERO DI PUNTI", "SCORE EMPIRE"),
-            desc: t("Accumula " + tot25m.toLocaleString("it-IT") + " punti nel mese", "Accumulate " + tot25m.toLocaleString("en-US") + " score this month"),
-            progress: state.monthlyTotalScore,
-            target: tot25m,
-            rewardType: "xp",
-            rewardAmount: 700000,
-            chestCount: 0,
-            rewardLabel: "+700.000 XP"
-        },
-        {
-            id: "m_combo_540",
-            type: "MONTHLY",
-            title: t("RIFLESSI SUPERNOVA", "SUPERNOVA REFLEXES"),
-            desc: t("Raggiungi Combo " + c540 + " (3x Esplosione!)", "Reach " + c540 + " Combo (3x Explosion!)"),
-            progress: state.monthlyBestCombo,
-            target: c540,
-            rewardType: "chest",
-            rewardAmount: 0,
-            chestCount: 1,
-            rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
-        },
-        {
-            id: "m_games_500",
-            type: "MONTHLY",
-            title: t("MARATONA D'ACCIAIO", "STEEL MARATHON"),
-            desc: t("Gioca " + g500 + " partite questo mese", "Play " + g500 + " games this month"),
-            progress: state.monthlyGames,
-            target: g500,
-            rewardType: "xp",
-            rewardAmount: 900000,
-            chestCount: 0,
-            rewardLabel: "+900.000 XP"
-        },
-        {
-            id: "m_score_1_5m",
-            type: "MONTHLY",
-            title: t("LEGGENDA VIVENTE", "LIVING LEGEND"),
-            desc: t("Fai " + s1_5m.toLocaleString("it-IT") + " punti in una partita", "Score " + s1_5m.toLocaleString("en-US") + " points in one run"),
-            progress: state.monthlyBestScore,
-            target: s1_5m,
-            rewardType: "xp_and_chest",
-            rewardAmount: 500000,
-            chestCount: 1,
-            rewardLabel: t("+500K XP & 1 CASSA", "+500K XP & 1 CHEST")
-        },
-        {
-            id: "m_combo_720",
-            type: "MONTHLY",
-            title: t("FURIA QUADRUPLE", "QUADRUPLE FURY"),
-            desc: t("Raggiungi Combo " + c720 + " (4x Esplosione!)", "Reach " + c720 + " Combo (4x Explosion!)"),
-            progress: state.monthlyBestCombo,
-            target: c720,
-            rewardType: "chest",
-            rewardAmount: 0,
-            chestCount: 1,
-            rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
-        },
-        {
-            id: "m_total_50m",
-            type: "MONTHLY",
-            title: t("MAGNATE SUPREMO", "SUPREME TYCOON"),
-            desc: t("Accumula " + tot50m.toLocaleString("it-IT") + " punti nel mese", "Accumulate " + tot50m.toLocaleString("en-US") + " score this month"),
-            progress: state.monthlyTotalScore,
-            target: tot50m,
-            rewardType: "xp",
-            rewardAmount: 1200000,
-            chestCount: 0,
-            rewardLabel: "+1.200.000 XP"
-        },
-        {
-            id: "m_score_2_2m",
+const wGamesTarget = scaleMissionTarget(40);
+const wScoreMin = scaleMissionTarget(800000);
+const g50 = scaleMissionTarget(50);
+const c150 = scaleMissionTarget(150);
+const s250k = scaleMissionTarget(250000);
+const tot3m = scaleMissionTarget(3000000);
+const g150 = scaleMissionTarget(150);
+const c250 = scaleMissionTarget(250);
+const s600k = scaleMissionTarget(600000);
+const tot10m = scaleMissionTarget(10000000);
+const g300 = scaleMissionTarget(300);
+const c360 = scaleMissionTarget(360);
+const s1m = scaleMissionTarget(1000000);
+const tot25m = scaleMissionTarget(25000000);
+const c540 = scaleMissionTarget(540);
+const g500 = scaleMissionTarget(500);
+const s1_5m = scaleMissionTarget(1500000);
+const c720 = scaleMissionTarget(720);
+const tot50m = scaleMissionTarget(50000000);
+const s2_2m = scaleMissionTarget(2200000);
+const c900 = scaleMissionTarget(900);
+const g800 = scaleMissionTarget(800);
+return [
+{
+id: "w_40_games",
+type: "WEEKLY",
+title: t("CAMPIONE SETTIMANALE", "WEEKLY CHAMPION"),
+desc: t("Gioca " + wGamesTarget + " partite ognuna da almeno " + fmtShortK(wScoreMin) + " punti", "Play " + wGamesTarget + " games with at least " + fmtShortK(wScoreMin) + " points each"),
+progress: state.weekly800kGames || 0,
+target: wGamesTarget,
+rewardType: "xp_and_chest",
+rewardAmount: 500000,
+chestCount: 1,
+rewardLabel: t("+500K XP & 1 CASSA", "+500K XP & 1 CHEST")
+},
+{
+id: "m_games_50",
+type: "MONTHLY",
+title: t("RISCALDAMENTO", "WARM UP"),
+desc: t("Gioca " + g50 + " partite questo mese", "Play " + g50 + " games this month"),
+progress: state.monthlyGames,
+target: g50,
+rewardType: "xp",
+rewardAmount: 75000,
+chestCount: 0,
+rewardLabel: "+75.000 XP"
+},
+{
+id: "m_combo_150",
+type: "MONTHLY",
+title: t("MANO FERMA", "STEADY HAND"),
+desc: t("Raggiungi Combo " + c150 + " in una partita", "Reach " + c150 + " Combo in one run"),
+progress: state.monthlyBestCombo,
+target: c150,
+rewardType: "xp",
+rewardAmount: 100000,
+chestCount: 0,
+rewardLabel: "+100.000 XP"
+},
+{
+id: "m_score_250k",
+type: "MONTHLY",
+title: t("SCALATORE", "CLIMBER"),
+desc: t("Fai " + s250k.toLocaleString("it-IT") + " punti in una partita", "Score " + s250k.toLocaleString("en-US") + " points in one run"),
+progress: state.monthlyBestScore,
+target: s250k,
+rewardType: "xp",
+rewardAmount: 120000,
+chestCount: 0,
+rewardLabel: "+120.000 XP"
+},
+{
+id: "m_total_3m",
+type: "MONTHLY",
+title: t("ACCUMULATORE", "ACCUMULATOR"),
+desc: t("Accumula " + tot3m.toLocaleString("it-IT") + " punti nel mese", "Accumulate " + tot3m.toLocaleString("en-US") + " score this month"),
+progress: state.monthlyTotalScore,
+target: tot3m,
+rewardType: "xp",
+rewardAmount: 150000,
+chestCount: 0,
+rewardLabel: "+150.000 XP"
+},
+{
+id: "m_games_150",
+type: "MONTHLY",
+title: t("GIOCATORE ASSIDUO", "DEDICATED PLAYER"),
+desc: t("Gioca " + g150 + " partite questo mese", "Play " + g150 + " games this month"),
+progress: state.monthlyGames,
+target: g150,
+rewardType: "xp",
+rewardAmount: 200000,
+chestCount: 0,
+rewardLabel: "+200.000 XP"
+},
+{
+id: "m_combo_250",
+type: "MONTHLY",
+title: t("RITMO PERFETTO", "PERFECT RHYTHM"),
+desc: t("Raggiungi Combo " + c250 + " in una partita", "Reach " + c250 + " Combo in one run"),
+progress: state.monthlyBestCombo,
+target: c250,
+rewardType: "xp",
+rewardAmount: 250000,
+chestCount: 0,
+rewardLabel: "+250.000 XP"
+},
+{
+id: "m_score_600k",
+type: "MONTHLY",
+title: t("CECCHINO VELOCE", "SPEED SNIPER"),
+desc: t("Fai " + s600k.toLocaleString("it-IT") + " punti in una partita", "Score " + s600k.toLocaleString("en-US") + " points in one run"),
+progress: state.monthlyBestScore,
+target: s600k,
+rewardType: "xp",
+rewardAmount: 300000,
+chestCount: 0,
+rewardLabel: "+300.000 XP"
+},
+{
+id: "m_total_10m",
+type: "MONTHLY",
+title: t("BANCHIERE D'ORO", "GOLD BANKER"),
+desc: t("Accumula " + tot10m.toLocaleString("it-IT") + " punti nel mese", "Accumulate " + tot10m.toLocaleString("en-US") + " score this month"),
+progress: state.monthlyTotalScore,
+target: tot10m,
+rewardType: "xp",
+rewardAmount: 400000,
+chestCount: 0,
+rewardLabel: "+400.000 XP"
+},
+{
+id: "m_games_300",
+type: "MONTHLY",
+title: t("INSTANCABILE", "RELENTLESS"),
+desc: t("Gioca " + g300 + " partite questo mese", "Play " + g300 + " games this month"),
+progress: state.monthlyGames,
+target: g300,
+rewardType: "chest",
+rewardAmount: 0,
+chestCount: 1,
+rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
+},
+{
+id: "m_combo_360",
+type: "MONTHLY",
+title: t("DOPPIA ESPLOSIONE", "DOUBLE EXPLOSION"),
+desc: t("Raggiungi Combo " + c360 + " in una partita", "Reach " + c360 + " Combo in one run"),
+progress: state.monthlyBestCombo,
+target: c360,
+rewardType: "xp",
+rewardAmount: 500000,
+chestCount: 0,
+rewardLabel: "+500.000 XP"
+},
+{
+id: "m_score_1m",
+type: "MONTHLY",
+title: t("MILIONARIO SINGOLO", "SINGLE MILLIONAIRE"),
+desc: t("Fai " + s1m.toLocaleString("it-IT") + " punti in una partita", "Score " + s1m.toLocaleString("en-US") + " points in one run"),
+progress: state.monthlyBestScore,
+target: s1m,
+rewardType: "chest",
+rewardAmount: 0,
+chestCount: 1,
+rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
+},
+{
+id: "m_total_25m",
+type: "MONTHLY",
+title: t("IMPERO DI PUNTI", "SCORE EMPIRE"),
+desc: t("Accumula " + tot25m.toLocaleString("it-IT") + " punti nel mese", "Accumulate " + tot25m.toLocaleString("en-US") + " score this month"),
+progress: state.monthlyTotalScore,
+target: tot25m,
+rewardType: "xp",
+rewardAmount: 700000,
+chestCount: 0,
+rewardLabel: "+700.000 XP"
+},
+{
+id: "m_combo_540",
+type: "MONTHLY",
+title: t("RIFLESSI SUPERNOVA", "SUPERNOVA REFLEXES"),
+desc: t("Raggiungi Combo " + c540 + " (3x Esplosione!)", "Reach " + c540 + " Combo (3x Explosion!)"),
+progress: state.monthlyBestCombo,
+target: c540,
+rewardType: "chest",
+rewardAmount: 0,
+chestCount: 1,
+rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
+},
+{
+id: "m_games_500",
+type: "MONTHLY",
+title: t("MARATONA D'ACCIAIO", "STEEL MARATHON"),
+desc: t("Gioca " + g500 + " partite questo mese", "Play " + g500 + " games this month"),
+progress: state.monthlyGames,
+target: g500,
+rewardType: "xp",
+rewardAmount: 900000,
+chestCount: 0,
+rewardLabel: "+900.000 XP"
+},
+{
+id: "m_score_1_5m",
+type: "MONTHLY",
+title: t("LEGGENDA VIVENTE", "LIVING LEGEND"),
+desc: t("Fai " + s1_5m.toLocaleString("it-IT") + " punti in una partita", "Score " + s1_5m.toLocaleString("en-US") + " points in one run"),
+progress: state.monthlyBestScore,
+target: s1_5m,
+rewardType: "xp_and_chest",
+rewardAmount: 500000,
+chestCount: 1,
+rewardLabel: t("+500K XP & 1 CASSA", "+500K XP & 1 CHEST")
+},
+{
+id: "m_combo_720",
+type: "MONTHLY",
+title: t("FURIA QUADRUPLE", "QUADRUPLE FURY"),
+desc: t("Raggiungi Combo " + c720 + " (4x Esplosione!)", "Reach " + c720 + " Combo (4x Explosion!)"),
+progress: state.monthlyBestCombo,
+target: c720,
+rewardType: "chest",
+rewardAmount: 0,
+chestCount: 1,
+rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
+},
+{
+id: "m_total_50m",
+type: "MONTHLY",
+title: t("MAGNATE SUPREMO", "SUPREME TYCOON"),
+desc: t("Accumula " + tot50m.toLocaleString("it-IT") + " punti nel mese", "Accumulate " + tot50m.toLocaleString("en-US") + " score this month"),
+progress: state.monthlyTotalScore,
+target: tot50m,
+rewardType: "xp",
+rewardAmount: 1200000,
+chestCount: 0,
+rewardLabel: "+1.200.000 XP"
+},
+{
+id: "m_score_2_2m",
 type: "MONTHLY",
 title: t("DIVINITÀ DEL TEMPO", "TIME DEITY"),
 desc: t("Fai " + s2_2m.toLocaleString("it-IT") + " punti in una partita", "Score " + s2_2m.toLocaleString("en-US") + " points in one run"),
@@ -3653,7 +3722,3 @@ document.addEventListener("DOMContentLoaded", initTimeTapGame);
 } else {
 initTimeTapGame();
 }
-
-
-
-   
