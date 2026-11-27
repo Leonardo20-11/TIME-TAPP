@@ -1941,7 +1941,7 @@ btn.classList.add("button-circle");
 let valueText = "";
 if (type === "green") {
 btn.classList.add("green");
-const greenOptions = isDesktop ? [0.420, 0.450, 0.500, 0.550] : [0.250, 0.280, 0.330, 0.350];
+const greenOptions = isDesktop ? [0.420, 0.450, 0.500, 0.550] : [0.200, 0.250, 0.280, 0.300];
 const value = isSavedObject ? Number(valueStr) : greenOptions[Math.floor(Math.random() * greenOptions.length)];
 btn.dataset.value = value;
 valueText = "+" + value.toFixed(3);
