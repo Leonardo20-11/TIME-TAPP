@@ -377,11 +377,11 @@ recordModeBtn.textContent = "RECORD";
 recordModeBtn.addEventListener("click", () => {
 playSynthEffect("click");
 chooseLeaderboardModal.style.display = "none";
-if (isDesktop) {
-openDesktopSplitLeaderboard(currentLeaderboardPlatform, "record");
-} else {
+
+
+
 openLeaderboardByMode("record", currentLeaderboardPlatform);
-}
+
 });
 const comboModeBtn = document.createElement("button");
 comboModeBtn.className = "lb-choice-btn lb-choice-combo";
@@ -389,11 +389,11 @@ comboModeBtn.textContent = "COMBO";
 comboModeBtn.addEventListener("click", () => {
 playSynthEffect("click");
 chooseLeaderboardModal.style.display = "none";
-if (isDesktop) {
-openDesktopSplitLeaderboard(currentLeaderboardPlatform, "combo");
-} else {
+
+
+
 openLeaderboardByMode("combo", currentLeaderboardPlatform);
-}
+
 });
 actions.appendChild(recordModeBtn);
 actions.appendChild(comboModeBtn);
