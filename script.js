@@ -2,7 +2,7 @@ function initTimeTapGame() {
     const SUPABASE_URL ="https://jnhkktvtxbsfbrafsnig.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaGtrdHZ0eGJzZmJyYWZzbmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NTMzNjAsImV4cCI6MjExMTAyOTM2MH0.xRde38jj8K1cBpbXIIDyc14OMSsjRVUMkqTEvwDq2Tw";
 
-    const onboardingScreen = document.getElementById("onboardingScreen");
+ const onboardingScreen = document.getElementById("onboardingScreen");
     const usernameInput = document.getElementById("usernameInput");
     const onboardingErrorMsg = document.getElementById("onboardingErrorMsg");
     const saveProfileBtn = document.getElementById("saveProfileBtn");
@@ -224,7 +224,7 @@ function initTimeTapGame() {
         ];
         const suffixes = [
             "VIPER", "STRIKER", "HUNTER", "BLADE", "FALCON", "WOLF", "KNIGHT", "PULSE",
-"GHOST", "HAWK", "RANGER", "SPARK", "DRIFT", "CORE", "REAPER", "RAVEN",
+            "GHOST", "HAWK", "RANGER", "SPARK", "DRIFT", "CORE", "REAPER", "RAVEN",
 "SPECTRE", "SHIELD", "LANCE", "SURGE", "SNIPER", "PILOT", "SHARD", "BOLT"
 ];
 const p = prefixes[Math.floor(Math.random() * prefixes.length)];
@@ -404,9 +404,9 @@ titleEl.textContent = platform === "pc" ? "PC LEADERBOARD" : "MOBILE LEADERBOARD
 }
 if (switchBtn) {
 if (platform === "pc") {
-switchBtn.innerHTML = ' VIEW MOBILE';
+switchBtn.innerHTML = 'VIEW MOBILE';
 } else {
-switchBtn.innerHTML = ' VIEW COMPUTER';
+switchBtn.innerHTML = 'VIEW COMPUTER';
 }
 }
 }
@@ -872,34 +872,28 @@ playSynthEffect("click");
 settingsModal.style.display = "none";
 });
 }
+// --- GESTIONE PULSANTI VERDI E ROSSI (5 TOTALI: 3 VERDI, 2 ROSSI, SPARSI E ASINCRONI) ---
 const activeButtons = [];
 const arrows = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
 let baseButtonDuration = isDesktop ? 1650 : 620;
 let baseSpawnDelay = isDesktop ? 210 : 180;
-// 6 zone dello schermo: 0=Alto-Sx, 1=Alto-Dx, 2=Centro-Sx, 3=Centro-Dx, 4=Basso-Sx, 5=Basso-Dx
+const MAX_TOTAL_BUTTONS = 5;
+const TARGET_GREEN_COUNT = 3;
+const TARGET_RED_COUNT = 2;
 const recentSpawnCoords = [];
-const zoneLastCategory = new Array(6).fill(null);
-const SPAWN_PATTERN = isDesktop
-? ["green", "red", "green", "green", "red"]
-: ["red", "green", "red", "green", "red"];
+const SPAWN_PATTERN = ["green", "red", "green", "red", "green"];
 let spawnPatternIndex = 0;
-let lastRemovedPos = null;
-let lastGreenPos = null;
-function getScreenZone6(x, y) {
-const col = x < window.innerWidth / 2 ? 0 : 1;
-const h = window.innerHeight;
-let row = 1;
-if (y < h * 0.36) row = 0;
-else if (y > h * 0.64) row = 2;
-return row * 2 + col;
-}
+const lastPosByCategory = { green: null, red: null };
+let lastAnySpawnPos = null;
 function getNextBalancedCategory() {
-const maxGreens = isDesktop ? 3 : 2;
-const maxReds = isDesktop ? 2 : 3;
-const greenSlots = activeButtons.filter(b => ["green", "gold", "ice", "clock"].includes(b.dataset.action)).length;
-const redSlots = activeButtons.filter(b => ["red", "bomb"].includes(b.dataset.action)).length;
-if (greenSlots >= maxGreens) return "red";
-if (redSlots >= maxReds) return "green";
+const greenSlots = activeButtons.filter(b =>
+["green", "gold", "ice", "clock"].includes(b.dataset.action)
+).length;
+const redSlots = activeButtons.filter(b =>
+["red", "bomb"].includes(b.dataset.action)
+).length;
+if (greenSlots >= TARGET_GREEN_COUNT) return "red";
+if (redSlots >= TARGET_RED_COUNT) return "green";
 const nextCat = SPAWN_PATTERN[spawnPatternIndex % SPAWN_PATTERN.length];
 spawnPatternIndex++;
 return nextCat;
@@ -1416,7 +1410,7 @@ updateTimerVisuals();
 if (Array.isArray(saved.buttons)) {
 saved.buttons.forEach(bData => createButton(bData));
 }
-while (activeButtons.length < 5) {
+while (activeButtons.length < MAX_TOTAL_BUTTONS) {
 createButton(getNextBalancedCategory());
 }
 running = true;
@@ -1601,13 +1595,13 @@ pauseCooldownRemainingMs = 0;
 normalSpawnsSinceLastSpecial = 8;
 spawnPatternIndex = 0;
 recentSpawnCoords.length = 0;
-zoneLastCategory.fill(null);
-lastRemovedPos = null;
-lastGreenPos = null;
+lastPosByCategory.green = null;
+lastPosByCategory.red = null;
+lastAnySpawnPos = null;
 const staggerOffsets = isDesktop
-? new Array(0, 140, 280, 420, 560)
-: new Array(0, 90, 180, 270, 360);
-for (let i = 0; i < 5; i++) {
+            ? new Array(0, 260, 520, 780, 1040)
+            : new Array(0, 110, 220, 330, 440);
+for (let i = 0; i < MAX_TOTAL_BUTTONS; i++) {
 const cat = getNextBalancedCategory();
 createButton(cat, staggerOffsets[i]);
 }
@@ -1634,15 +1628,24 @@ feverMusicTimer = 0;
 }
 if (isFrozen) {
 freezeRemainingMs -= TICK_MS;
-if (freezeRemainingMs <= 0) { isFrozen = false; freezeRemainingMs = 0; }
+if (freezeRemainingMs <= 0) {
+isFrozen = false;
+freezeRemainingMs = 0;
+}
 }
 if (isSlowMo) {
 slowMoRemainingMs -= TICK_MS;
-if (slowMoRemainingMs <= 0) { isSlowMo = false; slowMoRemainingMs = 0; }
+if (slowMoRemainingMs <= 0) {
+isSlowMo = false;
+slowMoRemainingMs = 0;
+}
 }
 if (doubleBonus) {
 doubleBonusRemainingMs -= TICK_MS;
-if (doubleBonusRemainingMs <= 0) { doubleBonus = false; doubleBonusRemainingMs = 0; }
+if (doubleBonusRemainingMs <= 0) {
+doubleBonus = false;
+doubleBonusRemainingMs = 0;
+}
 }
 const speedFactor = isSlowMo ? 0.4 : 1.0;
 if (!isFrozen) {
@@ -1673,7 +1676,7 @@ ringCircle.style.strokeDashoffset = (BTN_RING_CIRCUMFERENCE * (1 - frac)).toFixe
 }
 if (rem <= 0) removeButton(btn);
 }
-while (activeButtons.length < 5) {
+while (activeButtons.length < MAX_TOTAL_BUTTONS) {
 createButton(getNextBalancedCategory());
 }
 }, TICK_MS);
@@ -1697,8 +1700,7 @@ type = forcedCategoryOrConfig.action;
 key = forcedCategoryOrConfig.key;
 valueStr = forcedCategoryOrConfig.value;
 } else {
-const maxGreens = isDesktop ? 3 : 2;
-const maxReds = isDesktop ? 2 : 3;
+if (activeButtons.length >= MAX_TOTAL_BUTTONS) return;
 const category = (forcedCategoryOrConfig === "green" || forcedCategoryOrConfig === "red")
 ? forcedCategoryOrConfig
 : getNextBalancedCategory();
@@ -1708,8 +1710,8 @@ const greenSlotsCount = activeButtons.filter(b =>
 const redSlotsCount = activeButtons.filter(b =>
 ["red", "bomb"].includes(b.dataset.action)
 ).length;
-if (category === "green" && greenSlotsCount >= maxGreens) return;
-if (category === "red" && redSlotsCount >= maxReds) return;
+if (category === "green" && greenSlotsCount >= TARGET_GREEN_COUNT) return;
+if (category === "red" && redSlotsCount >= TARGET_RED_COUNT) return;
 type = category;
 const hasSpecialOnScreen = activeButtons.some(b =>
 ["gold", "ice", "bomb", "clock"].includes(b.dataset.action)
@@ -1760,10 +1762,13 @@ let durationMs = baseButtonDuration;
 if (type === "green" && overdriveRemainingMs > 0) {
 durationMs = Math.round(baseButtonDuration * 0.80);
 }
-const effectiveRemMs = Math.max(240, durationMs - initialPenaltyMs);
+// Variazione casuale della durata per ogni singolo pulsante così non scompaiono mai insieme
+const jitterFactor = isSavedObject ? 1.0 : (0.78 + Math.random() * 0.52);
+const individualTotalMs = Math.round(durationMs * jitterFactor);
+const effectiveRemMs = Math.max(240, individualTotalMs - initialPenaltyMs);
 btn.dataset.key = key;
 btn.dataset.action = type;
-btn.dataset.totalMs = isSavedObject ? (forcedCategoryOrConfig.totalMs || durationMs) : durationMs;
+btn.dataset.totalMs = isSavedObject ? (forcedCategoryOrConfig.totalMs || individualTotalMs) : individualTotalMs;
 btn.dataset.remainingMs = isSavedObject ? forcedCategoryOrConfig.remainingMs : effectiveRemMs;
 renderButtonInner(btn, type, valueText);
 let x = 0;
@@ -1775,88 +1780,115 @@ x = forcedCategoryOrConfig.left;
 y = forcedCategoryOrConfig.top;
 } else {
 const btnSize = isDesktop ? (isPositiveType ? 175 : 145) : 108;
-        const minCenterDist = isDesktop ? 195 : 138;
-        const minBtnDist = isDesktop ? 175 : 124;
-        const minSameColorDist = isDesktop ? 270 : (isPositiveType ? 240 : 195);
-        const minHistoryDist = isDesktop ? 165 : 175;
-        const alignTolerance = isDesktop ? 95 : 72;
-        const margin = 14;
-        let valid = false;
-        let attempts = 0;
-        const centerX = window.innerWidth / 2;
-        const centerY = window.innerHeight / 2;
-        const cornerBlockX = window.innerWidth * 0.14;
-        const cornerBlockY = window.innerHeight * 0.16;
-
-        while (!valid && attempts < 400) {
-            attempts++;
-            x = margin + Math.random() * (window.innerWidth - btnSize - margin * 2);
-            y = 76 + Math.random() * (window.innerHeight - btnSize - 76 - margin);
-            valid = true;
-
-            const btnCenterX = x + btnSize / 2;
-            const btnCenterY = y + btnSize / 2;
-
-            // 1. Esclude i 4 angoli estremi su computer
-            if (isDesktop) {
-                const inLeft = btnCenterX < cornerBlockX;
-                const inRight = btnCenterX > window.innerWidth - cornerBlockX;
-                const inTop = btnCenterY < cornerBlockY;
-                const inBottom = btnCenterY > window.innerHeight - cornerBlockY;
-                if ((inLeft || inRight) && (inTop || inBottom)) {
-                    valid = false;
-                }
-            }
-
-            // 2. Mai sopra il timer centrale
-            if (valid) {
-                const distCenter = Math.hypot(btnCenterX - centerX, btnCenterY - centerY);
-                if (distCenter < minCenterDist) valid = false;
-            }
-
-            // 3. Mai sovrapposto, mai due dello stesso colore vicini e MAI in linea (né orizzontale né verticale)
-            if (valid) {
-                for (const existing of activeButtons) {
-                    const ex = parseFloat(existing.style.left);
-                    const ey = parseFloat(existing.style.top);
-                    const exSize = existing.offsetWidth || btnSize;
-                    const exCenterX = ex + exSize / 2;
-                    const exCenterY = ey + exSize / 2;
-                    const dist = Math.hypot(btnCenterX - exCenterX, btnCenterY - exCenterY);
-
-                    if (dist < minBtnDist) {
-                        valid = false;
-                        break;
-                    }
-
-                    const exIsPos = ["green", "gold", "ice", "clock"].includes(existing.dataset.action);
-                    if (exIsPos === isPositiveType) {
-                        if (dist < minSameColorDist && attempts < 300) {
-                            valid = false;
-                            break;
-                        }
-                        if ((Math.abs(btnCenterX - exCenterX) < alignTolerance || Math.abs(btnCenterY - exCenterY) < alignTolerance) && attempts < 280) {
-                            valid = false;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // 4. Mai nello stesso punto dove era appena apparso o sparito un pulsante recente
-            if (valid && attempts < 320) {
-                for (const prev of recentSpawnCoords) {
-                    if (Math.hypot(x - prev.x, y - prev.y) < minHistoryDist) {
-                        valid = false;
-                        break;
-                    }
-                }
-            }
-        }
-        if (!valid) return;
-
-        recentSpawnCoords.push({ x, y, category: currentCategory });
-        if (recentSpawnCoords.length > 10) recentSpawnCoords.shift();
+const minCenterDist = isDesktop ? 195 : 138;
+const minBtnDist = isDesktop ? 185 : 126;
+const minSameColorDist = isDesktop ? 310 : 215;
+const minHistoryDist = isDesktop ? 210 : 185;
+const alignTolerance = isDesktop ? 115 : 85;
+const margin = 14;
+const topHudMargin = 76;
+const screenW = window.innerWidth;
+const screenH = window.innerHeight;
+const centerX = screenW / 2;
+const centerY = screenH / 2;
+const cornerBlockX = screenW * 0.14;
+const cornerBlockY = screenH * 0.16;
+const prevCatPos = lastPosByCategory[currentCategory];
+const refPos = prevCatPos || lastAnySpawnPos;
+let valid = false;
+let attempts = 0;
+while (!valid && attempts < 500) {
+attempts++;
+// Nei primi tentativi forza il lato opposto dello schermo rispetto all'ultimo spawn
+if (refPos && attempts < 240) {
+const targetRightHalf = refPos.cx < centerX;
+const halfStartX = targetRightHalf ? centerX : margin;
+const halfEndX = targetRightHalf ? (screenW - btnSize - margin) : (centerX - btnSize);
+const safeSpanX = Math.max(10, halfEndX - halfStartX);
+x = halfStartX + Math.random() * safeSpanX;
+} else {
+x = margin + Math.random() * Math.max(10, screenW - btnSize - margin * 2);
+}
+y = topHudMargin + Math.random() * Math.max(10, screenH - btnSize - topHudMargin - margin);
+valid = true;
+const btnCenterX = x + btnSize / 2;
+const btnCenterY = y + btnSize / 2;
+// 1. Esclude i 4 angoli estremi su computer
+if (isDesktop) {
+const inLeft = btnCenterX < cornerBlockX;
+const inRight = btnCenterX > screenW - cornerBlockX;
+const inTop = btnCenterY < cornerBlockY;
+const inBottom = btnCenterY > screenH - cornerBlockY;
+if ((inLeft || inRight) && (inTop || inBottom)) {
+valid = false;
+}
+}
+// 2. Mai sopra il timer centrale
+if (valid) {
+const distCenter = Math.hypot(btnCenterX - centerX, btnCenterY - centerY);
+if (distCenter < minCenterDist) valid = false;
+}
+// 3. Mai sovrapposti, niente mucchi di stesso colore e mai in linea orizzontale o verticale
+if (valid) {
+for (const existing of activeButtons) {
+const ex = parseFloat(existing.style.left);
+const ey = parseFloat(existing.style.top);
+const exSize = existing.offsetWidth || btnSize;
+const exCenterX = ex + exSize / 2;
+const exCenterY = ey + exSize / 2;
+const dist = Math.hypot(btnCenterX - exCenterX, btnCenterY - exCenterY);
+if (dist < minBtnDist) {
+valid = false;
+break;
+}
+const exIsPos = ["green", "gold", "ice", "clock"].includes(existing.dataset.action);
+if (exIsPos === isPositiveType) {
+if (dist < minSameColorDist && attempts < 380) {
+valid = false;
+break;
+}
+if ((Math.abs(btnCenterX - exCenterX) < alignTolerance || Math.abs(btnCenterY - exCenterY) < alignTolerance) && attempts < 360) {
+valid = false;
+break;
+}
+}
+}
+}
+// 4. Impedisce concentrazioni solo sopra o solo sotto di un singolo colore
+if (valid && attempts < 340) {
+const sameCatButtons = activeButtons.filter(b =>
+(["green", "gold", "ice", "clock"].includes(b.dataset.action)) === isPositiveType
+);
+if (sameCatButtons.length >= 2) {
+const allTop = sameCatButtons.every(b => parseFloat(b.style.top) < centerY);
+const allBottom = sameCatButtons.every(b => parseFloat(b.style.top) >= centerY);
+if ((allTop && btnCenterY < centerY) || (allBottom && btnCenterY >= centerY)) {
+valid = false;
+}
+}
+}
+// 5. Mai nello stesso punto o a un millimetro da dove era appena apparso/sparito un pulsante
+if (valid && attempts < 400) {
+for (const prev of recentSpawnCoords) {
+if (Math.hypot(btnCenterX - prev.cx, btnCenterY - prev.cy) < minHistoryDist) {
+valid = false;
+break;
+}
+}
+}
+}
+if (!valid) return;
+const newPosObj = {
+x,
+y,
+cx: x + btnSize / 2,
+cy: y + btnSize / 2,
+category: currentCategory
+};
+lastPosByCategory[currentCategory] = newPosObj;
+lastAnySpawnPos = newPosObj;
+recentSpawnCoords.push(newPosObj);
+if (recentSpawnCoords.length > 10) recentSpawnCoords.shift();
 }
 btn.style.left = x + "px";
 btn.style.top = y + "px";
@@ -1895,231 +1927,231 @@ setTimeout(() => spark.remove(), 480);
 }
 }
 function activateButton(btn) {
-        if (!btn.parentNode || !running || isPaused) return;
-        const action = btn.dataset.action;
-        const rect = btn.getBoundingClientRect();
-        const centerX = rect.left + rect.width / 2;
-        const centerY = rect.top + rect.height / 2;
-        if (action === "green") {
-            const wasCritical = time <= 0.6 && !isFrozen;
-            const value = Number(btn.dataset.value);
-            const addedTime = doubleBonus ? value * 2 : value;
-            const rawNextTime = Number((time + addedTime).toFixed(3));
-            if (rawNextTime >= MAX_TIME) {
-                time = MAX_TIME;
-                triggerMaxCapFeedback();
-            } else {
-                time = rawNextTime;
-            }
-            comboCount++;
-            if (comboCount > maxComboRun) maxComboRun = comboCount;
-            const basePoints = 100 + comboCount * 20;
-            const earnedPoints = isDesktop ? Math.round(basePoints * 1.5) : basePoints;
-            score += earnedPoints;
-            if (window.ttProgressionEngine) {
-                window.ttProgressionEngine.onGreenHit(score, comboCount);
-            }
-            if (timerCircle) {
-                timerCircle.classList.remove("timer-bounce");
-                void timerCircle.offsetWidth;
-                timerCircle.classList.add("timer-bounce");
-            }
-            spawnTapRipple(centerX, centerY, doubleBonus ? "#fde047" : "#4ade80");
-            spawnStars(centerX, centerY, "green");
-            spawnFloatingText(
-                centerX,
-                centerY,
-                (doubleBonus ? "2X +" : "+") + earnedPoints,
-                doubleBonus ? "#facc15" : "#4ade80"
-            );
-            if (comboCount > 0 && comboCount % 180 === 0) {
-                const mult = Math.floor(comboCount / 180);
-                playSynthEffect("explosion180");
-                speakEnglish("Combo " + comboCount + " times " + mult + "!", 1.1, 1.18);
-            } else if (comboCount === 101) {
-                playSynthEffect("newrecord");
-                showMessage("+10% XP BONUS!", "Ten percent X P bonus!");
-            } else if (comboCount === 201) {
-                playSynthEffect("newrecord");
-                showMessage("+20% XP BONUS!", "Twenty percent X P bonus!");
-            } else if (comboCount > 0 && comboCount % 80 === 0) {
-                overdriveRemainingMs = 6000;
-                feverNoteStep = 0;
-                playFeverRushBeat();
-                showMessage("FEVER x" + comboCount + "!", "Fever mode!");
-            } else if (wasCritical) {
-                triggerScreenShake();
-                playSynthEffect("epic");
-                showMessage("EPIC SAVE!", "Epic save!");
-            } else {
-                playSynthEffect("green");
-                checkComboMessages();
-            }
-        } else if (action === "red") {
-            triggerScreenShake();
-            playSynthEffect("red");
-            const value = Number(btn.dataset.value);
-            time = Number((time - value).toFixed(3));
-            comboCount = 0;
-            overdriveRemainingMs = 0;
-            spawnTapRipple(centerX, centerY, "#ef4444");
-            spawnFloatingText(centerX, centerY, "-" + value.toFixed(1) + "s", "#f87171");
-            if (time <= 0) {
-                time = 0;
-                timerCircle.textContent = "0.0";
-                removeButton(btn);
-                gameOver();
-                return;
-            }
-        } else if (action === "ice") {
-            playSynthEffect("ice");
-            isFrozen = true;
-            freezeRemainingMs = isDesktop ? 1700 : 1000;
-            updateTimerVisuals();
-            spawnTapRipple(centerX, centerY, "#38bdf8");
-            spawnStars(centerX, centerY, "ice");
-            spawnFloatingText(centerX, centerY, isDesktop ? "FREEZE 1.7s!" : "FREEZE 1s!", "#7dd3fc");
-            showMessage("FREEZE!", "Freeze!");
-        } else if (action === "clock") {
-            playSynthEffect("clock");
-            isSlowMo = true;
-            slowMoRemainingMs = isDesktop ? 2550 : 1500;
-            updateTimerVisuals();
-            spawnTapRipple(centerX, centerY, "#c084fc");
-            spawnStars(centerX, centerY, "clock");
-            spawnFloatingText(centerX, centerY, isDesktop ? "SLOW 2.55s!" : "SLOW 1.5s!", "#e9d5ff");
-            showMessage("SLOW TIME!", "Slow time!");
-        } else if (action === "bomb") {
-            triggerScreenShake();
-            playSynthEffect("bomb");
-            spawnTapRipple(centerX, centerY, "#ef4444");
-            spawnStars(centerX, centerY, "bomb");
-            spawnFloatingText(centerX, centerY, "BOOM!", "#ef4444");
-            time = 0;
-            timerCircle.textContent = "0.0";
-            removeButton(btn);
-            gameOver();
-            return;
-        } else if (action === "gold") {
-            playSynthEffect("gold");
-            doubleBonus = true;
-            doubleBonusRemainingMs = isDesktop ? 1700 : 1000;
-            spawnTapRipple(centerX, centerY, "#fde047");
-            spawnStars(centerX, centerY, "gold");
-            spawnFloatingText(centerX, centerY, isDesktop ? "2X TIME 1.7s!" : "2X TIME 1s!", "#facc15");
-            showMessage("2X TIME!", "Double time!");
-        }
-        timerCircle.textContent = time.toFixed(1);
-        scoreText.textContent = "SCORE: " + fmtNum(score);
-        comboText.textContent = "COMBO " + comboCount;
-        comboText.classList.toggle("combo-fire", comboCount >= 10);
-        updateTimerVisuals();
-        removeButton(btn);
-    }
-
-    function checkComboMessages() {
-        if (comboCount === 5) { playSynthEffect("milestone"); showMessage("GREAT!", "Great!"); }
-        else if (comboCount === 10) { playSynthEffect("milestone"); showMessage("FANTASTIC!", "Fantastic!"); }
-        else if (comboCount === 15) { playSynthEffect("milestone"); showMessage("AMAZING!", "Amazing!"); }
-        else if (comboCount === 20) { playSynthEffect("milestone"); showMessage("UNBELIEVABLE!", "Unbelievable!"); }
-        else if (comboCount > 0 && comboCount % 25 === 0 && comboCount % 80 !== 0) {
-            playSynthEffect("milestone");
-            showMessage("LEGENDARY!", "Legendary!");
-        }
-    }
-
-    function showMessage(text, spokenText = "") {
-        clearTimeout(messageTimeout);
-        specialMessage.textContent = text;
-        specialMessage.style.display = "none";
-        void specialMessage.offsetWidth;
-        specialMessage.style.display = "block";
-        if (spokenText) speakEnglish(spokenText, 1.08, 1.12);
-        messageTimeout = setTimeout(() => {
-            specialMessage.style.display = "none";
-        }, 1100);
-    }
-
-    function removeButton(btn) {
-        if (!btn) return;
-        const oldX = parseFloat(btn.style.left);
-        const oldY = parseFloat(btn.style.top);
-        const isPos = ["green", "gold", "ice", "clock"].includes(btn.dataset.action);
-        if (!Number.isNaN(oldX) && !Number.isNaN(oldY)) {
-            lastRemovedPos = { x: oldX, y: oldY };
-            if (isPos) {
-                lastGreenPos = { x: oldX, y: oldY };
-            }
-            recentSpawnCoords.push({ x: oldX, y: oldY, category: btn.dataset.action });
-            if (recentSpawnCoords.length > 8) recentSpawnCoords.shift();
-        }
-        const index = activeButtons.indexOf(btn);
-        if (index > -1) activeButtons.splice(index, 1);
-        if (btn.parentNode) btn.remove();
-        if (running) {
-            createButton(getNextBalancedCategory());
-        }
-    }
-
-    function animateScoreCounter(element, targetValue, onComplete) {
-        let current = 0;
-        const steps = 35;
-        const increment = targetValue / steps;
-        const counter = setInterval(() => {
-            current += increment;
-            if (current >= targetValue) {
-                current = targetValue;
-                clearInterval(counter);
-                element.textContent = fmtNum(Math.round(current));
-                if (onComplete) onComplete();
-            } else {
-                element.textContent = fmtNum(Math.round(current));
-            }
-        }, 25);
-    }
-
-    function gameOver() {
-        if (!running) return;
-        running = false;
-        isPaused = false;
-        isResumingCountdown = false;
-        isFrozen = false;
-        isSlowMo = false;
-        doubleBonus = false;
-        overdriveRemainingMs = 0;
-        pauseCooldownRemainingMs = 0;
-        updatePauseButtonUI();
-        clearSavedPausedState();
-        clearInterval(gameLoopInterval);
-        timerCircle.classList.remove("timer-panic", "timer-frozen", "timer-slowmo", "timer-max-cap");
-        game.classList.remove("slowmo-active", "overdrive-active");
-        while (activeButtons.length > 0) {
-            const firstBtn = activeButtons.shift();
-            if (firstBtn && firstBtn.parentNode) firstBtn.remove();
-        }
-        finalizeRunStatsAndShowSummary();
-    }
-
-    document.addEventListener("keydown", (event) => {
-        if (!running || isResumingCountdown) return;
-        const k = event.key.toLowerCase();
-        if (k === "d") {
-            event.preventDefault();
-            if (isPaused) { playSynthEffect("click"); resumeGame(); }
-            else if (pauseCooldownRemainingMs <= 0) { playSynthEffect("click"); pauseGame(); }
-        }
-    });
-
-    window.ttCoreBridge = {
-        playXpSound: () => playSynthEffect("xpclaim"),
-        playClick: () => playSynthEffect("click"),
-        playNewRecord: () => playSynthEffect("newrecord"),
-        speak: (txt) => speakEnglish(txt, 1.08, 1.15),
-        fireworks: (container) => launchFireworksShow(container),
-        syncCloudNow: () => syncPlayerToCloud(playerUsername),
-        setPlayerUsername: (newName, oldName = "") => {
-            playerUsername = newName;
-            localStorage.setItem("timeTapUsername", playerUsername);
+if (!btn.parentNode || !running || isPaused) return;
+const action = btn.dataset.action;
+const rect = btn.getBoundingClientRect();
+const centerX = rect.left + rect.width / 2;
+const centerY = rect.top + rect.height / 2;
+if (action === "green") {
+const wasCritical = time <= 0.6 && !isFrozen;
+const value = Number(btn.dataset.value);
+const addedTime = doubleBonus ? value * 2 : value;
+const rawNextTime = Number((time + addedTime).toFixed(3));
+if (rawNextTime >= MAX_TIME) {
+time = MAX_TIME;
+triggerMaxCapFeedback();
+} else {
+time = rawNextTime;
+}
+comboCount++;
+if (comboCount > maxComboRun) maxComboRun = comboCount;
+const basePoints = 100 + comboCount * 20;
+const earnedPoints = isDesktop ? Math.round(basePoints * 1.5) : basePoints;
+score += earnedPoints;
+if (window.ttProgressionEngine) {
+window.ttProgressionEngine.onGreenHit(score, comboCount);
+}
+if (timerCircle) {
+timerCircle.classList.remove("timer-bounce");
+void timerCircle.offsetWidth;
+timerCircle.classList.add("timer-bounce");
+}
+spawnTapRipple(centerX, centerY, doubleBonus ? "#fde047" : "#4ade80");
+spawnStars(centerX, centerY, "green");
+spawnFloatingText(
+centerX,
+centerY,
+(doubleBonus ? "2X +" : "+") + earnedPoints,
+doubleBonus ? "#facc15" : "#4ade80"
+);
+if (comboCount > 0 && comboCount % 180 === 0) {
+const mult = Math.floor(comboCount / 180);
+playSynthEffect("explosion180");
+speakEnglish("Combo " + comboCount + " times " + mult + "!", 1.1, 1.18);
+} else if (comboCount === 101) {
+playSynthEffect("newrecord");
+showMessage("+10% XP BONUS!", "Ten percent X P bonus!");
+} else if (comboCount === 201) {
+playSynthEffect("newrecord");
+showMessage("+20% XP BONUS!", "Twenty percent X P bonus!");
+} else if (comboCount > 0 && comboCount % 80 === 0) {
+overdriveRemainingMs = 6000;
+feverNoteStep = 0;
+playFeverRushBeat();
+showMessage("FEVER x" + comboCount + "!", "Fever mode!");
+} else if (wasCritical) {
+triggerScreenShake();
+playSynthEffect("epic");
+showMessage("EPIC SAVE!", "Epic save!");
+} else {
+playSynthEffect("green");
+checkComboMessages();
+}
+} else if (action === "red") {
+triggerScreenShake();
+playSynthEffect("red");
+const value = Number(btn.dataset.value);
+time = Number((time - value).toFixed(3));
+comboCount = 0;
+overdriveRemainingMs = 0;
+spawnTapRipple(centerX, centerY, "#ef4444");
+spawnFloatingText(centerX, centerY, "-" + value.toFixed(1) + "s", "#f87171");
+if (time <= 0) {
+time = 0;
+timerCircle.textContent = "0.0";
+removeButton(btn);
+gameOver();
+return;
+}
+} else if (action === "ice") {
+playSynthEffect("ice");
+isFrozen = true;
+freezeRemainingMs = isDesktop ? 1700 : 1000;
+updateTimerVisuals();
+spawnTapRipple(centerX, centerY, "#38bdf8");
+spawnStars(centerX, centerY, "ice");
+spawnFloatingText(centerX, centerY, isDesktop ? "FREEZE 1.7s!" : "FREEZE 1s!", "#7dd3fc");
+showMessage("FREEZE!", "Freeze!");
+} else if (action === "clock") {
+playSynthEffect("clock");
+isSlowMo = true;
+slowMoRemainingMs = isDesktop ? 2550 : 1500;
+updateTimerVisuals();
+spawnTapRipple(centerX, centerY, "#c084fc");
+spawnStars(centerX, centerY, "clock");
+spawnFloatingText(centerX, centerY, isDesktop ? "SLOW 2.55s!" : "SLOW 1.5s!", "#e9d5ff");
+showMessage("SLOW TIME!", "Slow time!");
+} else if (action === "bomb") {
+triggerScreenShake();
+playSynthEffect("bomb");
+spawnTapRipple(centerX, centerY, "#ef4444");
+spawnStars(centerX, centerY, "bomb");
+spawnFloatingText(centerX, centerY, "BOOM!", "#ef4444");
+time = 0;
+timerCircle.textContent = "0.0";
+removeButton(btn);
+gameOver();
+return;
+} else if (action === "gold") {
+playSynthEffect("gold");
+doubleBonus = true;
+doubleBonusRemainingMs = isDesktop ? 1700 : 1000;
+spawnTapRipple(centerX, centerY, "#fde047");
+spawnStars(centerX, centerY, "gold");
+spawnFloatingText(centerX, centerY, isDesktop ? "2X TIME 1.7s!" : "2X TIME 1s!", "#facc15");
+showMessage("2X TIME!", "Double time!");
+}
+timerCircle.textContent = time.toFixed(1);
+scoreText.textContent = "SCORE: " + fmtNum(score);
+comboText.textContent = "COMBO " + comboCount;
+comboText.classList.toggle("combo-fire", comboCount >= 10);
+updateTimerVisuals();
+removeButton(btn);
+}
+function checkComboMessages() {
+if (comboCount === 5) { playSynthEffect("milestone"); showMessage("GREAT!", "Great!"); }
+else if (comboCount === 10) { playSynthEffect("milestone"); showMessage("FANTASTIC!", "Fantastic!"); }
+else if (comboCount === 15) { playSynthEffect("milestone"); showMessage("AMAZING!", "Amazing!"); }
+else if (comboCount === 20) { playSynthEffect("milestone"); showMessage("UNBELIEVABLE!", "Unbelievable!"); }
+else if (comboCount > 0 && comboCount % 25 === 0 && comboCount % 80 !== 0) {
+playSynthEffect("milestone");
+showMessage("LEGENDARY!", "Legendary!");
+}
+}
+function showMessage(text, spokenText = "") {
+clearTimeout(messageTimeout);
+specialMessage.textContent = text;
+specialMessage.style.display = "none";
+void specialMessage.offsetWidth;
+specialMessage.style.display = "block";
+if (spokenText) speakEnglish(spokenText, 1.08, 1.12);
+messageTimeout = setTimeout(() => {
+specialMessage.style.display = "none";
+}, 1100);
+}
+function removeButton(btn) {
+if (!btn) return;
+const oldX = parseFloat(btn.style.left);
+const oldY = parseFloat(btn.style.top);
+const isPos = ["green", "gold", "ice", "clock"].includes(btn.dataset.action);
+const cat = isPos ? "green" : "red";
+const size = btn.offsetWidth || (isDesktop ? (isPos ? 175 : 145) : 108);
+if (!Number.isNaN(oldX) && !Number.isNaN(oldY)) {
+const removedPos = {
+x: oldX,
+y: oldY,
+cx: oldX + size / 2,
+cy: oldY + size / 2,
+category: cat
+};
+lastPosByCategory[cat] = removedPos;
+lastAnySpawnPos = removedPos;
+recentSpawnCoords.push(removedPos);
+if (recentSpawnCoords.length > 10) recentSpawnCoords.shift();
+}
+const index = activeButtons.indexOf(btn);
+if (index > -1) activeButtons.splice(index, 1);
+if (btn.parentNode) btn.remove();
+if (running) {
+createButton(getNextBalancedCategory());
+}
+}
+function animateScoreCounter(element, targetValue, onComplete) {
+let current = 0;
+const steps = 35;
+const increment = targetValue / steps;
+const counter = setInterval(() => {
+current += increment;
+if (current >= targetValue) {
+current = targetValue;
+clearInterval(counter);
+element.textContent = fmtNum(Math.round(current));
+if (onComplete) onComplete();
+} else {
+element.textContent = fmtNum(Math.round(current));
+}
+}, 25);
+}
+function gameOver() {
+if (!running) return;
+running = false;
+isPaused = false;
+isResumingCountdown = false;
+isFrozen = false;
+isSlowMo = false;
+doubleBonus = false;
+overdriveRemainingMs = 0;
+pauseCooldownRemainingMs = 0;
+updatePauseButtonUI();
+clearSavedPausedState();
+clearInterval(gameLoopInterval);
+timerCircle.classList.remove("timer-panic", "timer-frozen", "timer-slowmo", "timer-max-cap");
+game.classList.remove("slowmo-active", "overdrive-active");
+while (activeButtons.length > 0) {
+const firstBtn = activeButtons.shift();
+if (firstBtn && firstBtn.parentNode) firstBtn.remove();
+}
+finalizeRunStatsAndShowSummary();
+}
+document.addEventListener("keydown", (event) => {
+if (!running || isResumingCountdown) return;
+const k = event.key.toLowerCase();
+if (k === "d") {
+event.preventDefault();
+if (isPaused) { playSynthEffect("click"); resumeGame(); }
+else if (pauseCooldownRemainingMs <= 0) { playSynthEffect("click"); pauseGame(); }
+}
+});
+window.ttCoreBridge = {
+playXpSound: () => playSynthEffect("xpclaim"),
+playClick: () => playSynthEffect("click"),
+playNewRecord: () => playSynthEffect("newrecord"),
+speak: (txt) => speakEnglish(txt, 1.08, 1.15),
+fireworks: (container) => launchFireworksShow(container),
+syncCloudNow: () => syncPlayerToCloud(playerUsername),
+setPlayerUsername: (newName, oldName = "") => {
+playerUsername = newName;
+localStorage.setItem("timeTapUsername", playerUsername);
 refreshAllProfileAndRankUI();
 syncPlayerToCloud(playerUsername, oldName);
 },
@@ -2141,7 +2173,7 @@ const after = calculateTotalXP();
 if (xpEarnedBadge) {
 xpEarnedBadge.textContent = "+" + fmtNum(lastRunBaseEarnedXP + extraXP) + " XP (BOOSTED!)";
 }
-const { currentTier: tAfter, nextTier: nAfter } = getCurrentAndNextTier(after);
+const { nextTier: nAfter } = getCurrentAndNextTier(after);
 if (goXpProgressText) {
 goXpProgressText.textContent = nAfter
 ? fmtNum(after) + " / " + fmtNum(nAfter.xpRequired) + " XP"
@@ -2208,7 +2240,7 @@ enterHomeScreen();
 runStartupSequence();
 }
 (function initTimeTapProgressionV2() {
-const SUPABASE_URL = "supabase.co";
+const SUPABASE_URL = "https://jnhkktvtxbsfbrafsnig.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaGtrdHZ0eGJzZmJyYWZzbmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NTMzNjAsImV4cCI6MjExMTAyOTM2MH0.xRde38jj8K1cBpbXIIDyc14OMSsjRVUMkqTEvwDq2Tw";
 const STATE_KEY = "timeTapProgressionState_v3";
 const MAX_ITEM_STACK = 10;
@@ -2398,249 +2430,250 @@ if (n >= 1000) return Math.round(n / 1000) + "K";
 return String(n);
 }
 function getMissionsCatalog(state) {
-const wGamesTarget = scaleMissionTarget(40);
-const wScoreMin = scaleMissionTarget(800000);
-const g50 = scaleMissionTarget(50);
-const c150 = scaleMissionTarget(150);
-const s250k = scaleMissionTarget(250000);
-const tot3m = scaleMissionTarget(3000000);
-const g150 = scaleMissionTarget(150);
-const c250 = scaleMissionTarget(250);
-const s600k = scaleMissionTarget(600000);
-const tot10m = scaleMissionTarget(10000000);
-const g300 = scaleMissionTarget(300);
-const c360 = scaleMissionTarget(360);
-const s1m = scaleMissionTarget(1000000);
-const tot25m = scaleMissionTarget(25000000);
-const c540 = scaleMissionTarget(540);
-const g500 = scaleMissionTarget(500);
-const s1_5m = scaleMissionTarget(1500000);
-const c720 = scaleMissionTarget(720);
-const tot50m = scaleMissionTarget(50000000);
-const s2_2m = scaleMissionTarget(2200000);
-const c900 = scaleMissionTarget(900);
-const g800 = scaleMissionTarget(800);
-return [
-{
-id: "w_40_games",
-type: "WEEKLY",
-title: t("CAMPIONE SETTIMANALE", "WEEKLY CHAMPION"),
-desc: t("Gioca " + wGamesTarget + " partite ognuna da almeno " + fmtShortK(wScoreMin) + " punti", "Play " + wGamesTarget + " games with at least " + fmtShortK(wScoreMin) + " points each"),
-progress: state.weekly800kGames || 0,
-target: wGamesTarget,
-rewardType: "xp_and_chest",
-rewardAmount: 500000,
-chestCount: 1,
-rewardLabel: t("+500K XP & 1 CASSA", "+500K XP & 1 CHEST")
-},
-{
-id: "m_games_50",
-type: "MONTHLY",
-title: t("RISCALDAMENTO", "WARM UP"),
-desc: t("Gioca " + g50 + " partite questo mese", "Play " + g50 + " games this month"),
-progress: state.monthlyGames,
-target: g50,
-rewardType: "xp",
-rewardAmount: 75000,
-chestCount: 0,
-rewardLabel: "+75.000 XP"
-},
-{
-id: "m_combo_150",
-type: "MONTHLY",
-title: t("MANO FERMA", "STEADY HAND"),
-desc: t("Raggiungi Combo " + c150 + " in una partita", "Reach " + c150 + " Combo in one run"),
-progress: state.monthlyBestCombo,
-target: c150,
-rewardType: "xp",
-rewardAmount: 100000,
-chestCount: 0,
-rewardLabel: "+100.000 XP"
-},
-{
-id: "m_score_250k",
-type: "MONTHLY",
-title: t("SCALATORE", "CLIMBER"),
-desc: t("Fai " + s250k.toLocaleString("it-IT") + " punti in una partita", "Score " + s250k.toLocaleString("en-US") + " points in one run"),
-progress: state.monthlyBestScore,
-target: s250k,
-rewardType: "xp",
-rewardAmount: 120000,
-chestCount: 0,
-rewardLabel: "+120.000 XP"
-},
-{
-id: "m_total_3m",
-type: "MONTHLY",
-title: t("ACCUMULATORE", "ACCUMULATOR"),
-desc: t("Accumula " + tot3m.toLocaleString("it-IT") + " punti nel mese", "Accumulate " + tot3m.toLocaleString("en-US") + " score this month"),
-progress: state.monthlyTotalScore,
-target: tot3m,
-rewardType: "xp",
-rewardAmount: 150000,
-chestCount: 0,
-rewardLabel: "+150.000 XP"
-},
-{
-id: "m_games_150",
-type: "MONTHLY",
-title: t("GIOCATORE ASSIDUO", "DEDICATED PLAYER"),
-desc: t("Gioca " + g150 + " partite questo mese", "Play " + g150 + " games this month"),
-progress: state.monthlyGames,
-target: g150,
-rewardType: "xp",
-rewardAmount: 200000,
-chestCount: 0,
-rewardLabel: "+200.000 XP"
-},
-{
-id: "m_combo_250",
-type: "MONTHLY",
-title: t("RITMO PERFETTO", "PERFECT RHYTHM"),
-desc: t("Raggiungi Combo " + c250 + " in una partita", "Reach " + c250 + " Combo in one run"),
-progress: state.monthlyBestCombo,
-target: c250,
-rewardType: "xp",
-rewardAmount: 250000,
-chestCount: 0,
-rewardLabel: "+250.000 XP"
-},
-{
-id: "m_score_600k",
-type: "MONTHLY",
-title: t("CECCHINO VELOCE", "SPEED SNIPER"),
-desc: t("Fai " + s600k.toLocaleString("it-IT") + " punti in una partita", "Score " + s600k.toLocaleString("en-US") + " points in one run"),
-progress: state.monthlyBestScore,
-target: s600k,
-rewardType: "xp",
-rewardAmount: 300000,
-chestCount: 0,
-rewardLabel: "+300.000 XP"
-},
-{
-id: "m_total_10m",
-type: "MONTHLY",
-title: t("BANCHIERE D'ORO", "GOLD BANKER"),
-desc: t("Accumula " + tot10m.toLocaleString("it-IT") + " punti nel mese", "Accumulate " + tot10m.toLocaleString("en-US") + " score this month"),
-progress: state.monthlyTotalScore,
-target: tot10m,
-rewardType: "xp",
-rewardAmount: 400000,
-chestCount: 0,
-rewardLabel: "+400.000 XP"
-},
-{
-id: "m_games_300",
-type: "MONTHLY",
-title: t("INSTANCABILE", "RELENTLESS"),
-desc: t("Gioca " + g300 + " partite questo mese", "Play " + g300 + " games this month"),
-progress: state.monthlyGames,
-target: g300,
-rewardType: "chest",
-rewardAmount: 0,
-chestCount: 1,
-rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
-},
-{
-id: "m_combo_360",
-type: "MONTHLY",
-title: t("DOPPIA ESPLOSIONE", "DOUBLE EXPLOSION"),
-desc: t("Raggiungi Combo " + c360 + " in una partita", "Reach " + c360 + " Combo in one run"),
-progress: state.monthlyBestCombo,
-target: c360,
-rewardType: "xp",
-rewardAmount: 500000,
-chestCount: 0,
-rewardLabel: "+500.000 XP"
-},
-{
-id: "m_score_1m",
-type: "MONTHLY",
-title: t("MILIONARIO SINGOLO", "SINGLE MILLIONAIRE"),
-desc: t("Fai " + s1m.toLocaleString("it-IT") + " punti in una partita", "Score " + s1m.toLocaleString("en-US") + " points in one run"),
-progress: state.monthlyBestScore,
-target: s1m,
-rewardType: "chest",
-rewardAmount: 0,
-chestCount: 1,
-rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
-},
-{
-id: "m_total_25m",
-type: "MONTHLY",
-title: t("IMPERO DI PUNTI", "SCORE EMPIRE"),
-desc: t("Accumula " + tot25m.toLocaleString("it-IT") + " punti nel mese", "Accumulate " + tot25m.toLocaleString("en-US") + " score this month"),
-progress: state.monthlyTotalScore,
-target: tot25m,
-rewardType: "xp",
-rewardAmount: 700000,
-chestCount: 0,
-rewardLabel: "+700.000 XP"
-},
-{
-id: "m_combo_540",
-type: "MONTHLY",
-title: t("RIFLESSI SUPERNOVA", "SUPERNOVA REFLEXES"),
-desc: t("Raggiungi Combo " + c540 + " (3x Esplosione!)", "Reach " + c540 + " Combo (3x Explosion!)"),
-progress: state.monthlyBestCombo,
-target: c540,
-rewardType: "chest",
-rewardAmount: 0,
-chestCount: 1,
-rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
-},
-{
-id: "m_games_500",
-type: "MONTHLY",
-title: t("MARATONA D'ACCIAIO", "STEEL MARATHON"),
-desc: t("Gioca " + g500 + " partite questo mese", "Play " + g500 + " games this month"),
-progress: state.monthlyGames,
-target: g500,
-rewardType: "xp",
-rewardAmount: 900000,
-chestCount: 0,
-rewardLabel: "+900.000 XP"
-},
-{
-id: "m_score_1_5m",
-type: "MONTHLY",
-title: t("LEGGENDA VIVENTE", "LIVING LEGEND"),
-desc: t("Fai " + s1_5m.toLocaleString("it-IT") + " punti in una partita", "Score " + s1_5m.toLocaleString("en-US") + " points in one run"),
-progress: state.monthlyBestScore,
-target: s1_5m,
-rewardType: "xp_and_chest",
-rewardAmount: 500000,
-chestCount: 1,
-rewardLabel: t("+500K XP & 1 CASSA", "+500K XP & 1 CHEST")
-},
-{
-id: "m_combo_720",
-type: "MONTHLY",
-title: t("FURIA QUADRUPLE", "QUADRUPLE FURY"),
-desc: t("Raggiungi Combo " + c720 + " (4x Esplosione!)", "Reach " + c720 + " Combo (4x Explosion!)"),
-progress: state.monthlyBestCombo,
-target: c720,
-rewardType: "chest",
-rewardAmount: 0,
-chestCount: 1,
-rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
-},
-{
-id: "m_total_50m",
-type: "MONTHLY",
-title: t("MAGNATE SUPREMO", "SUPREME TYCOON"),
-desc: t("Accumula " + tot50m.toLocaleString("it-IT") + " punti nel mese", "Accumulate " + tot50m.toLocaleString("en-US") + " score this month"),
-progress: state.monthlyTotalScore,
-target: tot50m,
-rewardType: "xp",
-rewardAmount: 1200000,
-chestCount: 0,
-rewardLabel: "+1.200.000 XP"
-},
-{
-id: "m_score_2_2m",
-type: "MONTHLY",
-title: t("DIVINITÀ DEL TEMPO", "TIME DEITY"),
+    const wGamesTarget = scaleMissionTarget(40);
+    const wScoreMin = scaleMissionTarget(800000);
+    const g50 = scaleMissionTarget(50);
+    const c150 = scaleMissionTarget(150);
+    const s250k = scaleMissionTarget(250000);
+    const tot3m = scaleMissionTarget(3000000);
+    const g150 = scaleMissionTarget(150);
+    const c250 = scaleMissionTarget(250);
+    const s600k = scaleMissionTarget(600000);
+    const tot10m = scaleMissionTarget(10000000);
+    const g300 = scaleMissionTarget(300);
+    const c360 = scaleMissionTarget(360);
+    const s1m = scaleMissionTarget(1000000);
+    const tot25m = scaleMissionTarget(25000000);
+    const c540 = scaleMissionTarget(540);
+    const g500 = scaleMissionTarget(500);
+    const s1_5m = scaleMissionTarget(1500000);
+    const c720 = scaleMissionTarget(720);
+    const tot50m = scaleMissionTarget(50000000);
+    const s2_2m = scaleMissionTarget(2200000);
+    const c900 = scaleMissionTarget(900);
+    const g800 = scaleMissionTarget(800);
+
+    return [
+        {
+            id: "w_40_games",
+            type: "WEEKLY",
+            title: t("CAMPIONE SETTIMANALE", "WEEKLY CHAMPION"),
+            desc: t("Gioca " + wGamesTarget + " partite ognuna da almeno " + fmtShortK(wScoreMin) + " punti", "Play " + wGamesTarget + " games with at least " + fmtShortK(wScoreMin) + " points each"),
+            progress: state.weekly800kGames || 0,
+            target: wGamesTarget,
+            rewardType: "xp_and_chest",
+            rewardAmount: 500000,
+            chestCount: 1,
+            rewardLabel: t("+500K XP & 1 CASSA", "+500K XP & 1 CHEST")
+        },
+        {
+            id: "m_games_50",
+            type: "MONTHLY",
+            title: t("RISCALDAMENTO", "WARM UP"),
+            desc: t("Gioca " + g50 + " partite questo mese", "Play " + g50 + " games this month"),
+            progress: state.monthlyGames,
+            target: g50,
+            rewardType: "xp",
+            rewardAmount: 75000,
+            chestCount: 0,
+            rewardLabel: "+75.000 XP"
+        },
+        {
+            id: "m_combo_150",
+            type: "MONTHLY",
+            title: t("MANO FERMA", "STEADY HAND"),
+            desc: t("Raggiungi Combo " + c150 + " in una partita", "Reach " + c150 + " Combo in one run"),
+            progress: state.monthlyBestCombo,
+            target: c150,
+            rewardType: "xp",
+            rewardAmount: 100000,
+            chestCount: 0,
+            rewardLabel: "+100.000 XP"
+        },
+        {
+            id: "m_score_250k",
+            type: "MONTHLY",
+            title: t("SCALATORE", "CLIMBER"),
+            desc: t("Fai " + s250k.toLocaleString("it-IT") + " punti in una partita", "Score " + s250k.toLocaleString("en-US") + " points in one run"),
+            progress: state.monthlyBestScore,
+            target: s250k,
+            rewardType: "xp",
+            rewardAmount: 120000,
+            chestCount: 0,
+            rewardLabel: "+120.000 XP"
+        },
+        {
+            id: "m_total_3m",
+            type: "MONTHLY",
+            title: t("ACCUMULATORE", "ACCUMULATOR"),
+            desc: t("Accumula " + tot3m.toLocaleString("it-IT") + " punti nel mese", "Accumulate " + tot3m.toLocaleString("en-US") + " score this month"),
+            progress: state.monthlyTotalScore,
+            target: tot3m,
+            rewardType: "xp",
+            rewardAmount: 150000,
+            chestCount: 0,
+            rewardLabel: "+150.000 XP"
+        },
+        {
+            id: "m_games_150",
+            type: "MONTHLY",
+            title: t("GIOCATORE ASSIDUO", "DEDICATED PLAYER"),
+            desc: t("Gioca " + g150 + " partite questo mese", "Play " + g150 + " games this month"),
+            progress: state.monthlyGames,
+            target: g150,
+            rewardType: "xp",
+            rewardAmount: 200000,
+            chestCount: 0,
+            rewardLabel: "+200.000 XP"
+        },
+        {
+            id: "m_combo_250",
+            type: "MONTHLY",
+            title: t("RITMO PERFETTO", "PERFECT RHYTHM"),
+            desc: t("Raggiungi Combo " + c250 + " in una partita", "Reach " + c250 + " Combo in one run"),
+            progress: state.monthlyBestCombo,
+            target: c250,
+            rewardType: "xp",
+            rewardAmount: 250000,
+            chestCount: 0,
+            rewardLabel: "+250.000 XP"
+        },
+        {
+            id: "m_score_600k",
+            type: "MONTHLY",
+            title: t("CECCHINO VELOCE", "SPEED SNIPER"),
+            desc: t("Fai " + s600k.toLocaleString("it-IT") + " punti in una partita", "Score " + s600k.toLocaleString("en-US") + " points in one run"),
+            progress: state.monthlyBestScore,
+            target: s600k,
+            rewardType: "xp",
+            rewardAmount: 300000,
+            chestCount: 0,
+            rewardLabel: "+300.000 XP"
+        },
+        {
+            id: "m_total_10m",
+            type: "MONTHLY",
+            title: t("BANCHIERE D'ORO", "GOLD BANKER"),
+            desc: t("Accumula " + tot10m.toLocaleString("it-IT") + " punti nel mese", "Accumulate " + tot10m.toLocaleString("en-US") + " score this month"),
+            progress: state.monthlyTotalScore,
+            target: tot10m,
+            rewardType: "xp",
+            rewardAmount: 400000,
+            chestCount: 0,
+            rewardLabel: "+400.000 XP"
+        },
+        {
+            id: "m_games_300",
+            type: "MONTHLY",
+            title: t("INSTANCABILE", "RELENTLESS"),
+            desc: t("Gioca " + g300 + " partite questo mese", "Play " + g300 + " games this month"),
+            progress: state.monthlyGames,
+            target: g300,
+            rewardType: "chest",
+            rewardAmount: 0,
+            chestCount: 1,
+            rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
+        },
+        {
+            id: "m_combo_360",
+            type: "MONTHLY",
+            title: t("DOPPIA ESPLOSIONE", "DOUBLE EXPLOSION"),
+            desc: t("Raggiungi Combo " + c360 + " in una partita", "Reach " + c360 + " Combo in one run"),
+            progress: state.monthlyBestCombo,
+            target: c360,
+            rewardType: "xp",
+            rewardAmount: 500000,
+            chestCount: 0,
+            rewardLabel: "+500.000 XP"
+        },
+        {
+            id: "m_score_1m",
+            type: "MONTHLY",
+            title: t("MILIONARIO SINGOLO", "SINGLE MILLIONAIRE"),
+            desc: t("Fai " + s1m.toLocaleString("it-IT") + " punti in una partita", "Score " + s1m.toLocaleString("en-US") + " points in one run"),
+            progress: state.monthlyBestScore,
+            target: s1m,
+            rewardType: "chest",
+            rewardAmount: 0,
+            chestCount: 1,
+            rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
+        },
+        {
+            id: "m_total_25m",
+            type: "MONTHLY",
+            title: t("IMPERO DI PUNTI", "SCORE EMPIRE"),
+            desc: t("Accumula " + tot25m.toLocaleString("it-IT") + " punti nel mese", "Accumulate " + tot25m.toLocaleString("en-US") + " score this month"),
+            progress: state.monthlyTotalScore,
+            target: tot25m,
+            rewardType: "xp",
+            rewardAmount: 700000,
+            chestCount: 0,
+            rewardLabel: "+700.000 XP"
+        },
+        {
+            id: "m_combo_540",
+            type: "MONTHLY",
+            title: t("RIFLESSI SUPERNOVA", "SUPERNOVA REFLEXES"),
+            desc: t("Raggiungi Combo " + c540 + " (3x Esplosione!)", "Reach " + c540 + " Combo (3x Explosion!)"),
+            progress: state.monthlyBestCombo,
+            target: c540,
+            rewardType: "chest",
+            rewardAmount: 0,
+            chestCount: 1,
+            rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
+        },
+        {
+            id: "m_games_500",
+            type: "MONTHLY",
+            title: t("MARATONA D'ACCIAIO", "STEEL MARATHON"),
+            desc: t("Gioca " + g500 + " partite questo mese", "Play " + g500 + " games this month"),
+            progress: state.monthlyGames,
+            target: g500,
+            rewardType: "xp",
+            rewardAmount: 900000,
+            chestCount: 0,
+            rewardLabel: "+900.000 XP"
+        },
+        {
+            id: "m_score_1_5m",
+            type: "MONTHLY",
+            title: t("LEGGENDA VIVENTE", "LIVING LEGEND"),
+            desc: t("Fai " + s1_5m.toLocaleString("it-IT") + " punti in una partita", "Score " + s1_5m.toLocaleString("en-US") + " points in one run"),
+            progress: state.monthlyBestScore,
+            target: s1_5m,
+            rewardType: "xp_and_chest",
+            rewardAmount: 500000,
+            chestCount: 1,
+            rewardLabel: t("+500K XP & 1 CASSA", "+500K XP & 1 CHEST")
+        },
+        {
+            id: "m_combo_720",
+            type: "MONTHLY",
+            title: t("FURIA QUADRUPLE", "QUADRUPLE FURY"),
+            desc: t("Raggiungi Combo " + c720 + " (4x Esplosione!)", "Reach " + c720 + " Combo (4x Explosion!)"),
+            progress: state.monthlyBestCombo,
+            target: c720,
+            rewardType: "chest",
+            rewardAmount: 0,
+            chestCount: 1,
+            rewardLabel: t("1 CASSA SFARZOSA", "1 LUXURY CHEST")
+        },
+        {
+            id: "m_total_50m",
+            type: "MONTHLY",
+            title: t("MAGNATE SUPREMO", "SUPREME TYCOON"),
+            desc: t("Accumula " + tot50m.toLocaleString("it-IT") + " punti nel mese", "Accumulate " + tot50m.toLocaleString("en-US") + " score this month"),
+            progress: state.monthlyTotalScore,
+            target: tot50m,
+            rewardType: "xp",
+            rewardAmount: 1200000,
+            chestCount: 0,
+            rewardLabel: "+1.200.000 XP"
+        },
+        {
+            id: "m_score_2_2m",
+            type: "MONTHLY",
+            title: t("DIVINITÀ DEL TEMPO", "TIME DEITY"),
 desc: t("Fai " + s2_2m.toLocaleString("it-IT") + " punti in una partita", "Score " + s2_2m.toLocaleString("en-US") + " points in one run"),
 progress: state.monthlyBestScore,
 target: s2_2m,
@@ -3411,8 +3444,9 @@ setTimeout(() => { if (toast.parentNode) toast.remove(); }, 2600);
 function findNextRivalAbove(list, field, currentVal) {
 for (let i = list.length - 1; i >= 0; i--) {
 const val = Number(list[i][field] || 0);
-if (val > currentVal) return { username: list[i].username, value:
-val, diff: val - currentVal };
+if (val > currentVal) {
+return { username: list[i].username, value: val, diff: val - currentVal };
+}
 }
 return null;
 }
@@ -3570,6 +3604,7 @@ document.addEventListener("DOMContentLoaded", initTimeTapGame);
 } else {
 initTimeTapGame();
 }
+
 
 
    
