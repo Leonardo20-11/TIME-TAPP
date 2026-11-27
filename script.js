@@ -2,7 +2,7 @@ function initTimeTapGame() {
     const SUPABASE_URL ="https://jnhkktvtxbsfbrafsnig.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaGtrdHZ0eGJzZmJyYWZzbmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NTMzNjAsImV4cCI6MjExMTAyOTM2MH0.xRde38jj8K1cBpbXIIDyc14OMSsjRVUMkqTEvwDq2Tw";
 
-const onboardingScreen = document.getElementById("onboardingScreen");
+ const onboardingScreen = document.getElementById("onboardingScreen");
     const usernameInput = document.getElementById("usernameInput");
     const onboardingErrorMsg = document.getElementById("onboardingErrorMsg");
     const saveProfileBtn = document.getElementById("saveProfileBtn");
@@ -105,7 +105,7 @@ const onboardingScreen = document.getElementById("onboardingScreen");
     const RING_CIRCUMFERENCE = 427.25;
     const BTN_RING_CIRCUMFERENCE = 314;
     const MAX_LEVEL = 100;
-    const MAX_XP = 100000000;
+    const MAX_XP = 250000000;
     const PAUSE_COOLDOWN_MS = 5000;
 
     const isDesktop = window.innerWidth >= 768;
@@ -213,7 +213,7 @@ const onboardingScreen = document.getElementById("onboardingScreen");
     }
 
     function sanitizeUsernameKey(name) {
-        return name.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "");
+        return name.trim().replace(/\s+/g, " ").slice(0, 24);
     }
 
     function generateProBaseUsername() {
@@ -224,7 +224,7 @@ const onboardingScreen = document.getElementById("onboardingScreen");
         ];
         const suffixes = [
             "VIPER", "STRIKER", "HUNTER", "BLADE", "FALCON", "WOLF", "KNIGHT", "PULSE",
-"GHOST", "HAWK", "RANGER", "SPARK", "DRIFT", "CORE", "REAPER", "RAVEN",
+            "GHOST", "HAWK", "RANGER", "SPARK", "DRIFT", "CORE", "REAPER", "RAVEN",
 "SPECTRE", "SHIELD", "LANCE", "SURGE", "SNIPER", "PILOT", "SHARD", "BOLT"
 ];
 const p = prefixes[Math.floor(Math.random() * prefixes.length)];
@@ -502,9 +502,9 @@ leaderboardModal.style.display = "none";
 });
 }
 function calculateTotalXP() {
-const xpFromGames = gamesPlayed * 2000;
-const xpFromRecord = Math.floor(record * 0.1);
-const xpFromScore = Math.floor(totalScoreAccumulated * 0.04);
+const xpFromGames = gamesPlayed * 600;
+const xpFromRecord = Math.floor(record * 0.03);
+const xpFromScore = Math.floor(totalScoreAccumulated * 0.012);
 return Math.min(MAX_XP, xpFromGames + xpFromRecord + xpFromScore + storedBonusXP);
 }
 function getCurrentAndNextTier(currentXP) {
@@ -627,6 +627,15 @@ playSynthEffect("click");
 hideErrorBox(editUsernameErrorMsg);
 if (newUsernameInput) newUsernameInput.value = playerUsername;
 editUsernameBox.style.display = "flex";
+if (window.ttProgressionEngine && window.ttProgressionEngine.attachEmojiPicker) {
+let emojiBar = document.getElementById("profileEmojiInsertBar");
+if (!emojiBar) {
+emojiBar = document.createElement("div");
+emojiBar.id = "profileEmojiInsertBar";
+editUsernameBox.insertBefore(emojiBar, editUsernameBox.querySelector(".edit-username-actions"));
+}
+window.ttProgressionEngine.attachEmojiPicker(emojiBar, newUsernameInput);
+}
 if (newUsernameInput) newUsernameInput.focus();
 });
 }
@@ -797,6 +806,18 @@ settingsModal.style.display = "none";
 });
 }
 const activeButtons = [];
+const recentSpawnCoords = [];
+const SPAWN_PATTERN = ["green", "red", "green", "green", "red"];
+let spawnPatternIndex = 0;
+function getNextBalancedCategory() {
+const greenSlots = activeButtons.filter(b => ["green", "gold", "ice", "clock"].includes(b.dataset.action)).length;
+const redSlots = activeButtons.filter(b => ["red", "bomb"].includes(b.dataset.action)).length;
+if (greenSlots >= 3) return "red";
+if (redSlots >= 2) return "green";
+const nextCat = SPAWN_PATTERN[spawnPatternIndex % SPAWN_PATTERN.length];
+spawnPatternIndex++;
+return nextCat;
+}
 const arrows = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
 let baseButtonDuration = isDesktop ? 1850 : 1350;
 let baseSpawnDelay = isDesktop ? 210 : 220;
@@ -1059,6 +1080,7 @@ function pauseGame() {
 if (!running || isPaused || isResumingCountdown || pauseCooldownRemainingMs > 0) return;
 isPaused = true;
 savePausedGameState();
+activeButtons.forEach(b => { b.style.visibility = "hidden"; });
 if (pauseOverlay) pauseOverlay.style.display = "flex";
 }
 function runResumeCountdown(onComplete) {
@@ -1085,6 +1107,7 @@ function resumeGame() {
 if (!isPaused || isResumingCountdown) return;
 runResumeCountdown(() => {
 isPaused = false;
+activeButtons.forEach(b => { b.style.visibility = "visible"; });
 clearSavedPausedState();
 pauseCooldownRemainingMs = PAUSE_COOLDOWN_MS;
 updatePauseButtonUI();
@@ -1107,249 +1130,241 @@ startGame(true);
 });
 }
 function finalizeRunStatsAndShowSummary() {
-        const xpBeforeRun = calculateTotalXP();
-        const isNewBest = score > record && score > 0;
-        const pcMultiplier = isDesktop ? 1.25 : 1.0;
-        let comboBonusPct = 0;
-        if (maxComboRun > 200) comboBonusPct = 20;
-        else if (maxComboRun > 100) comboBonusPct = 10;
-        gamesPlayed++;
-        totalScoreAccumulated += score;
-        if (isNewBest) {
-            record = score;
-            localStorage.setItem("record", record);
-        }
-        const baseRunXP = 2000 + Math.floor(score * 0.1) + (isNewBest ? 1500 : 0);
-        const withPcXP = Math.floor(baseRunXP * pcMultiplier);
-        const comboBonusXP = Math.floor(withPcXP * (comboBonusPct / 100));
-        const finalRunXP = withPcXP + comboBonusXP;
-        const diffPart = isNewBest ? Math.floor((score - record) * 0.1) : 0;
-        const naturalFormulaDiff = 2000 + Math.floor(score * 0.04) + diffPart;
-        const extraToStore = Math.max(0, finalRunXP - Math.max(0, naturalFormulaDiff));
-        storedBonusXP += extraToStore;
-        localStorage.setItem("gamesPlayed", gamesPlayed);
-        localStorage.setItem("totalScoreAccumulated", totalScoreAccumulated);
-        localStorage.setItem("storedBonusXP", storedBonusXP);
-        if (maxComboRun > bestCombo) {
-            bestCombo = maxComboRun;
-            localStorage.setItem("bestCombo", bestCombo);
-        }
-        const xpAfterRun = calculateTotalXP();
-        const earnedXP = Math.max(0, xpAfterRun - xpBeforeRun);
-        lastRunBaseEarnedXP = earnedXP;
-        runXpBoostApplied = false;
-        if (xpEarnedBadge) {
-            const comboLabel = comboBonusPct > 0 ? " + " + comboBonusPct + "% COMBO" : "";
-            xpEarnedBadge.textContent = "+" + fmtNum(earnedXP) + " XP" + comboLabel;
-        }
-        const { currentTier: tierAfter, nextTier: nextAfter } = getCurrentAndNextTier(xpAfterRun);
-        if (goRankFrom) goRankFrom.textContent = tierAfter.name;
-        if (goRankTo) goRankTo.textContent = nextAfter ? nextAfter.name : "MAX";
-        if (goXpProgressText) {
-            goXpProgressText.textContent = nextAfter
-                ? fmtNum(xpAfterRun) + " / " + fmtNum(nextAfter.xpRequired) + " XP"
-                : fmtNum(xpAfterRun) + " XP";
-        }
-        if (menu) menu.style.display = "none";
-        if (gameOverScreen) gameOverScreen.style.display = "flex";
-        finalScore.textContent = fmtNum(score);
-        finalCombo.textContent = fmtNum(maxComboRun);
-        if (goXpBarFill) {
-            const startPct = computeSegmentPercent(xpBeforeRun);
-            const endPct = computeSegmentPercent(xpAfterRun);
-            goXpBarFill.style.transition = "none";
-            goXpBarFill.style.width = startPct.toFixed(1) + "%";
-            requestAnimationFrame(() => {
-                goXpBarFill.style.transition = "width 1.15s cubic-bezier(0.22, 1, 0.36, 1)";
-                goXpBarFill.style.width = endPct.toFixed(1) + "%";
-            });
-        }
-        if (isNewBest) {
-            newRecordMessage.style.display = "block";
-            isAnimatingRecord = true;
-            playSynthEffect("newrecord");
-            speakEnglish("New record!", 1.05, 1.15);
-            finalRecord.textContent = "0";
-            animateScoreCounter(finalRecord, record, () => {
-                isAnimatingRecord = false;
-            });
-        } else {
-            newRecordMessage.style.display = "none";
-            playSynthEffect("gameover");
-            speakEnglish("Game over!", 0.95, 0.95);
-            finalRecord.textContent = fmtNum(record);
-        }
-        if (window.ttProgressionEngine) {
-            window.ttProgressionEngine.onRunEnd(score, maxComboRun, secondChanceUsed, earnedXP);
-        }
-        refreshAllProfileAndRankUI(xpBeforeRun);
-        setTimeout(() => syncPlayerToCloud(playerUsername), 400);
-    }
-
-    function returnToHome(keepPausedRun = false) {
-        const xpAtEnter = lastKnownXP;
-        if (keepPausedRun) savePausedGameState();
-        else clearSavedPausedState();
-        running = false;
-        isPaused = false;
-        isResumingCountdown = false;
-        isFrozen = false;
-        isSlowMo = false;
-        doubleBonus = false;
-        overdriveRemainingMs = 0;
-        pauseCooldownRemainingMs = 0;
-        secondChanceUsed = false;
-        updatePauseButtonUI();
-        clearInterval(gameLoopInterval);
-        while (activeButtons.length > 0) {
-            const b = activeButtons.shift();
-            if (b && b.parentNode) b.remove();
-        }
-        if (pauseOverlay) pauseOverlay.style.display = "none";
-        if (gameOverScreen) gameOverScreen.style.display = "none";
-        if (game) {
-            game.style.display = "none";
-            game.classList.remove("overdrive-active", "slowmo-active");
-        }
-        if (countdown) countdown.style.display = "none";
-        if (menu) menu.style.display = "flex";
-        time = baseTime;
-        score = 0;
-        comboCount = 0;
-        maxComboRun = 0;
-        normalSpawnsSinceLastSpecial = 8;
-        if (timerCircle) {
-            timerCircle.textContent = time.toFixed(1);
-            timerCircle.classList.remove("timer-panic", "timer-frozen", "timer-slowmo", "timer-max-cap");
-        }
-        if (scoreText) scoreText.textContent = "SCORE: 0";
-        if (comboText) {
-            comboText.textContent = "COMBO 0";
-            comboText.classList.remove("combo-fire");
-        }
-        refreshAllProfileAndRankUI(xpAtEnter);
-        checkAndTriggerRankUpCelebration();
-        startHomeSymphony();
-    }
-
-    if (pauseBtn) {
-        pauseBtn.addEventListener("click", () => {
-            playSynthEffect("click");
-            pauseGame();
-        });
-    }
-    if (resumeBtn) {
-        resumeBtn.addEventListener("click", () => {
-            playSynthEffect("click");
-            resumeGame();
-        });
-    }
-    if (quitToHomeBtn) {
-        quitToHomeBtn.addEventListener("click", () => {
-            playSynthEffect("click");
-            returnToHome(true);
-        });
-    }
-
-    window.addEventListener("beforeunload", () => {
-        if (running && isPaused) savePausedGameState();
-    });
-
-    document.addEventListener("visibilitychange", () => {
-        if (document.hidden) {
-            stopHomeSymphony();
-            if (audioCtx && audioCtx.state === "running") {
-                audioCtx.suspend().catch(() => {});
-            }
-            if ("speechSynthesis" in window) {
-                window.speechSynthesis.cancel();
-            }
-        } else if (musicEnabled && menu && menu.style.display !== "none") {
-            if (audioCtx && audioCtx.state === "suspended") {
-                audioCtx.resume().catch(() => {});
-            }
-            startHomeSymphony();
-        }
-    });
-
-    window.addEventListener("pagehide", () => {
-        stopHomeSymphony();
-        if (audioCtx && audioCtx.state === "running") {
-            audioCtx.suspend().catch(() => {});
-        }
-    });
-
-    function resumeSavedRunFromHome() {
-        const raw = localStorage.getItem(PAUSE_STATE_KEY);
-        if (!raw) {
-            startCountdown();
-            return;
-        }
-        try {
-            const saved = JSON.parse(raw);
-            if (!saved || typeof saved.time !== "number" || saved.time <= 0) {
-                clearSavedPausedState();
-                startCountdown();
-                return;
-            }
-            time = Math.min(MAX_TIME, saved.time);
-            score = saved.score || 0;
-            comboCount = saved.comboCount || 0;
-            maxComboRun = saved.maxComboRun || 0;
-            doubleBonus = Boolean(saved.doubleBonus);
-            doubleBonusRemainingMs = saved.doubleBonusRemainingMs || 0;
-            isFrozen = Boolean(saved.isFrozen);
-            freezeRemainingMs = saved.freezeRemainingMs || 0;
-            isSlowMo = Boolean(saved.isSlowMo);
-            slowMoRemainingMs = saved.slowMoRemainingMs || 0;
-            overdriveRemainingMs = saved.overdriveRemainingMs || 0;
-            pauseCooldownRemainingMs = 0;
-            secondChanceUsed = false;
-            stopHomeSymphony();
-            if (window.ttProgressionEngine) window.ttProgressionEngine.onRunStart();
-            if (menu) menu.style.display = "none";
-            if (game) game.style.display = "block";
-            timerCircle.textContent = time.toFixed(1);
-            scoreText.textContent = "SCORE: " + fmtNum(score);
-            comboText.textContent = "COMBO " + comboCount;
-            updateTimerVisuals();
-            if (Array.isArray(saved.buttons)) {
-                saved.buttons.forEach(bData => createButton(bData));
-            }
-            const gCount = activeButtons.filter(b => ["green", "gold", "ice", "clock"].includes(b.dataset.action)).length;
-            const rCount = activeButtons.filter(b => ["red", "bomb"].includes(b.dataset.action)).length;
-            for (let i = gCount; i < 3; i++) createButton("green");
-            for (let i = rCount; i < 2; i++) createButton("red");
-            running = true;
-            isPaused = true;
-            runResumeCountdown(() => {
-                isPaused = false;
-                clearSavedPausedState();
-                startGame(true);
-                pauseCooldownRemainingMs = PAUSE_COOLDOWN_MS;
-                updatePauseButtonUI();
-            });
-        } catch (e) {
-            clearSavedPausedState();
-            startCountdown();
-        }
-    }
-
-    if (playBtn) {
-        playBtn.addEventListener("click", () => {
-            playSynthEffect("click");
-            if (hasSavedRun()) resumeSavedRunFromHome();
-            else startCountdown();
-        });
-    }
-    if (discardSavedBtn && confirmNewRunModal) {
-        discardSavedBtn.addEventListener("click", () => {
-            playSynthEffect("click");
-            confirmNewRunModal.style.display = "flex";
-        });
-    }
-    if (confirmNewRunNoBtn) {
-        confirmNewRunNoBtn.addEventListener("click", () => {
+const xpBeforeRun = calculateTotalXP();
+const isNewBest = score > record && score > 0;
+const pcMultiplier = isDesktop ? 1.25 : 1.0;
+let comboBonusPct = 0;
+if (maxComboRun > 200) comboBonusPct = 20;
+else if (maxComboRun > 100) comboBonusPct = 10;
+gamesPlayed++;
+totalScoreAccumulated += score;
+if (isNewBest) {
+record = score;
+localStorage.setItem("record", record);
+}
+const baseRunXP = 600 + Math.floor(score * 0.03) + (isNewBest ? 450 : 0);
+const withPcXP = Math.floor(baseRunXP * pcMultiplier);
+const comboBonusXP = Math.floor(withPcXP * (comboBonusPct / 100));
+const finalRunXP = withPcXP + comboBonusXP;
+const diffPart = isNewBest ? Math.floor((score - record) * 0.03) : 0;
+const naturalFormulaDiff = 600 + Math.floor(score * 0.012) + diffPart;
+const extraToStore = Math.max(0, finalRunXP - Math.max(0, naturalFormulaDiff));
+storedBonusXP += extraToStore;
+localStorage.setItem("gamesPlayed", gamesPlayed);
+localStorage.setItem("totalScoreAccumulated", totalScoreAccumulated);
+localStorage.setItem("storedBonusXP", storedBonusXP);
+if (maxComboRun > bestCombo) {
+bestCombo = maxComboRun;
+localStorage.setItem("bestCombo", bestCombo);
+}
+const xpAfterRun = calculateTotalXP();
+const earnedXP = Math.max(0, xpAfterRun - xpBeforeRun);
+lastRunBaseEarnedXP = earnedXP;
+runXpBoostApplied = false;
+if (xpEarnedBadge) {
+const comboLabel = comboBonusPct > 0 ? " + " + comboBonusPct + "% COMBO" : "";
+xpEarnedBadge.textContent = "+" + fmtNum(earnedXP) + " XP" + comboLabel;
+}
+const { currentTier: tierAfter, nextTier: nextAfter } = getCurrentAndNextTier(xpAfterRun);
+if (goRankFrom) goRankFrom.textContent = tierAfter.name;
+if (goRankTo) goRankTo.textContent = nextAfter ? nextAfter.name : "MAX";
+if (goXpProgressText) {
+goXpProgressText.textContent = nextAfter
+? fmtNum(xpAfterRun) + " / " + fmtNum(nextAfter.xpRequired) + " XP"
+: fmtNum(xpAfterRun) + " XP";
+}
+if (menu) menu.style.display = "none";
+if (gameOverScreen) gameOverScreen.style.display = "flex";
+finalScore.textContent = fmtNum(score);
+finalCombo.textContent = fmtNum(maxComboRun);
+if (goXpBarFill) {
+const startPct = computeSegmentPercent(xpBeforeRun);
+const endPct = computeSegmentPercent(xpAfterRun);
+goXpBarFill.style.transition = "none";
+goXpBarFill.style.width = startPct.toFixed(1) + "%";
+requestAnimationFrame(() => {
+goXpBarFill.style.transition = "width 1.15s cubic-bezier(0.22, 1, 0.36, 1)";
+goXpBarFill.style.width = endPct.toFixed(1) + "%";
+});
+}
+if (isNewBest) {
+newRecordMessage.style.display = "block";
+isAnimatingRecord = true;
+playSynthEffect("newrecord");
+speakEnglish("New record!", 1.05, 1.15);
+finalRecord.textContent = "0";
+animateScoreCounter(finalRecord, record, () => {
+isAnimatingRecord = false;
+});
+} else {
+newRecordMessage.style.display = "none";
+playSynthEffect("gameover");
+speakEnglish("Game over!", 0.95, 0.95);
+finalRecord.textContent = fmtNum(record);
+}
+if (window.ttProgressionEngine) {
+window.ttProgressionEngine.onRunEnd(score, maxComboRun, secondChanceUsed, earnedXP);
+}
+refreshAllProfileAndRankUI(xpBeforeRun);
+setTimeout(() => syncPlayerToCloud(playerUsername), 400);
+}
+function returnToHome(keepPausedRun = false) {
+const xpAtEnter = lastKnownXP;
+if (keepPausedRun) savePausedGameState();
+else clearSavedPausedState();
+running = false;
+isPaused = false;
+isResumingCountdown = false;
+isFrozen = false;
+isSlowMo = false;
+doubleBonus = false;
+overdriveRemainingMs = 0;
+pauseCooldownRemainingMs = 0;
+secondChanceUsed = false;
+updatePauseButtonUI();
+clearInterval(gameLoopInterval);
+while (activeButtons.length > 0) {
+const b = activeButtons.shift();
+if (b && b.parentNode) b.remove();
+}
+if (pauseOverlay) pauseOverlay.style.display = "none";
+if (gameOverScreen) gameOverScreen.style.display = "none";
+if (game) {
+game.style.display = "none";
+game.classList.remove("overdrive-active", "slowmo-active");
+}
+if (countdown) countdown.style.display = "none";
+if (menu) menu.style.display = "flex";
+time = baseTime;
+score = 0;
+comboCount = 0;
+maxComboRun = 0;
+normalSpawnsSinceLastSpecial = 8;
+if (timerCircle) {
+timerCircle.textContent = time.toFixed(1);
+timerCircle.classList.remove("timer-panic", "timer-frozen", "timer-slowmo", "timer-max-cap");
+}
+if (scoreText) scoreText.textContent = "SCORE: 0";
+if (comboText) {
+comboText.textContent = "COMBO 0";
+comboText.classList.remove("combo-fire");
+}
+refreshAllProfileAndRankUI(xpAtEnter);
+checkAndTriggerRankUpCelebration();
+startHomeSymphony();
+}
+if (pauseBtn) {
+pauseBtn.addEventListener("click", () => {
+playSynthEffect("click");
+pauseGame();
+});
+}
+if (resumeBtn) {
+resumeBtn.addEventListener("click", () => {
+playSynthEffect("click");
+resumeGame();
+});
+}
+if (quitToHomeBtn) {
+quitToHomeBtn.addEventListener("click", () => {
+playSynthEffect("click");
+returnToHome(true);
+});
+}
+window.addEventListener("beforeunload", () => {
+if (running && isPaused) savePausedGameState();
+});
+document.addEventListener("visibilitychange", () => {
+if (document.hidden) {
+stopHomeSymphony();
+if (audioCtx && audioCtx.state === "running") {
+audioCtx.suspend().catch(() => {});
+}
+if ("speechSynthesis" in window) {
+window.speechSynthesis.cancel();
+}
+} else if (musicEnabled && menu && menu.style.display !== "none") {
+if (audioCtx && audioCtx.state === "suspended") {
+audioCtx.resume().catch(() => {});
+}
+startHomeSymphony();
+}
+});
+window.addEventListener("pagehide", () => {
+stopHomeSymphony();
+if (audioCtx && audioCtx.state === "running") {
+audioCtx.suspend().catch(() => {});
+}
+});
+function resumeSavedRunFromHome() {
+const raw = localStorage.getItem(PAUSE_STATE_KEY);
+if (!raw) {
+startCountdown();
+return;
+}
+try {
+const saved = JSON.parse(raw);
+if (!saved || typeof saved.time !== "number" || saved.time <= 0) {
+clearSavedPausedState();
+startCountdown();
+return;
+}
+time = Math.min(MAX_TIME, saved.time);
+score = saved.score || 0;
+comboCount = saved.comboCount || 0;
+maxComboRun = saved.maxComboRun || 0;
+doubleBonus = Boolean(saved.doubleBonus);
+doubleBonusRemainingMs = saved.doubleBonusRemainingMs || 0;
+isFrozen = Boolean(saved.isFrozen);
+freezeRemainingMs = saved.freezeRemainingMs || 0;
+isSlowMo = Boolean(saved.isSlowMo);
+slowMoRemainingMs = saved.slowMoRemainingMs || 0;
+overdriveRemainingMs = saved.overdriveRemainingMs || 0;
+pauseCooldownRemainingMs = 0;
+secondChanceUsed = false;
+stopHomeSymphony();
+if (window.ttProgressionEngine) window.ttProgressionEngine.onRunStart();
+if (menu) menu.style.display = "none";
+if (game) game.style.display = "block";
+timerCircle.textContent = time.toFixed(1);
+scoreText.textContent = "SCORE: " + fmtNum(score);
+comboText.textContent = "COMBO " + comboCount;
+updateTimerVisuals();
+if (Array.isArray(saved.buttons)) {
+saved.buttons.forEach(bData => createButton(bData));
+}
+while (activeButtons.length < 5) {
+createButton(getNextBalancedCategory());
+}
+running = true;
+isPaused = true;
+runResumeCountdown(() => {
+isPaused = false;
+clearSavedPausedState();
+startGame(true);
+pauseCooldownRemainingMs = PAUSE_COOLDOWN_MS;
+updatePauseButtonUI();
+});
+} catch (e) {
+clearSavedPausedState();
+startCountdown();
+}
+}
+if (playBtn) {
+playBtn.addEventListener("click", () => {
+playSynthEffect("click");
+if (hasSavedRun()) resumeSavedRunFromHome();
+else startCountdown();
+});
+}
+if (discardSavedBtn && confirmNewRunModal) {
+discardSavedBtn.addEventListener("click", () => {
+playSynthEffect("click");
+confirmNewRunModal.style.display = "flex";
+});
+}
+if (confirmNewRunNoBtn) {
+confirmNewRunNoBtn.addEventListener("click", () => {
 playSynthEffect("click");
 if (confirmNewRunModal) confirmNewRunModal.style.display = "none";
 });
@@ -1501,11 +1516,11 @@ running = true;
 if (!isRestored) {
 pauseCooldownRemainingMs = 0;
 normalSpawnsSinceLastSpecial = 8;
-createButton("green");
-createButton("green");
-createButton("green");
-createButton("red");
-createButton("red");
+spawnPatternIndex = 0;
+recentSpawnCoords.length = 0;
+for (let i = 0; i < 5; i++) {
+createButton(getNextBalancedCategory());
+}
 }
 updatePauseButtonUI();
 updateTimerVisuals();
@@ -1568,10 +1583,9 @@ ringCircle.style.strokeDashoffset = (BTN_RING_CIRCUMFERENCE * (1 - frac)).toFixe
 }
 if (rem <= 0) removeButton(btn);
 }
-const greenCount = activeButtons.filter(b => ["green", "gold", "ice", "clock"].includes(b.dataset.action)).length;
-const redCount = activeButtons.filter(b => ["red", "bomb"].includes(b.dataset.action)).length;
-if (greenCount < 3) createButton("green");
-if (redCount < 2) createButton("red");
+while (activeButtons.length < 5) {
+createButton(getNextBalancedCategory());
+}
 }, TICK_MS);
 }
 function renderButtonInner(btn, type, valueText) {
@@ -1593,23 +1607,18 @@ type = forcedCategoryOrConfig.action;
 key = forcedCategoryOrConfig.key;
 valueStr = forcedCategoryOrConfig.value;
 } else {
+const category = (forcedCategoryOrConfig === "green" || forcedCategoryOrConfig === "red")
+? forcedCategoryOrConfig
+: getNextBalancedCategory();
 const greenSlotsCount = activeButtons.filter(b =>
 ["green", "gold", "ice", "clock"].includes(b.dataset.action)
 ).length;
 const redSlotsCount = activeButtons.filter(b =>
 ["red", "bomb"].includes(b.dataset.action)
 ).length;
-if (forcedCategoryOrConfig === "green") {
-if (greenSlotsCount >= 3) return;
-type = "green";
-} else if (forcedCategoryOrConfig === "red") {
-if (redSlotsCount >= 2) return;
-type = "red";
-} else {
-if (greenSlotsCount < 3) type = "green";
-else if (redSlotsCount < 2) type = "red";
-else return;
-}
+if (category === "green" && greenSlotsCount >= 3) return;
+if (category === "red" && redSlotsCount >= 2) return;
+type = category;
 const hasSpecialOnScreen = activeButtons.some(b =>
 ["gold", "ice", "bomb", "clock"].includes(b.dataset.action)
 );
@@ -1673,12 +1682,13 @@ y = forcedCategoryOrConfig.top;
 const btnSize = isDesktop ? 165 : 108;
 const minCenterDist = isDesktop ? 245 : 150;
 const minBtnDist = isDesktop ? 175 : 114;
+const minHistoryDist = isDesktop ? 140 : 95;
 const margin = 16;
 let valid = false;
 let attempts = 0;
 const centerX = window.innerWidth / 2;
 const centerY = window.innerHeight / 2;
-while (!valid && attempts < 140) {
+while (!valid && attempts < 180) {
 attempts++;
 x = margin + Math.random() * (window.innerWidth - btnSize - margin * 2);
 y = 80 + Math.random() * (window.innerHeight - btnSize - 98);
@@ -1695,8 +1705,18 @@ break;
 }
 }
 }
+if (valid && attempts < 140) {
+for (const prev of recentSpawnCoords) {
+if (Math.hypot(x - prev.x, y - prev.y) < minHistoryDist) {
+valid = false;
+break;
+}
+}
+}
 }
 if (!valid) return;
+recentSpawnCoords.push({ x, y });
+if (recentSpawnCoords.length > 12) recentSpawnCoords.shift();
 }
 btn.style.left = x + "px";
 btn.style.top = y + "px";
@@ -1878,202 +1898,195 @@ specialMessage.style.display = "none";
 }
 function removeButton(btn) {
 if (!btn) return;
-const wasAction = btn.dataset.action;
 const index = activeButtons.indexOf(btn);
 if (index > -1) activeButtons.splice(index, 1);
 if (btn.parentNode) btn.remove();
-if (running && wasAction) {
-const isPositive = ["green", "gold", "ice", "clock"].includes(wasAction);
-createButton(isPositive ? "green" : "red");
+if (running) {
+createButton(getNextBalancedCategory());
 }
 }
 function animateScoreCounter(element, targetValue, onComplete) {
-        let current = 0;
-        const steps = 35;
-        const increment = targetValue / steps;
-        const counter = setInterval(() => {
-            current += increment;
-            if (current >= targetValue) {
-                current = targetValue;
-                clearInterval(counter);
-                element.textContent = fmtNum(Math.round(current));
-                if (onComplete) onComplete();
-            } else {
-                element.textContent = fmtNum(Math.round(current));
-            }
-        }, 25);
-    }
-
-    function gameOver() {
-        if (!running) return;
-        running = false;
-        isPaused = false;
-        isResumingCountdown = false;
-        isFrozen = false;
-        isSlowMo = false;
-        doubleBonus = false;
-        overdriveRemainingMs = 0;
-        pauseCooldownRemainingMs = 0;
-        updatePauseButtonUI();
-        clearSavedPausedState();
-        clearInterval(gameLoopInterval);
-        timerCircle.classList.remove("timer-panic", "timer-frozen", "timer-slowmo", "timer-max-cap");
-        game.classList.remove("slowmo-active", "overdrive-active");
-        while (activeButtons.length > 0) {
-            const firstBtn = activeButtons.shift();
-            if (firstBtn && firstBtn.parentNode) firstBtn.remove();
-        }
-        finalizeRunStatsAndShowSummary();
-    }
-
-    document.addEventListener("keydown", (event) => {
-        if (!running || isResumingCountdown) return;
-        const k = event.key.toLowerCase();
-        if (k === "d") {
-            event.preventDefault();
-            if (isPaused) { playSynthEffect("click"); resumeGame(); }
-            else if (pauseCooldownRemainingMs <= 0) { playSynthEffect("click"); pauseGame(); }
-        }
-    });
-
-    window.ttCoreBridge = {
-        playXpSound: () => playSynthEffect("xpclaim"),
-        playClick: () => playSynthEffect("click"),
-        playNewRecord: () => playSynthEffect("newrecord"),
-        speak: (txt) => speakEnglish(txt, 1.08, 1.15),
-        fireworks: (container) => launchFireworksShow(container),
-        syncCloudNow: () => syncPlayerToCloud(playerUsername),
-        refreshXPBar: (fromXP) => {
-            storedBonusXP = Number(localStorage.getItem("storedBonusXP")) || 0;
-            refreshAllProfileAndRankUI(fromXP);
-            checkAndTriggerRankUpCelebration();
-        },
-        getCurrentXP: () => calculateTotalXP(),
-        reviveRun: () => reviveRunWithInventoryToken(),
-        applyRunXpMultiplier: (mult) => {
-            if (runXpBoostApplied || lastRunBaseEarnedXP <= 0) return 0;
-            runXpBoostApplied = true;
-            const before = calculateTotalXP();
-            const extraXP = Math.round(lastRunBaseEarnedXP * (mult - 1));
-            storedBonusXP += extraXP;
-            localStorage.setItem("storedBonusXP", storedBonusXP);
-            const after = calculateTotalXP();
-            if (xpEarnedBadge) {
-                xpEarnedBadge.textContent = "+" + fmtNum(lastRunBaseEarnedXP + extraXP) + " XP (BOOSTED!)";
-            }
-            const { currentTier: tAfter, nextTier: nAfter } = getCurrentAndNextTier(after);
-            if (goXpProgressText) {
-                goXpProgressText.textContent = nAfter
-                    ? fmtNum(after) + " / " + fmtNum(nAfter.xpRequired) + " XP"
-                    : fmtNum(after) + " XP";
-            }
-            if (goXpBarFill) {
-                goXpBarFill.style.width = computeSegmentPercent(after).toFixed(1) + "%";
-            }
-            refreshAllProfileAndRankUI(before);
-            return extraXP;
-        }
-    };
-
-    function enterHomeScreen() {
-        refreshAllProfileAndRankUI();
-        if (menu) menu.style.display = "flex";
-        syncPlayerToCloud(playerUsername);
-        checkAndTriggerRankUpCelebration();
-        startHomeSymphony();
-    }
-
-    async function runStartupSequence() {
-        if (onboardingScreen) onboardingScreen.style.display = "none";
-        if (!playerUsername || containsProfanity(playerUsername)) {
-            playerUsername = await generateUniqueProUsername();
-            localStorage.setItem("timeTapUsername", playerUsername);
-        }
-        enterHomeScreen();
-    }
-
-    if (saveProfileBtn && usernameInput) {
-        saveProfileBtn.addEventListener("click", async () => {
-            if (playerUsername) return;
-            const chosen = sanitizeUsernameKey(usernameInput.value);
-            if (chosen.length < 2) {
-                showErrorBox(onboardingErrorMsg, "USE AT LEAST 2 LETTERS/NUMBERS!");
-                usernameInput.focus();
-                return;
-            }
-            if (containsProfanity(chosen)) {
-                playSynthEffect("red");
-                showErrorBox(onboardingErrorMsg, "OFFENSIVE USERNAME NOT ALLOWED!");
-                usernameInput.focus();
-                return;
-            }
-            saveProfileBtn.disabled = true;
-            saveProfileBtn.textContent = "CHECKING...";
-            const isFree = await checkUsernameAvailable(chosen);
-            saveProfileBtn.disabled = false;
-            saveProfileBtn.textContent = "START PLAYING";
-            if (!isFree) {
-                playSynthEffect("red");
-                showErrorBox(onboardingErrorMsg, "USERNAME ALREADY IN USE!");
-                usernameInput.focus();
-                return;
-            }
-            hideErrorBox(onboardingErrorMsg);
-            playerUsername = chosen;
-            localStorage.setItem("timeTapUsername", playerUsername);
-            initAudio();
-            playSynthEffect("newrecord");
-            await syncPlayerToCloud(playerUsername);
-            if (onboardingScreen) onboardingScreen.style.display = "none";
-            enterHomeScreen();
-        });
-    }
-
-    runStartupSequence();
+let current = 0;
+const steps = 35;
+const increment = targetValue / steps;
+const counter = setInterval(() => {
+current += increment;
+if (current >= targetValue) {
+current = targetValue;
+clearInterval(counter);
+element.textContent = fmtNum(Math.round(current));
+if (onComplete) onComplete();
+} else {
+element.textContent = fmtNum(Math.round(current));
 }
-
+}, 25);
+}
+function gameOver() {
+if (!running) return;
+running = false;
+isPaused = false;
+isResumingCountdown = false;
+isFrozen = false;
+isSlowMo = false;
+doubleBonus = false;
+overdriveRemainingMs = 0;
+pauseCooldownRemainingMs = 0;
+updatePauseButtonUI();
+clearSavedPausedState();
+clearInterval(gameLoopInterval);
+timerCircle.classList.remove("timer-panic", "timer-frozen", "timer-slowmo", "timer-max-cap");
+game.classList.remove("slowmo-active", "overdrive-active");
+while (activeButtons.length > 0) {
+const firstBtn = activeButtons.shift();
+if (firstBtn && firstBtn.parentNode) firstBtn.remove();
+}
+finalizeRunStatsAndShowSummary();
+}
+document.addEventListener("keydown", (event) => {
+if (!running || isResumingCountdown) return;
+const k = event.key.toLowerCase();
+if (k === "d") {
+event.preventDefault();
+if (isPaused) { playSynthEffect("click"); resumeGame(); }
+else if (pauseCooldownRemainingMs <= 0) { playSynthEffect("click"); pauseGame(); }
+}
+});
+window.ttCoreBridge = {
+playXpSound: () => playSynthEffect("xpclaim"),
+playClick: () => playSynthEffect("click"),
+playNewRecord: () => playSynthEffect("newrecord"),
+speak: (txt) => speakEnglish(txt, 1.08, 1.15),
+fireworks: (container) => launchFireworksShow(container),
+syncCloudNow: () => syncPlayerToCloud(playerUsername),
+setPlayerUsername: (newName, oldName = "") => {
+playerUsername = newName;
+localStorage.setItem("timeTapUsername", playerUsername);
+refreshAllProfileAndRankUI();
+syncPlayerToCloud(playerUsername, oldName);
+},
+refreshXPBar: (fromXP) => {
+storedBonusXP = Number(localStorage.getItem("storedBonusXP")) || 0;
+refreshAllProfileAndRankUI(fromXP);
+checkAndTriggerRankUpCelebration();
+},
+getCurrentXP: () => calculateTotalXP(),
+reviveRun: () => reviveRunWithInventoryToken(),
+applyRunXpMultiplier: (mult) => {
+if (runXpBoostApplied || lastRunBaseEarnedXP <= 0) return 0;
+runXpBoostApplied = true;
+const before = calculateTotalXP();
+const extraXP = Math.round(lastRunBaseEarnedXP * (mult - 1));
+storedBonusXP += extraXP;
+localStorage.setItem("storedBonusXP", storedBonusXP);
+const after = calculateTotalXP();
+if (xpEarnedBadge) {
+xpEarnedBadge.textContent = "+" + fmtNum(lastRunBaseEarnedXP + extraXP) + " XP (BOOSTED!)";
+}
+const { currentTier: tAfter, nextTier: nAfter } = getCurrentAndNextTier(after);
+if (goXpProgressText) {
+goXpProgressText.textContent = nAfter
+? fmtNum(after) + " / " + fmtNum(nAfter.xpRequired) + " XP"
+: fmtNum(after) + " XP";
+}
+if (goXpBarFill) {
+goXpBarFill.style.width = computeSegmentPercent(after).toFixed(1) + "%";
+}
+refreshAllProfileAndRankUI(before);
+return extraXP;
+}
+};
+function enterHomeScreen() {
+refreshAllProfileAndRankUI();
+if (menu) menu.style.display = "flex";
+syncPlayerToCloud(playerUsername);
+checkAndTriggerRankUpCelebration();
+startHomeSymphony();
+}
+async function runStartupSequence() {
+if (onboardingScreen) onboardingScreen.style.display = "none";
+if (!playerUsername || containsProfanity(playerUsername)) {
+playerUsername = await generateUniqueProUsername();
+localStorage.setItem("timeTapUsername", playerUsername);
+}
+enterHomeScreen();
+}
+if (saveProfileBtn && usernameInput) {
+saveProfileBtn.addEventListener("click", async () => {
+if (playerUsername) return;
+const chosen = sanitizeUsernameKey(usernameInput.value);
+if (chosen.length < 2) {
+showErrorBox(onboardingErrorMsg, "USE AT LEAST 2 LETTERS/NUMBERS!");
+usernameInput.focus();
+return;
+}
+if (containsProfanity(chosen)) {
+playSynthEffect("red");
+showErrorBox(onboardingErrorMsg, "OFFENSIVE USERNAME NOT ALLOWED!");
+usernameInput.focus();
+return;
+}
+saveProfileBtn.disabled = true;
+saveProfileBtn.textContent = "CHECKING...";
+const isFree = await checkUsernameAvailable(chosen);
+saveProfileBtn.disabled = false;
+saveProfileBtn.textContent = "START PLAYING";
+if (!isFree) {
+playSynthEffect("red");
+showErrorBox(onboardingErrorMsg, "USERNAME ALREADY IN USE!");
+usernameInput.focus();
+return;
+}
+hideErrorBox(onboardingErrorMsg);
+playerUsername = chosen;
+localStorage.setItem("timeTapUsername", playerUsername);
+initAudio();
+playSynthEffect("newrecord");
+await syncPlayerToCloud(playerUsername);
+if (onboardingScreen) onboardingScreen.style.display = "none";
+enterHomeScreen();
+});
+}
+runStartupSequence();
+}
 (function initTimeTapProgressionV2() {
-    const SUPABASE_URL = "https://jnhkktvtxbsfbrafsnig.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaGtrdHZ0eGJzZmJyYWZzbmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NTMzNjAsImV4cCI6MjExMTAyOTM2MH0.xRde38jj8K1cBpbXIIDyc14OMSsjRVUMkqTEvwDq2Tw";
-    const STATE_KEY = "timeTapProgressionState_v3";
-    const MAX_ITEM_STACK = 10;
-    const ROMAN_NUMERALS = ["", "I", "II", "III", "IV", "V"];
-    const userLang = (navigator.language || navigator.userLanguage || "").toLowerCase();
-    const userTz = (Intl.DateTimeFormat().resolvedOptions().timeZone || "").toLowerCase();
-    const USE_ITALIAN = userLang.startsWith("it") || userTz.includes("rome");
-
-    function t(itText, enText) {
-        return USE_ITALIAN ? itText : enText;
-    }
-
-    function clampItemStack(val) {
-        return Math.min(MAX_ITEM_STACK, Math.max(0, Number(val) || 0));
-    }
-
-    const NAME_STYLES_CATALOG = [
-        { id: "default", name: "CLASSIC WHITE", category: "COLOR", rarity: "COMMON", cssClass: "", prefix: "", free: true },
-        { id: "col_gold", name: "ROYAL GOLD", category: "COLOR", rarity: "COMMON", cssClass: "name-style-gold", prefix: "", free: false },
-        { id: "col_emerald", name: "EMERALD NEON", category: "COLOR", rarity: "COMMON", cssClass: "name-style-emerald", prefix: "", free: false },
-        { id: "col_cyan", name: "CYBER CYAN", category: "COLOR", rarity: "RARE", cssClass: "name-style-cyan", prefix: "", free: false },
-        { id: "col_amethyst", name: "AMETHYST GLOW", category: "COLOR", rarity: "RARE", cssClass: "name-style-amethyst", prefix: "", free: false },
-        { id: "col_inferno", name: "INFERNO FLAME", category: "COLOR", rarity: "EPIC", cssClass: "name-style-inferno", prefix: "", free: false },
-        { id: "col_diamond", name: "DIAMOND SHINE", category: "COLOR", rarity: "EPIC", cssClass: "name-style-diamond", prefix: "", free: false },
-        { id: "col_rainbow", name: "PRISM RAINBOW", category: "COLOR", rarity: "LEGENDARY", cssClass: "rainbow-master-text", prefix: "", free: false },
-        { id: "font_chubby", name: "CHUBBY TITAN", category: "FONT", rarity: "COMMON", cssClass: "name-font-chubby", prefix: "", free: false },
-        { id: "font_bubble", name: "BUBBLE POP", category: "FONT", rarity: "RARE", cssClass: "name-font-bubble", prefix: "", free: false },
-        { id: "font_arcade", name: "BOUNCE POP", category: "FONT", rarity: "RARE", cssClass: "name-font-arcade", prefix: "", free: false },
-        { id: "font_wide", name: "WIDE BLOCK", category: "FONT", rarity: "RARE", cssClass: "name-font-wide", prefix: "", free: false },
-        { id: "font_pixel", name: "RETRO PIXEL", category: "FONT", rarity: "EPIC", cssClass: "name-font-pixel", prefix: "", free: false },
-        { id: "font_mono", name: "HACKER CODE", category: "FONT", rarity: "EPIC", cssClass: "name-font-mono", prefix: "", free: false },
-        { id: "font_italic", name: "SPEED SLANT", category: "FONT", rarity: "EPIC", cssClass: "name-font-italic-script", prefix: "", free: false },
-        { id: "font_serif", name: "IMPERIAL SERIF", category: "FONT", rarity: "LEGENDARY", cssClass: "name-font-serif", prefix: "", free: false },
-        { id: "font_gothic", name: "ROYAL GOTHIC", category: "FONT", rarity: "LEGENDARY", cssClass: "name-font-gothic", prefix: "", free: false },
-        { id: "sym_star", name: "STAR BADGE", category: "SYMBOL", rarity: "COMMON", cssClass: "", prefix: "★ ", free: false },
-        { id: "sym_bolt", name: "THUNDER BOLT", category: "SYMBOL", rarity: "RARE", cssClass: "", prefix: "⚡ ", free: false },
-        { id: "sym_fire", name: "FIRE FACE", category: "SYMBOL", rarity: "RARE", cssClass: "", prefix: "🔥 ", free: false },
-        { id: "sym_cool", name: "COOL SHADES", category: "SYMBOL", rarity: "RARE", cssClass: "", prefix: "😎 ", free: false },
-        { id: "sym_devil", name: "DEVIL GRIN", category: "SYMBOL", rarity: "EPIC", cssClass: "", prefix: "😈 ", free: false },
-        { id: "sym_alien", name: "ALIEN PRO", category: "SYMBOL", rarity: "EPIC", cssClass: "", prefix: "👾 ", free: false },
+const SUPABASE_URL = "https://jnhkktvtxbsfbrafsnig.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpuaGtrdHZ0eGJzZmJyYWZzbmlnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU0NTMzNjAsImV4cCI6MjExMTAyOTM2MH0.xRde38jj8K1cBpbXIIDyc14OMSsjRVUMkqTEvwDq2Tw";
+const STATE_KEY = "timeTapProgressionState_v3";
+const MAX_ITEM_STACK = 10;
+const ROMAN_NUMERALS = ["", "I", "II", "III", "IV", "V"];
+const userLang = (navigator.language || navigator.userLanguage || "").toLowerCase();
+const userTz = (Intl.DateTimeFormat().resolvedOptions().timeZone || "").toLowerCase();
+const USE_ITALIAN = userLang.startsWith("it") || userTz.includes("rome");
+function t(itText, enText) {
+return USE_ITALIAN ? itText : enText;
+}
+function clampItemStack(val) {
+return Math.min(MAX_ITEM_STACK, Math.max(0, Number(val) || 0));
+}
+const NAME_STYLES_CATALOG = [
+{ id: "default", name: "CLASSIC WHITE", category: "COLOR", rarity: "COMMON", cssClass: "", prefix: "", free: true },
+{ id: "col_gold", name: "ROYAL GOLD", category: "COLOR", rarity: "COMMON", cssClass: "name-style-gold", prefix: "", free: false },
+{ id: "col_emerald", name: "EMERALD NEON", category: "COLOR", rarity: "COMMON", cssClass: "name-style-emerald", prefix: "", free: false },
+{ id: "col_cyan", name: "CYBER CYAN", category: "COLOR", rarity: "RARE", cssClass: "name-style-cyan", prefix: "", free: false },
+{ id: "col_amethyst", name: "AMETHYST GLOW", category: "COLOR", rarity: "RARE", cssClass: "name-style-amethyst", prefix: "", free: false },
+{ id: "col_inferno", name: "INFERNO FLAME", category: "COLOR", rarity: "EPIC", cssClass: "name-style-inferno", prefix: "", free: false },
+{ id: "col_diamond", name: "DIAMOND SHINE", category: "COLOR", rarity: "EPIC", cssClass: "name-style-diamond", prefix: "", free: false },
+{ id: "col_rainbow", name: "PRISM RAINBOW", category: "COLOR", rarity: "LEGENDARY", cssClass: "rainbow-master-text", prefix: "", free: false },
+{ id: "font_chubby", name: "CHUBBY TITAN", category: "FONT", rarity: "COMMON", cssClass: "name-font-chubby", prefix: "", free: false },
+{ id: "font_bubble", name: "BUBBLE POP", category: "FONT", rarity: "RARE", cssClass: "name-font-bubble", prefix: "", free: false },
+{ id: "font_arcade", name: "BOUNCE POP", category: "FONT", rarity: "RARE", cssClass: "name-font-arcade", prefix: "", free: false },
+{ id: "font_wide", name: "WIDE BLOCK", category: "FONT", rarity: "RARE", cssClass: "name-font-wide", prefix: "", free: false },
+{ id: "font_pixel", name: "RETRO PIXEL", category: "FONT", rarity: "EPIC", cssClass: "name-font-pixel", prefix: "", free: false },
+{ id: "font_mono", name: "HACKER CODE", category: "FONT", rarity: "EPIC", cssClass: "name-font-mono", prefix: "", free: false },
+{ id: "font_italic", name: "SPEED SLANT", category: "FONT", rarity: "EPIC", cssClass: "name-font-italic-script", prefix: "", free: false },
+{ id: "font_serif", name: "IMPERIAL SERIF", category: "FONT", rarity: "LEGENDARY", cssClass: "name-font-serif", prefix: "", free: false },
+{ id: "font_gothic", name: "ROYAL GOTHIC", category: "FONT", rarity: "LEGENDARY", cssClass: "name-font-gothic", prefix: "", free: false },
+{ id: "sym_star", name: "STAR BADGE", category: "SYMBOL", rarity: "COMMON", cssClass: "", prefix: "★ ", free: false },
+{ id: "sym_bolt", name: "THUNDER BOLT", category: "SYMBOL", rarity: "RARE", cssClass: "", prefix: "⚡ ", free: false },
+{ id: "sym_fire", name: "FIRE FACE", category: "SYMBOL", rarity: "RARE", cssClass: "", prefix: "🔥 ", free: false },
+{ id: "sym_cool", name: "COOL SHADES", category: "SYMBOL", rarity: "RARE", cssClass: "", prefix: "😎 ", free: false },
+{ id: "sym_devil", name: "DEVIL GRIN", category: "SYMBOL", rarity: "EPIC", cssClass: "", prefix: "😈 ", free: false },
+{ id: "sym_alien", name: "ALIEN PRO", category: "SYMBOL", rarity: "EPIC", cssClass: "", prefix: "👾 ", free: false },
 { id: "sym_skull", name: "SKULL BOSS", category: "SYMBOL", rarity: "EPIC", cssClass: "", prefix: "💀 ", free: false },
 { id: "sym_crown", name: "ROYAL CROWN", category: "SYMBOL", rarity: "LEGENDARY", cssClass: "", prefix: "👑 ", free: false }
 ];
@@ -2697,7 +2710,7 @@ if (!listEl) return;
 const currentXP = window.ttCoreBridge ? window.ttCoreBridge.getCurrentXP() : 0;
 let currentLevel = 1;
 for (let lv = 1; lv <= 100; lv++) {
-const req = lv === 1 ? 0 : (lv === 100 ? 100000000 : Math.round(100000000 * Math.pow((lv - 1) / 99, 3.2)));
+const req = lv === 1 ? 0 : (lv === 100 ? 250000000 : Math.round(250000000 * Math.pow((lv - 1) / 99, 3.2)));
 if (currentXP >= req) currentLevel = lv;
 else break;
 }
@@ -2901,11 +2914,102 @@ renderInventoryModal();
 };
 closeBtn.onclick = () => { modal.style.display = "none"; };
 }
+function insertEmojiAtCursorInName(inputEl, emojiChar, previewEl) {
+if (!inputEl) return;
+const start = inputEl.selectionStart ?? inputEl.value.length;
+const end = inputEl.selectionEnd ?? inputEl.value.length;
+const current = inputEl.value;
+inputEl.value = current.slice(0, start) + emojiChar + current.slice(end);
+const newPos = start + emojiChar.length;
+inputEl.focus();
+inputEl.setSelectionRange(newPos, newPos);
+if (previewEl) {
+const state = loadState();
+const symItem = NAME_STYLES_CATALOG.find(s => s.id === state.equippedSymbol);
+previewEl.textContent = (symItem ? symItem.prefix : "") + (inputEl.value || "PLAYER");
+}
+}
 function renderNameCustomModal() {
 const state = loadState();
 const rawUsername = localStorage.getItem("timeTapUsername") || "PLAYER";
 const preview = document.getElementById("nameCustomPreview");
 const container = document.getElementById("nameStylesContainer");
+const previewCard = preview ? preview.parentElement : null;
+if (previewCard) {
+let editorWrap = document.getElementById("customNameEmojiEditorWrap");
+if (!editorWrap) {
+editorWrap = document.createElement("div");
+editorWrap.id = "customNameEmojiEditorWrap";
+editorWrap.className = "custom-name-emoji-editor";
+const editorInput = document.createElement("input");
+editorInput.id = "customNameLiveInput";
+editorInput.type = "text";
+editorInput.maxLength = 32;
+editorInput.className = "profile-input small-profile-input";
+const emojiLabel = document.createElement("div");
+emojiLabel.id = "customEmojiHelperLabel";
+emojiLabel.className = "emoji-bar-label";
+const emojiRow = document.createElement("div");
+emojiRow.id = "customModalEmojiRow";
+emojiRow.className = "unlocked-emoji-picker-row";
+const saveCustomNameBtn = document.createElement("button");
+saveCustomNameBtn.type = "button";
+saveCustomNameBtn.className = "action-green-btn mini-action-btn";
+saveCustomNameBtn.textContent = t("SALVA NOME", "SAVE NAME");
+saveCustomNameBtn.addEventListener("click", () => {
+const updated = editorInput.value.trim().replace(/\s+/g, " ").slice(0, 32);
+if (updated.length < 2) return;
+localStorage.setItem("timeTapUsername", updated);
+if (window.ttCoreBridge) {
+window.ttCoreBridge.playXpSound();
+window.ttCoreBridge.syncCloudNow();
+}
+applyAllCosmetics();
+renderNameCustomModal();
+showXpGainToast(t("NOME AGGIORNATO!", "NAME UPDATED!"));
+});
+editorInput.addEventListener("input", () => {
+if (preview) {
+const freshState = loadState();
+const symItem = NAME_STYLES_CATALOG.find(s => s.id === freshState.equippedSymbol);
+preview.textContent = (symItem ? symItem.prefix : "") + (editorInput.value || "PLAYER");
+}
+});
+editorWrap.appendChild(editorInput);
+editorWrap.appendChild(emojiLabel);
+editorWrap.appendChild(emojiRow);
+editorWrap.appendChild(saveCustomNameBtn);
+previewCard.appendChild(editorWrap);
+}
+const liveInput = document.getElementById("customNameLiveInput");
+const emojiLabel = document.getElementById("customEmojiHelperLabel");
+const emojiRow = document.getElementById("customModalEmojiRow");
+if (liveInput) liveInput.value = rawUsername;
+if (emojiRow) {
+emojiRow.innerHTML = "";
+const unlockedSymbols = NAME_STYLES_CATALOG.filter(
+s => s.category === "SYMBOL" && (s.free || state.unlockedStyles.includes(s.id))
+);
+if (emojiLabel) {
+emojiLabel.textContent = unlockedSymbols.length > 0
+? t("TOCCA UN'EMOJI PER INSERIRLA OVUNQUE NEL NOME:", "TAP AN EMOJI TO INSERT ANYWHERE IN YOUR NAME:")
+: t("SBLOCCA EMOJI DALLE CASSE PER INSERIRLE NEL NOME!", "UNLOCK EMOJIS FROM CHESTS TO INSERT INTO YOUR NAME!");
+}
+unlockedSymbols.forEach(sym => {
+const cleanEmoji = sym.prefix.trim();
+const pill = document.createElement("button");
+pill.type = "button";
+pill.className = "emoji-insert-pill";
+pill.textContent = cleanEmoji;
+pill.title = sym.name;
+pill.addEventListener("click", () => {
+insertEmojiAtCursorInName(liveInput, cleanEmoji, preview);
+if (window.ttCoreBridge) window.ttCoreBridge.playClick();
+});
+emojiRow.appendChild(pill);
+});
+}
+}
 if (preview) {
 const symItem = NAME_STYLES_CATALOG.find(s => s.id === state.equippedSymbol);
 const colItem = NAME_STYLES_CATALOG.find(s => s.id === state.equippedColor);

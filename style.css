@@ -3390,3 +3390,38 @@ letter-spacing: 1px;
     transform: scaleX(1.08);
     transform-origin: left center;
 }
+.custom-name-emoji-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.emoji-bar-label {
+    font-size: 11px;
+    color: #fde047;
+    letter-spacing: 0.6px;
+}
+
+.unlocked-emoji-picker-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    margin: 4px 0;
+}
+
+.emoji-insert-pill {
+    font-size: 20px;
+    padding: 5px 10px;
+    border-radius: 12px;
+    border: 2px solid #fde047;
+    background: rgba(15, 23, 42, 0.85);
+    cursor: pointer;
+    box-shadow: 0 3px 0 #020617;
+    transition: transform 0.1s ease;
+}
+
+.emoji-insert-pill:active {
+    transform: translateY(2px) scale(0.94);
+}
