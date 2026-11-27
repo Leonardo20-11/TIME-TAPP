@@ -3462,3 +3462,20 @@ touch-action: manipulation;
 touch-action: manipulation;
 will-change: transform;
 }
+.button-circle,
+.tap-ripple,
+.floating-text,
+.fx-spark,
+#timerCircle {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    contain: layout style;
+}
+
+.timer-ring-progress {
+    filter: none !important;
+}
+
+.fx-spark {
+    box-shadow: none !important;
+}
