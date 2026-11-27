@@ -1775,118 +1775,88 @@ x = forcedCategoryOrConfig.left;
 y = forcedCategoryOrConfig.top;
 } else {
 const btnSize = isDesktop ? (isPositiveType ? 175 : 145) : 108;
-const minCenterDist = isDesktop ? 195 : 138;
-const minBtnDist = isDesktop ? 170 : 122;
-const minSameColorDist = isDesktop ? 250 : (isPositiveType ? 225 : 175);
-const minHistoryDist = isDesktop ? 145 : 165;
-const minJumpFromLastRemoved = isDesktop ? 180 : Math.min(window.innerWidth, window.innerHeight) * 0.42;
-const minJumpFromLastGreen = isDesktop ? 220 : Math.max(window.innerWidth, window.innerHeight) * 0.46;
-const margin = 14;
-let valid = false;
-let attempts = 0;
-const centerX = window.innerWidth / 2;
-const centerY = window.innerHeight / 2;
-const cornerBlockX = window.innerWidth * 0.14;
-const cornerBlockY = window.innerHeight * 0.16;
-// Zone già occupate dai pulsanti attualmente sullo schermo (così i 5 pulsanti sono sempre sparsi in zone diverse)
-const occupiedZones = new Set(
-activeButtons.map(b => {
-const bx = parseFloat(b.style.left) + (b.offsetWidth || btnSize) / 2;
-const by = parseFloat(b.style.top) + (b.offsetHeight || btnSize) / 2;
-return getScreenZone6(bx, by);
-})
-);
-while (!valid && attempts < 340) {
-attempts++;
-const refPos = (isPositiveType && lastGreenPos) ? lastGreenPos : lastRemovedPos;
-if (refPos && attempts < 190) {
-const targetX = window.innerWidth - btnSize - refPos.x;
-const targetY = window.innerHeight - btnSize - refPos.y + 40;
-const jitterX = (Math.random() - 0.5) * (window.innerWidth * 0.50);
-const jitterY = (Math.random() - 0.5) * (window.innerHeight * 0.50);
-x = Math.min(window.innerWidth - btnSize - margin, Math.max(margin, targetX + jitterX));
-y = Math.min(window.innerHeight - btnSize - margin, Math.max(76, targetY + jitterY));
-} else {
-x = margin + Math.random() * (window.innerWidth - btnSize - margin * 2);
-y = 76 + Math.random() * (window.innerHeight - btnSize - 76 - margin);
-}
-valid = true;
-const btnCenterX = x + btnSize / 2;
-const btnCenterY = y + btnSize / 2;
-const zone = getScreenZone6(btnCenterX, btnCenterY);
-// 1. Esclude angoli su desktop
-if (isDesktop) {
-const inLeft = btnCenterX < cornerBlockX;
-const inRight = btnCenterX > window.innerWidth - cornerBlockX;
-const inTop = btnCenterY < cornerBlockY;
-const inBottom = btnCenterY > window.innerHeight - cornerBlockY;
-if ((inLeft || inRight) && (inTop || inBottom)) {
-valid = false;
-}
-}
-// 2. Mai sopra il timer centrale
-if (valid) {
-const distCenter = Math.hypot(btnCenterX - centerX, btnCenterY - centerY);
-if (distCenter < minCenterDist) valid = false;
-}
-// 3. Una zona per pulsante (sparsi in Alto, Centro e Basso, mai ammassati tutti sotto o tutti sopra)
-if (valid && occupiedZones.has(zone) && attempts < 260) {
-valid = false;
-}
-// 4. Alternanza obbligatoria Verde <-> Rosso in ogni zona (un verde non può apparire dove c'era prima un verde)
-if (valid && zoneLastCategory[zone] === currentCategory && attempts < 260) {
-valid = false;
-}
-// 5. Se è un verde, deve saltare dall'altra parte dello schermo rispetto all'ultimo verde
-if (valid && isPositiveType && lastGreenPos && attempts < 280) {
-const distGreen = Math.hypot(x - lastGreenPos.x, y - lastGreenPos.y);
-if (distGreen < minJumpFromLastGreen) {
-valid = false;
-}
-}
-// 6. Lontano dall'ultimo pulsante sparito/toccato
-if (valid && lastRemovedPos && attempts < 260) {
-const distFromRemoved = Math.hypot(x - lastRemovedPos.x, y - lastRemovedPos.y);
-if (distFromRemoved < minJumpFromLastRemoved) {
-valid = false;
-}
-}
-// 7. Mai sovrapposto e mai due dello stesso colore vicini
-if (valid) {
-for (const existing of activeButtons) {
-const ex = parseFloat(existing.style.left);
-const ey = parseFloat(existing.style.top);
-const exSize = existing.offsetWidth || btnSize;
-const dist = Math.hypot(btnCenterX - (ex + exSize / 2), btnCenterY - (ey + exSize / 2));
-if (dist < minBtnDist) {
-valid = false;
-break;
-}
-const exIsPos = ["green", "gold", "ice", "clock"].includes(existing.dataset.action);
-if (exIsPos === isPositiveType && dist < minSameColorDist && attempts < 260) {
-valid = false;
-break;
-}
-}
-}
-// 8. Mai nello stesso punto degli ultimi 8 pulsanti
-if (valid && attempts < 280) {
-for (const prev of recentSpawnCoords) {
-if (Math.hypot(x - prev.x, y - prev.y) < minHistoryDist) {
-valid = false;
-break;
-}
-}
-}
-}
-if (!valid) return;
-const chosenZone = getScreenZone6(x + btnSize / 2, y + btnSize / 2);
-zoneLastCategory[chosenZone] = currentCategory;
-if (isPositiveType) {
-lastGreenPos = { x, y };
-}
-recentSpawnCoords.push({ x, y, category: currentCategory });
-if (recentSpawnCoords.length > 8) recentSpawnCoords.shift();
+        const minCenterDist = isDesktop ? 195 : 138;
+        const minBtnDist = isDesktop ? 175 : 124;
+        const minSameColorDist = isDesktop ? 270 : (isPositiveType ? 240 : 195);
+        const minHistoryDist = isDesktop ? 165 : 175;
+        const alignTolerance = isDesktop ? 95 : 72;
+        const margin = 14;
+        let valid = false;
+        let attempts = 0;
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        const cornerBlockX = window.innerWidth * 0.14;
+        const cornerBlockY = window.innerHeight * 0.16;
+
+        while (!valid && attempts < 400) {
+            attempts++;
+            x = margin + Math.random() * (window.innerWidth - btnSize - margin * 2);
+            y = 76 + Math.random() * (window.innerHeight - btnSize - 76 - margin);
+            valid = true;
+
+            const btnCenterX = x + btnSize / 2;
+            const btnCenterY = y + btnSize / 2;
+
+            // 1. Esclude i 4 angoli estremi su computer
+            if (isDesktop) {
+                const inLeft = btnCenterX < cornerBlockX;
+                const inRight = btnCenterX > window.innerWidth - cornerBlockX;
+                const inTop = btnCenterY < cornerBlockY;
+                const inBottom = btnCenterY > window.innerHeight - cornerBlockY;
+                if ((inLeft || inRight) && (inTop || inBottom)) {
+                    valid = false;
+                }
+            }
+
+            // 2. Mai sopra il timer centrale
+            if (valid) {
+                const distCenter = Math.hypot(btnCenterX - centerX, btnCenterY - centerY);
+                if (distCenter < minCenterDist) valid = false;
+            }
+
+            // 3. Mai sovrapposto, mai due dello stesso colore vicini e MAI in linea (né orizzontale né verticale)
+            if (valid) {
+                for (const existing of activeButtons) {
+                    const ex = parseFloat(existing.style.left);
+                    const ey = parseFloat(existing.style.top);
+                    const exSize = existing.offsetWidth || btnSize;
+                    const exCenterX = ex + exSize / 2;
+                    const exCenterY = ey + exSize / 2;
+                    const dist = Math.hypot(btnCenterX - exCenterX, btnCenterY - exCenterY);
+
+                    if (dist < minBtnDist) {
+                        valid = false;
+                        break;
+                    }
+
+                    const exIsPos = ["green", "gold", "ice", "clock"].includes(existing.dataset.action);
+                    if (exIsPos === isPositiveType) {
+                        if (dist < minSameColorDist && attempts < 300) {
+                            valid = false;
+                            break;
+                        }
+                        if ((Math.abs(btnCenterX - exCenterX) < alignTolerance || Math.abs(btnCenterY - exCenterY) < alignTolerance) && attempts < 280) {
+                            valid = false;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 4. Mai nello stesso punto dove era appena apparso o sparito un pulsante recente
+            if (valid && attempts < 320) {
+                for (const prev of recentSpawnCoords) {
+                    if (Math.hypot(x - prev.x, y - prev.y) < minHistoryDist) {
+                        valid = false;
+                        break;
+                    }
+                }
+            }
+        }
+        if (!valid) return;
+
+        recentSpawnCoords.push({ x, y, category: currentCategory });
+        if (recentSpawnCoords.length > 10) recentSpawnCoords.shift();
 }
 btn.style.left = x + "px";
 btn.style.top = y + "px";
